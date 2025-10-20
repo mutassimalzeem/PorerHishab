@@ -7,6 +7,7 @@ from models import Transactions
 from categorizer import categorize_text
 
 
+
 # Initialize DB on import (idempotent)
 init_db()
 
@@ -14,34 +15,41 @@ ALLOWED = ["date", "description", "merchant", "amount", "category"]
 
 def _normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df.columns = [c.strip() for c in df.columns]
 
-    if "amount" in df.columns:
-        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
-    else:
-        df["amount"] = 0.0
+    # Ensure python objects and convert any NA/<NA>/NaN → None *first*
+    df = df.astype(object).where(pd.notnull(df), None)
 
+    # Trim headers
+    df.columns = [str(c).strip() for c in df.columns]
 
-    data = {col: df[col] if col in df.columns else [None] * len(df) for col in ALLOWED}
-    df2 = pd.DataFrame(data)
+    ALLOWED = ["date", "description", "merchant", "amount", "category"]
+    data = {col: (df[col] if col in df.columns else [None] * len(df)) for col in ALLOWED}
+    df2 = pd.DataFrame(data).astype(object).where(pd.notnull(df), None)
 
+    # Coerce amount to float
+    df2["amount"] = pd.to_numeric(df2.get("amount", 0.0), errors="coerce").fillna(0.0)
 
+    # Dates → ISO strings if present
     if "date" in df2.columns:
-        df2["date"] = pd.to_datetime(df2["date"], errors = "coerce").dt.date.astype("string")
-    
+        df2["date"] = pd.to_datetime(df2["date"], errors="coerce").dt.date.astype(object)
+        df2["date"] = df2["date"].where(pd.notnull(df2["date"]), None)
+
+    # Strip strings
     for col in ["description", "merchant", "category"]:
         if col in df2.columns:
-            df2[col] = df2[col].astype("string").str.strip()
+            df2[col] = df2[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
 
-
-    df2 = df2.where(pd.notnull(df2), None)
+    # Final guard: replace any residual Pandas NA with None
+    df2 = df2.astype(object).where(pd.notnull(df2), None)
     return df2
+
+
 
 def _is_missing(val) -> bool:
     if val is None:
         return True
-    if isinstance(val, str):
-        return val.strip() == ""
+    if isinstance(val, str) and val.strip() == "":
+        return True
     
     try:
         return pd.isna(val)         # pd.isna handles pd.NA, numpy.nan, etc.
@@ -52,16 +60,15 @@ def _is_missing(val) -> bool:
 def _auto_fill_categories(df: pd.DataFrame) -> None:
     for i, row in df.iterrows():
         cat = row.get("category", None)
-        if _is_missing(cat):
+        # Missing if None or empty/whitespace string
+        if cat is None or (isinstance(cat, str) and cat.strip() == ""):
             merchant = row.get("merchant") or ""
             desc = row.get("description") or ""
             text = f"{merchant} {desc}".strip()
             df.at[i, "category"] = categorize_text(text) or "Other"
 
 
-
 def save_dataframe(df: pd.DataFrame, user_id: int | None = None) -> None:
-
 
     df2 = _normalize_df(df)
     _auto_fill_categories(df2)
@@ -78,7 +85,7 @@ def save_dataframe(df: pd.DataFrame, user_id: int | None = None) -> None:
         CHUNK = 2000        #   Safe for big CSVs
         for i in range(0, len(records), CHUNK):
 
-            session.bulk_insert_mappings(Transactions, records)
+            session.bulk_insert_mappings(Transactions, records[i: i + CHUNK])
         session.commit()
     except Exception:
         session.rollback()
@@ -92,9 +99,10 @@ def list_transactions(limit: int = 100, user_id: int | None = None) -> List[dict
     """
     session: Session = SessionLocal()
     try:
-        q = session.query(Transactions).order_by(Transactions.id.desc()).limit(int(limit))
+        q = session.query(Transactions)
         if user_id is not None:
             q = q.filter(Transactions.user_id == int(user_id))
+        q = q.order_by(Transactions.id.desc()).limit(int(limit))
         
         rows = []
         for r in q:

@@ -163,41 +163,101 @@ def get_summary(current: User = Depends(get_current_user)):
 
 @app.post('/upload-csv')
 async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_current_user)):
-
     if not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are accepted")
-    
+
     try:
-        contents = await file.read()
-        df = pd.read_csv(io.BytesIO(contents))
-        
+        raw = await file.read()
+
+        # 1) Read as "object" to avoid Pandas extension dtypes that carry <NA>
+        df = pd.read_csv(
+            io.BytesIO(raw),
+            dtype=object,           # <- objects, not StringDtype
+            keep_default_na=True,   # OK to parse NA/NaN initially
+            na_filter=True
+        )
+
+        # 2) Convert ALL NA-ish to None, and ensure python objects
+        df = df.astype(object).where(pd.notnull(df), None)
+
+        # 3) Basic checks & coercions
         if 'amount' not in df.columns:
             raise HTTPException(status_code=400, detail="CSV must include an 'amount' column")
-        
-        df["amount"] = pd.to_numeric(df["amount"], errors='coerce').fillna(0.0)
-        
-        # Save to database
-        save_dataframe(df, user_id= current.id)
-        
-        # Calculate summary from the dataframe we just processed
-        total_income = float(df[df["amount"] > 0]["amount"].sum())
-        total_expenses = float(df[df["amount"] < 0]["amount"].sum())
+
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
+
+        # (optional) normalize strings to stripped python str
+        for col in ["description", "merchant", "category"]:
+            if col in df.columns:
+                df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
+
+        # 4) Save per-user
+        save_dataframe(df, user_id=current.id)
+
+        # 5) Summary (safe—no pd.NA remains)
+        total_income = float(df[df["amount"] > 0]["amount"].sum() or 0.0)
+        total_expenses = float(df[df["amount"] < 0]["amount"].sum() or 0.0)
         balance = total_income + total_expenses
-        
+
         preview = df.head(10).to_dict(orient="records")
-        
         return {
-            'filename': file.filename,
-            'records': len(df),
+            "filename": file.filename,
+            "records": int(len(df)),
             "total_income": total_income,
             "total_expenses": total_expenses,
             "balance": balance,
-            'preview': preview
+            "preview": preview
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
-    
+        raise HTTPException(status_code=500, detail=f"Processing error: {e}")
+
+
+@app.get("/categories/summary")
+def categories_summary(current: User = Depends(get_current_user)):
+    try:
+        rows = list_transactions(limit=100000, user_id=current.id)
+        df = pd.DataFrame(rows)
+        if df.empty:
+            return {
+                "income_by_category": {},
+                "expenses_by_category": {},
+                "net_by_category": {},
+                "grand_totals": {"income": 0.0, "expenses": 0.0, "net": 0.0}
+            }
+
+        # Ensure types
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
+        df["category"] = df["category"].fillna("Other").astype(str)
+
+        # Income (amount > 0)
+        inc = df[df["amount"] > 0].groupby("category", dropna=False)["amount"].sum()
+        income_by_category = {k: float(v) for k, v in inc.to_dict().items()}
+
+        # Expenses (amount < 0)
+        exp = df[df["amount"] < 0].groupby("category", dropna=False)["amount"].sum()
+        expenses_by_category = {k: float(v) for k, v in exp.to_dict().items()}
+
+        # Net by category (sum of all amounts)
+        net = df.groupby("category", dropna=False)["amount"].sum()
+        net_by_category = {k: float(v) for k, v in net.to_dict().items()}
+
+        grand_income = float((df[df["amount"] > 0]["amount"].sum()) or 0.0)
+        grand_expenses = float((df[df["amount"] < 0]["amount"].sum()) or 0.0)
+        grand_net = float(grand_income + grand_expenses)
+
+        return {
+            "income_by_category": income_by_category,
+            "expenses_by_category": expenses_by_category,
+            "net_by_category": net_by_category,
+            "grand_totals": {
+                "income": grand_income,
+                "expenses": grand_expenses,
+                "net": grand_net
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summary failed: {str(e)}")
+
 
 @app.get("/me")
 def read_me(current: User = Depends(get_current_user)):
