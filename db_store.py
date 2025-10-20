@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from db import SessionLocal, init_db
 from models import Transactions
 from categorizer import categorize_text
-
+from sqlalchemy import or_, and_
 
 
 # Initialize DB on import (idempotent)
@@ -120,6 +120,75 @@ def list_transactions(limit: int = 100, user_id: int | None = None) -> List[dict
         session.close()
 
 
+def search_transactions(
+        user_id: int,
+        q: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        min_amount : float | None = None,
+        max_amount : float | None = None,
+        categories: list[str] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        sort: str = "desc"
+) -> list[dict]:
+    session: Session = SessionLocal()
+
+    try:
+        qset = session.query(Transactions).filter(Transactions.user_id == int(user_id))
+
+        # text match (case-insensitive) on merchant OR description
+        if q:
+            like = f"%{q.strip()}%"
+            qset = qset.filter(
+                or_(
+                    Transactions.merchant.ilike(like),
+                    Transactions.description.ilike(like),
+                )
+            )
+
+        if start_date:
+            qset = qset.filter(Transactions.date >= start_date)
+
+        if end_date:
+            qset = qset.filter(Transactions.date <= end_date)
+
+        #   Amount Filters
+        if min_amount is not None:
+            qset = qset.filter(Transactions.amount >= float(min_amount))
+        if max_amount is not None:
+            qset = qset.filter(Transactions.amount <= float(max_amount))
+
+        #   category Filters (any of)
+        if categories:
+            qset = qset.filter(Transactions.category.in_(categories))
+
+        #   Ordering
+        if sort == "asc":
+            qset = qset.order_by(Transactions.date.asc(), Transactions.id.asc())
+        else:
+            qset = qset.order_by(Transactions.date.desc(), Transactions.id.desc())
+
+        qset = qset.offset(int(offset)).limit(int(limit))
+
+
+        rows = []
+        for r in qset:
+            rows.append({
+                "id": r.id,
+                "date": r.date,
+                "description": r.description,
+                "merchant": r.merchant,
+                "amount": float(r.amount or 0.0),
+                "category": r.category,
+                "user_id": getattr(r, "user_id", None),
+            })
+        return rows
+    finally:
+        session.close()
+
+
+        
 def clear_transactions():
     """
     Dangerous: delete all rows (for testing).

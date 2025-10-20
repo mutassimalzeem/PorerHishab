@@ -1,12 +1,12 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, Form
+from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, Form, Query
 import pandas as pd
 import io
 from db import init_db, SessionLocal
-from db_store import save_dataframe, list_transactions, clear_transactions
+from db_store import save_dataframe, list_transactions, search_transactions
 from auth import get_password_hash, create_access_token, create_refresh_token, rate_limit_guard, record_failed_attempt
 from models import User
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from auth import verify_password, decode_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -114,6 +114,41 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) ->
         return user
     finally:
         db.close()
+
+
+
+from typing import Optional, List
+
+@app.get("/search")
+def search(
+    q: Optional[str] = None,
+    start_date: Optional[str] = None,  
+    end_date: Optional[str] = None,    
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    category: Optional[List[str]] = Query(None, description= "Filter by categories; e.g. ?category=Food&category=Utilities"),
+    limit: int = 100,
+    offset: int = 0,
+    sort: str = "desc",
+    current: User = Depends(get_current_user),
+):
+    if sort not in ("asc", "desc"):
+        raise HTTPException(status_code=400, detail="sort must be 'asc' or 'desc'")
+
+    items = search_transactions(
+        user_id=current.id,
+        q=q,
+        start_date=start_date,
+        end_date=end_date,
+        min_amount=min_amount,
+        max_amount=max_amount,
+        categories=category,
+        limit=limit,
+        offset=offset,
+        sort=sort,
+    )
+    return {"count": len(items), "items": items}
+
 
 
 @app.post("/refresh")
