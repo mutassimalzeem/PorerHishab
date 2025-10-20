@@ -15,38 +15,70 @@ ALLOWED = ["date", "description", "merchant", "amount", "category"]
 def _normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.columns = [c.strip() for c in df.columns]
+
     if "amount" in df.columns:
         df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
     else:
         df["amount"] = 0.0
+
+
     data = {col: df[col] if col in df.columns else [None] * len(df) for col in ALLOWED}
     df2 = pd.DataFrame(data)
+
+
+    if "date" in df2.columns:
+        df2["date"] = pd.to_datetime(df2["date"], errors = "coerce").dt.date.astype("string")
+    
+    for col in ["description", "merchant", "category"]:
+        if col in df2.columns:
+            df2[col] = df2[col].astype("string").str.strip()
+
+
     df2 = df2.where(pd.notnull(df2), None)
     return df2
 
-def _auto_fill_categories(df):
-    """
-    Fill in missing 'category' column values using categorize_text.
-    """
-    for i, row in df.iterrows():
-        if not row.get('category'):
-            text = f"{row.get('merchant', '')} {row.get('description', '')}"
-            df.at[i, 'category'] = categorize_text(text)
-            
+def _is_missing(val) -> bool:
+    if val is None:
+        return True
+    if isinstance(val, str):
+        return val.strip() == ""
+    
+    try:
+        return pd.isna(val)         # pd.isna handles pd.NA, numpy.nan, etc.
+    except Exception:
+        return False
+    
 
-def save_dataframe(df: pd.DataFrame):
-    """
-    Save a pandas DataFrame to the transactions table using SQLAlchemy.
-    Uses bulk insert for speed.
-    """
+def _auto_fill_categories(df: pd.DataFrame) -> None:
+    for i, row in df.iterrows():
+        cat = row.get("category", None)
+        if _is_missing(cat):
+            merchant = row.get("merchant") or ""
+            desc = row.get("description") or ""
+            text = f"{merchant} {desc}".strip()
+            df.at[i, "category"] = categorize_text(text) or "Other"
+
+
+
+def save_dataframe(df: pd.DataFrame, user_id: int | None = None) -> None:
+
+
     df2 = _normalize_df(df)
     _auto_fill_categories(df2)
     # Convert DataFrame to list of dicts for bulk_insert_mappings
+
+    if user_id is not None:
+        df2["user_id"] = int(user_id)
+
     records = df2.to_dict(orient="records")
     # Map keys to model column names directly
     session: Session = SessionLocal()
     try:
-        session.bulk_insert_mappings(Transactions, records)
+
+        CHUNK = 2000        #   Safe for big CSVs
+        for i in range(0, len(records), CHUNK):
+
+            session.bulk_insert_mappings(Transactions, records)
         session.commit()
     except Exception:
         session.rollback()
@@ -54,13 +86,16 @@ def save_dataframe(df: pd.DataFrame):
     finally:
         session.close()
 
-def list_transactions(limit: int = 100) -> List[dict]:
+def list_transactions(limit: int = 100, user_id: int | None = None) -> List[dict]:
     """
     Return rows as list of dicts, newest first.
     """
     session: Session = SessionLocal()
     try:
         q = session.query(Transactions).order_by(Transactions.id.desc()).limit(int(limit))
+        if user_id is not None:
+            q = q.filter(Transactions.user_id == int(user_id))
+        
         rows = []
         for r in q:
             rows.append({
@@ -68,13 +103,13 @@ def list_transactions(limit: int = 100) -> List[dict]:
                 "date": r.date,
                 "description": r.description,
                 "merchant": r.merchant,
-                "amount": r.amount,
-                "category": r.category
+                "amount": float(r.amount or 0.0),
+                "category": r.category,
+                "user_id": getattr(r, "user_id", None),
             })
         return rows
     finally:
         session.close()
-
 
 
 def clear_transactions():
