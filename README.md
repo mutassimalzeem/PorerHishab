@@ -12,6 +12,8 @@
   <b>An AI-powered personal finance coach that helps users understand spending, ask natural-language finance questions, forecast budgets, and receive personalized savings recommendations.</b>
 </p>
 
+> 🇧🇩 **Bangladesh-First Update (Oct 2026 audit):** Zyra is now **Bangladesh-tailored — bKash / Nagad / Rocket / Upay + Bank BEFTN/NPSB + DPS/FDR**. The full market audit, premium feature vault (Taka Sesh Date, WhatsApp Coach, NBR & Household OS) and 9-month roadmap for 2027 lives in **[FEATURES.md](./FEATURES.md)**. Global Plaid → **MFS SMS Parser + Bank PDF OCR**.
+
 ---
 
 ## Overview
@@ -542,29 +544,38 @@ Zyra is built as a practical AI product, not just a tutorial project.
 
 - [x] Project idea and architecture
 - [x] Backend planning
-- [x] Authentication flow
-- [x] Transaction ingestion design
+- [x] Authentication flow (JWT + refresh + rate-limit)
+- [x] Transaction ingestion (CSV) + per-user DB isolation
 - [x] AI/RAG planning
-- [ ] Full frontend dashboard
-- [ ] Advanced transaction categorization
-- [ ] Budget forecasting improvements
-- [ ] Goal-based savings planner
-- [ ] Production deployment
+- [x] Market audit + Bangladesh premium vault → `FEATURES.md`
+- [ ] Full frontend dashboard (Next.js + PWA)
+- [ ] MFS SMS + Bank PDF ingestion (Bangladesh-first)
+- [ ] FinBangla-BERT categorizer + fee/balance model
+- [ ] Taka Sesh Date predictor + Fee Killer
+- [ ] WhatsApp/Messenger Coach + NBR/DPS OS
+- [ ] Production deployment (Postgres + Docker + SSLCommerz)
 
 ---
 
+## Premium Roadmap for Bangladesh (2027) — See FEATURES.md
+
+> Full audit + tiered Bangladesh stack: **bKash/Nagad SMS Parser + Bank PDF OCR, Taka Sesh Date predictor, Fee Killer, WhatsApp/Messenger Coach, NBR Wealth OS, Household & Mess OS.**
+
+Tiers: **Free 0 | PRO Tk 2,999/yr | PREMIUM Tk 4,999/yr** via bKash/Nagad/SSLCommerz. See `FEATURES.md §3-7`.
+
 ## Future Improvements
 
-- Bank account integration
+- MFS SMS auto-parse (bKash/Nagad/Rocket/Upay) + Bank PDF OCR (BRAC/City/EBL/DBBL/Islami)
+- FinBangla-BERT categorizer for Bangla/Roman Bangla + fee split
+- Taka Sesh Date cashflow predictor (Eid-aware) + Fee & Subscription Killer
+- WhatsApp/Messenger AI Coach + NBR e-TIN + DPS/FDR + CIB health
+- Household & Mess shared vault (5 members)
 - More advanced forecasting models
 - Spending anomaly detection
-- Recurring subscription detection
-- Multi-account support
+- Multi-account (MFS + Bank + Cash) support
 - Exportable finance reports
-- Monthly email summaries
-- Mobile-friendly UI
-- Voice-based finance assistant
-- Better financial goal tracking
+- Monthly WhatsApp/email summaries
+- Mobile-friendly PWA + Voice assistant
 - Deployment with Docker and cloud hosting
 
 ---
