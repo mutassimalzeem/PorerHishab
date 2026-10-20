@@ -46,7 +46,7 @@ def test_database_relationships():
         transaction = Transaction(
             user_id=user.id, account_id=account.id,
             trx_id="TEST-001",
-            dates=date.today(),
+            date=date.today(),
             description="Foodpanda order",
             merchant="Foodpanda",
             normalized_merchant="Foodpanda",

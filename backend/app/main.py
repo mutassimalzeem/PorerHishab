@@ -42,8 +42,8 @@ CREATE_SQL = """CREATE TABLE IF NOT EXISTS transactions(
 
 
 @app.post("/register")
-def register(payload: RegisterIn):
-    db: Session = Depends(get_db)
+def register(payload: RegisterIn, 
+    db: Session = Depends(get_db)):
 
     try:
         existing = db.query(User).filter(User.email == payload.email).first()
@@ -65,8 +65,7 @@ def register(payload: RegisterIn):
 
 
 @app.post("/login")
-def login(request: Request, payload: LoginIn):
-    db: Session = Depends(get_db)
+def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
     try:
         client_ip = request.client.host if request.client else "unknown"
         key = f"{client_ip}:{payload.email}"
@@ -91,7 +90,7 @@ def login(request: Request, payload: LoginIn):
 
 security = HTTPBearer()
 
-def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) -> User:
+def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     token = creds.credentials
 
     try:
@@ -106,7 +105,7 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) ->
     if user_id is None or not email:
         raise HTTPException(status_code= 401, detail = 'Invalid token payload')
     
-    db: Session = Depends(get_db)
+    # db: Session = Depends(get_db)
 
     try:
         user = db.query(User).filter(User.id == user_id, User.email == email).first()
