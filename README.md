@@ -473,7 +473,7 @@ Copy env + migrate + run (from repo root):
 cp .env.example .env
 alembic upgrade head
 pytest backend/test_database.py -v
-uvicorn backend.app.main:app --reload
+uvicorn app.main:app --reload
 ```
 
 Backend will run at:
