@@ -74,7 +74,7 @@ class Transaction(Base):
         index=True,
     )
 
-    date: Mapped[date] = mapped_column(
+    dates: Mapped[date] = mapped_column(
         Date,
         nullable=False,
         index=True,

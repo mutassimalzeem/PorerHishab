@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, Form, Query
 import pandas as pd
 import io
-from db import init_db, SessionLocal
+#from db import init_db, SessionLocal
+from backend.app.core.database import get_db
 from db_store import save_dataframe, list_transactions, search_transactions
 from auth import get_password_hash, create_access_token, create_refresh_token, rate_limit_guard, record_failed_attempt
 from models import User
@@ -10,9 +11,10 @@ from typing import Optional, List
 from auth import verify_password, decode_access_token
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
 
 
-init_db()
+#init_db()
 app = FastAPI()
 
 app.add_middleware(
@@ -41,7 +43,7 @@ CREATE_SQL = """CREATE TABLE IF NOT EXISTS transactions(
 
 @app.post("/register")
 def register(payload: RegisterIn):
-    db= SessionLocal()
+    db: Session = Depends(get_db)
 
     try:
         existing = db.query(User).filter(User.email == payload.email).first()
@@ -64,7 +66,7 @@ def register(payload: RegisterIn):
 
 @app.post("/login")
 def login(request: Request, payload: LoginIn):
-    db = SessionLocal()
+    db: Session = Depends(get_db)
     try:
         client_ip = request.client.host if request.client else "unknown"
         key = f"{client_ip}:{payload.email}"
@@ -104,7 +106,7 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) ->
     if user_id is None or not email:
         raise HTTPException(status_code= 401, detail = 'Invalid token payload')
     
-    db = SessionLocal()
+    db: Session = Depends(get_db)
 
     try:
         user = db.query(User).filter(User.id == user_id, User.email == email).first()
