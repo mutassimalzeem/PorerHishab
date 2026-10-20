@@ -2,12 +2,25 @@ services:
 
   db:
     image: postgres:16
+    container_name: zyra-db
+
     environment:
       POSTGRES_DB: zyra
       POSTGRES_USER: zyra
-      POSTGRES_PASSWORD: zyra
+      POSTGRES_PASSWORD: zyra_password
+
     ports:
       - "5432:5432"
 
-  backend:
-    ...
+    volumes:
+      - zyra_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zyra -d zyra"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  zyra_postgres_data:
