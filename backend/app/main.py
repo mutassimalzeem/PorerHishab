@@ -3,7 +3,7 @@ import pandas as pd
 import io
 #from db import init_db, SessionLocal
 from app.core.database import get_db
-from backend.db_store import save_dataframe, list_transactions, search_transactions
+#from backend.db_store import save_dataframe, list_transactions, search_transactions
 from auth import get_password_hash, create_access_token, create_refresh_token, rate_limit_guard, record_failed_attempt
 from app.models.user import User
 from pydantic import BaseModel, EmailStr
@@ -13,6 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
+
+
+from app.services.transaction_service import save_transactions
+from app.repositories.transaction_repository import (
+    list_transactions,
+    search_transactions,
+)
 
 #init_db()
 app = FastAPI()
@@ -132,11 +139,12 @@ def search(
     offset: int = 0,
     sort: str = "desc",
     current: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     if sort not in ("asc", "desc"):
         raise HTTPException(status_code=400, detail="sort must be 'asc' or 'desc'")
 
-    items = search_transactions(
+    items = search_transactions(db = db, 
         user_id=current.id,
         q=q,
         start_date=start_date,
@@ -171,9 +179,9 @@ def read_root():
 
 
 @app.get("/summary")
-def get_summary(current: User = Depends(get_current_user)):
+def get_summary(current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        transactions = list_transactions(limit=10000, user_id= current.id)  # Get all transactions
+        transactions = list_transactions(db = db, limit=10000, user_id= current.id)  # Get all transactions
         df = pd.DataFrame(transactions)
         
         if df.empty:
@@ -198,7 +206,7 @@ def get_summary(current: User = Depends(get_current_user)):
 
 
 @app.post('/upload-csv')
-async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_current_user)):
+async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are accepted")
 
@@ -228,7 +236,7 @@ async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_c
                 df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
 
         # 4) Save per-user
-        save_dataframe(df, user_id=current.id)
+        save_transactions(df, user_id=current.id)
 
         # 5) Summary (safe—no pd.NA remains)
         total_income = float(df[df["amount"] > 0]["amount"].sum() or 0.0)
@@ -249,9 +257,9 @@ async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_c
 
 
 @app.get("/categories/summary")
-def categories_summary(current: User = Depends(get_current_user)):
+def categories_summary(current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        rows = list_transactions(limit=100000, user_id=current.id)
+        rows = list_transactions(db = db, limit=100000, user_id=current.id)
         df = pd.DataFrame(rows)
         if df.empty:
             return {
@@ -301,7 +309,7 @@ def read_me(current: User = Depends(get_current_user)):
 
 
 @app.get("/transactions/me")
-def my_transactions(limit: int = 100, current: User = Depends(get_current_user)):
-    rows = list_transactions(limit = limit, user_id= current.id)
+def my_transactions(limit: int = 100, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = list_transactions(db = db, limit = limit, user_id= current.id)
 
     return {"count": len(rows), "items": rows}
