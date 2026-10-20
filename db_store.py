@@ -9,8 +9,8 @@ import pandas as pd
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from backend.app.core.database import SessionLocal
-from backend.app.models.transactions import Transaction
+from app.core.database import SessionLocal
+from app.models.transactions import Transaction
 from categorizer import categorize_text
 
 
