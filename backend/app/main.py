@@ -5,7 +5,7 @@ import io
 from backend.app.core.database import get_db
 from db_store import save_dataframe, list_transactions, search_transactions
 from auth import get_password_hash, create_access_token, create_refresh_token, rate_limit_guard, record_failed_attempt
-from models import User
+from backend.app.models.user import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from auth import verify_password, decode_access_token
