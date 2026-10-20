@@ -2,10 +2,10 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, 
 import pandas as pd
 import io
 #from db import init_db, SessionLocal
-from backend.app.core.database import get_db
+from app.core.database import get_db
 from db_store import save_dataframe, list_transactions, search_transactions
 from auth import get_password_hash, create_access_token, create_refresh_token, rate_limit_guard, record_failed_attempt
-from backend.app.models.user import User
+from app.models.user import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from auth import verify_password, decode_access_token
