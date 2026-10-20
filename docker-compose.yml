@@ -1,0 +1,13 @@
+services:
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: zyra
+      POSTGRES_USER: zyra
+      POSTGRES_PASSWORD: zyra
+    ports:
+      - "5432:5432"
+
+  backend:
+    ...
