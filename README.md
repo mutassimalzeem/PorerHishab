@@ -151,13 +151,16 @@ The focus is on realistic, behavior-based suggestions instead of generic advice.
 
 ### Backend
 
-- Python
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- JWT Authentication
-- Pydantic
+- Python + FastAPI (`backend/app/main.py` — live: auth, CSV upload, search, summaries)
+- SQLAlchemy 2.0 (typed `Mapped` models) + Alembic migrations (`alembic/versions/`)
+- PostgreSQL 16 via Docker (`docker-compose.yml` → `zyra-db`)
+- JWT access + refresh (peppered bcrypt, per-IP rate-limit) — see `backend/app/api/auth.py`
+- Pydantic v2 + pydantic-settings (`.env` → `DATABASE_URL`)
 - Uvicorn
+
+> Note: `backend/app/main.py` is the current runnable entrypoint. The sculpted
+> `backend/app/api/*`, `schemas/*`, `services/*` modules from `architecture.md`
+> are placeholders (empty stubs) reserved for the v2 router split.
 
 ### AI / ML
 
@@ -193,7 +196,38 @@ The focus is on realistic, behavior-based suggestions instead of generic advice.
 
 ---
 
-## Project Architecture
+## Data Model (v2 — `feature/zyra-v2`)
+
+Live on this branch via `alembic revisions b348fd279e16 → c2d11a3f4b5c`
+(`dates` → `date` rename):
+
+```txt
+users (id, email unique, hashed_password, full_name, created_at, updated_at)
+  ├── accounts (id, user_id → users.id CASCADE, name, source [bkash/nagad/bank/cash],
+  │              account_type [cash/mobile_wallet/bank], currency default BDT,
+  │              current_balance NUMERIC(14,2), created_at)
+  └── transactions (id, user_id → users.id CASCADE, account_id → accounts.id SET NULL,
+                    trx_id, date DATE, description, merchant, normalized_merchant,
+                    amount NUMERIC(14,2), fee NUMERIC(14,2) default 0, balance,
+                    transaction_type, category, subcategory,
+                    source [manual/csv/sms/pdf], is_recurring bool,
+                    raw_data JSONB, created_at,
+                    UNIQUE(user_id, trx_id))
+```
+
+- Money-safe: `NUMERIC(14,2)` for `amount/fee/balance` (never float).
+- Bangladesh-ready: `fee` + `balance` + `trx_id` columns capture
+  `Cash Out Tk1,500 to 017XX TrxID 9AX Fee Tk27.50` SMS shapes (parser lands in M1-2 per `FEATURES.md`).
+- Verified by `backend/test_database.py::test_database_relationships`
+  (user → bKash account → Foodpanda transaction).
+
+---
+
+## Project Architecture (target — see `architecture.md`)
+
+> Current runnable code lives in `backend/app/main.py`. The tree below is the
+> v2 target; `api/*`, `schemas/*`, `services/*` stubs are empty and tracked
+> for the upcoming router split.
 
 ```txt
 Zyra/
@@ -331,43 +365,44 @@ Create a savings plan for the next 3 months.
 
 ---
 
-## API Endpoints
+## API Endpoints (live on this branch)
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/auth/register` | Create a new user account |
-| `POST` | `/auth/login` | Login and receive access token |
-| `GET` | `/users/me` | Get current user profile |
-| `POST` | `/transactions/upload-csv` | Upload transaction CSV |
-| `GET` | `/transactions/me` | Get user transactions |
-| `GET` | `/summary` | Get spending summary |
-| `GET` | `/insights/monthly` | Get monthly spending insights |
-| `POST` | `/chat/ask` | Ask finance questions |
-| `GET` | `/forecast/budget` | Get budget forecast |
-| `GET` | `/planner/savings` | Get saving recommendations |
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| `POST` | `/register` | Create user, return access token | ✅ live in `main.py` |
+| `POST` | `/login` | Login (rate-limited) → access + refresh | ✅ live |
+| `POST` | `/refresh` | Exchange refresh token for access token | ✅ live |
+| `GET` | `/me` | Current user profile | ✅ live |
+| `POST` | `/upload-csv` | Upload CSV (requires `amount`; optional `description/merchant/category`) | ✅ live |
+| `GET` | `/transactions/me?limit=100` | List own transactions | ✅ live |
+| `GET` | `/search?q=&category=&limit=` | Full-text + category + amount + date search | ✅ live |
+| `GET` | `/summary` | Income / expenses / balance totals | ✅ live |
+| `GET` | `/categories/summary` | Income / expenses / net per category | ✅ live |
+| `POST` | `/chat/ask` | RAG finance Q&A | 🔜 stub per `architecture.md` |
+| `GET` | `/forecast/budget` | Taka Sesh Date predictor | 🔜 per `FEATURES.md M3-5` |
+| `GET` | `/planner/savings` | Fee Killer + saving plan | 🔜 per `FEATURES.md M3-5` |
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file inside the backend directory.
+Create a `.env` file at repo root (loaded by `backend/app/core/config.py`).
 
 ```env
-DATABASE_URL=postgresql+asyncpg://username:password@localhost:5432/zyra
-
-SECRET_KEY=your_secret_key_here
+DATABASE_URL=postgresql+psycopg2://zyra:zyra_password@localhost:5432/zyra
+SECRET_KEY=change-me-in-prod
+REFRESH_SECRET_KEY=change-me-in-prod-refresh
+PEPPER=
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-OPENAI_API_KEY=your_openai_api_key
-EMBEDDING_MODEL=text-embedding-3-small
-CHAT_MODEL=gpt-4o-mini
-
-USE_HF=0
-HF_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+REFRESH_TOKEN_EXPIRE_DAYS=14
+RATE_LIMIT_WINDOW_SECONDS=300
+RATE_LIMIT_MAX_ATTEMPTS=5
 ```
 
-For local-only embedding experiments, you can use Hugging Face embeddings instead of OpenAI embeddings.
+> `DATABASE_URL` must use `+psycopg2` (sync) — `create_engine(...)` in
+> `core/database.py` is sync. See `.env.example`. OpenAI / HF embedding keys
+> arrive with the RAG service (M3-5).
 
 ---
 
@@ -411,19 +446,19 @@ docker run --name zyra-postgres -e POSTGRES_USER=zyra -e POSTGRES_PASSWORD=zyra 
 
 ```bash
 cd backend
-python -m venv venv
+python -m venv .venv
 ```
 
 Activate the environment:
 
 ```bash
 # Windows
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 ```bash
 # macOS/Linux
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 Install dependencies:
@@ -432,10 +467,13 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Run the backend:
+Copy env + migrate + run (from repo root):
 
 ```bash
-uvicorn app.main:app --reload
+cp .env.example .env
+alembic upgrade head
+pytest backend/test_database.py -v
+uvicorn backend.app.main:app --reload
 ```
 
 Backend will run at:
@@ -452,7 +490,10 @@ http://localhost:8000/docs
 
 ---
 
-### 4. Setup Frontend
+### 4. Setup Frontend (planned)
+
+> No `frontend/` directory on this branch yet — Next.js + PWA lands in M1-2.
+> Reserved flow from `architecture.md`:
 
 ```bash
 cd frontend
@@ -540,14 +581,16 @@ Zyra is built as a practical AI product, not just a tutorial project.
 
 ---
 
-## Current Status
+## Current Status (`feature/zyra-v2` @ Oct 2026)
 
-- [x] Project idea and architecture
-- [x] Backend planning
-- [x] Authentication flow (JWT + refresh + rate-limit)
-- [x] Transaction ingestion (CSV) + per-user DB isolation
-- [x] AI/RAG planning
+- [x] Project idea and architecture (`architecture.md`)
+- [x] Backend planning + v2 data model (`users` → `accounts` → `transactions`)
+- [x] Alembic baseline `b348fd279e16` + rename `c2d11a3f4b5c` (NUMERIC money, `trx_id`, `fee`, `balance`, `raw_data`)
+- [x] Authentication flow (JWT access + refresh, peppered bcrypt, rate-limit)
+- [x] Transaction ingestion (CSV) + search + category summaries + per-user isolation
+- [x] DB relationship test (`backend/test_database.py`)
 - [x] Market audit + Bangladesh premium vault → `FEATURES.md`
+- [ ] Router split (`main.py` → `api/*` + `schemas/*` + `services/*`)
 - [ ] Full frontend dashboard (Next.js + PWA)
 - [ ] MFS SMS + Bank PDF ingestion (Bangladesh-first)
 - [ ] FinBangla-BERT categorizer + fee/balance model
