@@ -73,12 +73,16 @@ def test_forecast_ignores_income():
     assert result["forecast"] == Decimal("10000.00")
 
 
-def test_category_forecast():
+def test_category_forecast_uses_monthly_totals():
 
     transactions = [
         tx("-1000", date(2026, 7, 1), "Food"),
-        tx("-1500", date(2026, 8, 1), "Food"),
-        tx("-2000", date(2026, 9, 1), "Food"),
+        tx("-2000", date(2026, 7, 15), "Food"),
+
+        tx("-3000", date(2026, 8, 1), "Food"),
+
+        tx("-4000", date(2026, 9, 1), "Food"),
+
         tx("-5000", date(2026, 9, 1), "Housing"),
     ]
 
@@ -86,11 +90,11 @@ def test_category_forecast():
         transactions
     )
 
-    assert result[0]["category"] == "Housing"
-    assert result[0]["forecast"] == Decimal("5000.00")
+    assert result[0]["category"] == "Food"
+    assert result[0]["forecast"] == Decimal("3333.33")
 
-    assert result[1]["category"] == "Food"
-    assert result[1]["forecast"] == Decimal("1500.00")
+    assert result[1]["category"] == "Housing"
+    assert result[1]["forecast"] == Decimal("1666.67")
 
 
 def test_empty_forecast():

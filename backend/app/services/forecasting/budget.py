@@ -88,37 +88,68 @@ def forecast_monthly_spending(transactions: list[Transaction], months_ahead: int
     }
 
 
-def forecast_category_spending(transactions: list[Transaction]) -> list[dict]:
+def forecast_category_spending(
+    transactions: list[Transaction],
+) -> list[dict]:
     """
-    Forecast next-month spending for each expense category.
+    Forecast next-month spending by category.
+
+    Uses monthly category totals rather than individual transaction
+    averages. This prevents transaction frequency from distorting
+    the forecast.
     """
 
-    grouped: dict[str, list[Decimal]] = {}
+    monthly_category_totals: dict[str, dict[str, Decimal]] = {}
 
     for transaction in transactions:
         if transaction.amount >= 0:
             continue
 
         category = transaction.category or "Uncategorized"
+        month = _month_key(transaction.date)
 
-        grouped.setdefault(category, []).append(abs(transaction.amount))
+        if month not in monthly_category_totals:
+            monthly_category_totals[month] = {}
 
+        monthly_category_totals[month][category] = (
+            monthly_category_totals[month].get(category, Decimal("0"))
+            + abs(transaction.amount)
+        )
 
+    if not monthly_category_totals:
+        return []
+
+    categories = set()
+
+    for month_data in monthly_category_totals.values():
+        categories.update(month_data.keys())
 
     results = []
 
-    for category, amounts in grouped.items():
-        average = sum(amounts, Decimal("0")) / len(amounts)
+    for category in categories:
+        monthly_values = [month_data.get(category, Decimal("0"))
+            for month_data in monthly_category_totals.values()
+        ]
+
+        average = (sum(monthly_values, Decimal("0")) / len(monthly_values))
+
+        observations = sum(1
+            for month_data in monthly_category_totals.values()
+            if category in month_data
+        )
 
         results.append(
             {
                 "category": category,
                 "forecast": _q(average),
-                "observations": len(amounts),
+                "observations": observations,
             }
         )
 
-    results.sort(key=lambda item: item["forecast"], reverse=True)
+    results.sort(
+        key=lambda item: item["forecast"],
+        reverse=True,
+    )
 
     return results
 
