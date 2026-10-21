@@ -20,6 +20,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from app.api.forecast import router as forecast_router
 
 
 
@@ -42,6 +43,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+app.include_router(forecast_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
