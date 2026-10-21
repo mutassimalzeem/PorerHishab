@@ -1,23 +1,24 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, Form, Query
 import pandas as pd
 import io
-#from db import init_db, SessionLocal
 from app.core.database import get_db
-#from backend.db_store import save_dataframe, list_transactions, search_transactions
 from app.api.auth import (
     create_access_token,
     create_refresh_token,
     decode_access_token,
+    decode_refresh_token,
     get_password_hash,
     rate_limit_guard,
     record_failed_attempt,
     verify_password,
 )
+from app.api.insights import router as insights_router
+from app.api.transactions import router as transactions_router
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 
@@ -28,8 +29,10 @@ from app.repositories.transaction_repository import (
     search_transactions,
 )
 
-#init_db()
 app = FastAPI()
+
+app.include_router(insights_router)
+app.include_router(transactions_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,11 +51,6 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
-
-db_path = 'transactions.db'
-
-CREATE_SQL = """CREATE TABLE IF NOT EXISTS transactions(
-            id INTEGER PRIMARY KEY AUTOINCREMENT)"""
 
 
 @app.post("/register")
@@ -101,39 +99,6 @@ def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
         db.close()
 
 
-
-security = HTTPBearer()
-
-def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
-    token = creds.credentials
-
-    try:
-        data = decode_access_token(token)
-
-    except Exception:
-        raise  HTTPException(status_code= 401, detail = 'Invalid or expired token')
-    
-    user_id = data.get("user_id")
-    email = data.get("sub")
-
-    if user_id is None or not email:
-        raise HTTPException(status_code= 401, detail = 'Invalid token payload')
-    
-    # db: Session = Depends(get_db)
-
-    try:
-        user = db.query(User).filter(User.id == user_id, User.email == email).first()
-        if not user:
-            raise HTTPException(status_code= 401, detail = 'User not found')
-        
-        return user
-    finally:
-        db.close()
-
-
-
-from typing import Optional, List
-
 @app.get("/search")
 def search(
     q: Optional[str] = None,
@@ -169,7 +134,6 @@ def search(
 
 @app.post("/refresh")
 def refresh_token(refresh_token: str = Form(...)):
-    from auth import decode_refresh_token
     try:
         data = decode_refresh_token(refresh_token)
         user_id = data.get("user_id")

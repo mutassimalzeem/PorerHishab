@@ -151,16 +151,19 @@ The focus is on realistic, behavior-based suggestions instead of generic advice.
 
 ### Backend
 
-- Python + FastAPI (`backend/app/main.py` — live: auth, CSV upload, search, summaries)
+- Python + FastAPI (`backend/app/main.py` — live: auth, CSV upload, search, summaries,
+  transaction CRUD at `/transactions`, intelligence metrics at `/insights/*`)
 - SQLAlchemy 2.0 (typed `Mapped` models) + Alembic migrations (`alembic/versions/`)
 - PostgreSQL 16 via Docker (`docker-compose.yml` → `zyra-db`)
 - JWT access + refresh (peppered bcrypt, per-IP rate-limit) — see `backend/app/api/auth.py`
 - Pydantic v2 + pydantic-settings (`.env` → `DATABASE_URL`)
 - Uvicorn
 
-> Note: `backend/app/main.py` is the current runnable entrypoint. The sculpted
-> `backend/app/api/*`, `schemas/*`, `services/*` modules from `architecture.md`
-> are placeholders (empty stubs) reserved for the v2 router split.
+> Note: `backend/app/main.py` is the current runnable entrypoint. The
+> `transactions` and `insights` routers live in `backend/app/api/`, and the
+> intelligence engine in `backend/app/services/analytics/`. The remaining
+> `backend/app/api/*` modules (`chat`, `forecast`, `planner`, `users`) are
+> placeholders (empty stubs) reserved for the upcoming phases.
 
 ### AI / ML
 
@@ -540,8 +543,11 @@ The suite is split between fast checks and tests that need a live PostgreSQL:
 | --- | --- | --- |
 | `backend/test_database.py` | yes | Model relationships (`User` → `Account` → `Transaction`) |
 | `backend/test_transaction_repository.py` | yes | Repository CRUD, user-scoped listing and search |
-| `backend/test_transaction_service.py` | yes | CSV ingestion → service → repository → database |
+| `backend/test_transaction_service.py` | no | CSV ingestion normalisation + categorisation rules |
 | `backend/test_transaction_integration.py` | yes | Full PostgreSQL round trip, native column types, cross-user isolation |
+| `backend/test_insights.py` | no | Intelligence engine calculations (summary, monthly, categories, merchants, savings rate, recurring, cash-flow, budget baseline) |
+| `backend/test_insights_integration.py` | yes | Intelligence service → repository → PostgreSQL → back |
+| `backend/test_insights_api.py` | yes | `/transactions` + `/insights/*` routers through `TestClient` with JWT auth |
 
 `backend/test_transaction_integration.py` is the end-to-end guard for the
 database layer:
