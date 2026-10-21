@@ -6,10 +6,11 @@ from sqlalchemy import pool
 from alembic import context
 
 import sys
+import configparser
 from pathlib import Path
 
 # Make the FastAPI app package (backend/app) importable when running
-# alembic from the project root.
+# alembic from any directory.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 # this is the Alembic Config object, which provides
@@ -18,8 +19,12 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
+# Guard against config files that omit the logging sections.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    try:
+        fileConfig(config.config_file_name)
+    except (KeyError, configparser.Error):
+        pass
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -35,7 +40,8 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 from app.core.config import settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Escape '%' so ConfigParser interpolation does not choke on URL-encoded values.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 
 

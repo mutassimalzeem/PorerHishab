@@ -151,16 +151,19 @@ The focus is on realistic, behavior-based suggestions instead of generic advice.
 
 ### Backend
 
-- Python + FastAPI (`backend/app/main.py` — live: auth, CSV upload, search, summaries)
+- Python + FastAPI (`backend/app/main.py` — live: auth, CSV upload, search, summaries,
+  transaction CRUD at `/transactions`, intelligence metrics at `/insights/*`)
 - SQLAlchemy 2.0 (typed `Mapped` models) + Alembic migrations (`alembic/versions/`)
 - PostgreSQL 16 via Docker (`docker-compose.yml` → `zyra-db`)
 - JWT access + refresh (peppered bcrypt, per-IP rate-limit) — see `backend/app/api/auth.py`
 - Pydantic v2 + pydantic-settings (`.env` → `DATABASE_URL`)
 - Uvicorn
 
-> Note: `backend/app/main.py` is the current runnable entrypoint. The sculpted
-> `backend/app/api/*`, `schemas/*`, `services/*` modules from `architecture.md`
-> are placeholders (empty stubs) reserved for the v2 router split.
+> Note: `backend/app/main.py` is the current runnable entrypoint. The
+> `transactions` and `insights` routers live in `backend/app/api/`, and the
+> intelligence engine in `backend/app/services/analytics/`. The remaining
+> `backend/app/api/*` modules (`chat`, `forecast`, `planner`, `users`) are
+> placeholders (empty stubs) reserved for the upcoming phases.
 
 ### AI / ML
 
@@ -444,8 +447,13 @@ docker run --name zyra-postgres -e POSTGRES_USER=zyra -e POSTGRES_PASSWORD=zyra 
 
 ### 3. Setup Backend
 
+The repository root is the **canonical working directory** for every backend
+command (venv, Alembic, pytest, Uvicorn). All tooling resolves paths relative
+to the repository root, so commands also work from `backend/` — but the root
+is the supported default.
+
 ```bash
-cd backend
+# From the repository root
 python -m venv .venv
 ```
 
@@ -461,19 +469,28 @@ Activate the environment:
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Install dependencies and the backend package (editable install makes the
+`app` package importable from the repository root):
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
+pip install -e .
 ```
 
-Copy env + migrate + run (from repo root):
+> The editable install (`pip install -e .`) is what allows `import app.main`
+> to resolve from the repository root. Without it, either run commands from
+> `backend/` or export `PYTHONPATH=backend`.
+
+Copy env, migrate, test, and run (all from the repository root):
 
 ```bash
 cp .env.example .env
+docker compose up -d          # PostgreSQL must be healthy before migrating
 alembic upgrade head
-pytest backend/test_database.py -v
-uvicorn backend.app.main:app --reload
+alembic current
+alembic check
+pytest backend -v
+uvicorn app.main:app --reload
 ```
 
 Backend will run at:
@@ -487,6 +504,70 @@ API docs:
 ```txt
 http://localhost:8000/docs
 ```
+
+---
+
+### 3.1 Working Directory Reference
+
+| Task | From repository root | From `backend/` |
+| --- | --- | --- |
+| Import the app | `python -c "import app.main"` | `python -c "import app.main"` |
+| Apply migrations | `alembic upgrade head` | `alembic upgrade head` |
+| Check migration state | `alembic current` / `alembic check` | `alembic current` / `alembic check` |
+| Run tests | `pytest backend -v` | `pytest -v` |
+| Start the API | `uvicorn app.main:app --reload` | `uvicorn app.main:app --reload` |
+| Smoke-test startup | `python scripts/check_uvicorn.py` | `python ../scripts/check_uvicorn.py` |
+
+Notes:
+
+- `.env` is always read from the **repository root**, never from the current
+  directory (`backend/app/core/config.py` resolves it via `__file__`).
+- `alembic.ini` uses `%(here)s`, so `script_location` and `prepend_sys_path`
+  are resolved relative to the config file — not the shell's working directory.
+  `backend/alembic.ini` is a thin shim that delegates to the root config.
+- PostgreSQL **must be running** (`docker compose up -d`) before
+  `alembic upgrade head` and before the integration tests, which use the
+  real database.
+- The rule-based categorizer lives at
+  `backend/app/services/categorization/categorizer.py`. The root
+  `categorizer.py` remains as a backwards-compatible shim that re-exports
+  `categorize_text`.
+
+---
+
+### 3.2 Database Tests
+
+The suite is split between fast checks and tests that need a live PostgreSQL:
+
+| File | Needs PostgreSQL | What it covers |
+| --- | --- | --- |
+| `backend/test_database.py` | yes | Model relationships (`User` → `Account` → `Transaction`) |
+| `backend/test_transaction_repository.py` | yes | Repository CRUD, user-scoped listing and search |
+| `backend/test_transaction_service.py` | no | CSV ingestion normalisation + categorisation rules |
+| `backend/test_transaction_integration.py` | yes | Full PostgreSQL round trip, native column types, cross-user isolation |
+| `backend/test_insights.py` | no | Intelligence engine calculations (summary, monthly, categories, merchants, savings rate, recurring, cash-flow, budget baseline) |
+| `backend/test_insights_integration.py` | yes | Intelligence service → repository → PostgreSQL → back |
+| `backend/test_insights_api.py` | yes | `/transactions` + `/insights/*` routers through `TestClient` with JWT auth |
+
+`backend/test_transaction_integration.py` is the end-to-end guard for the
+database layer:
+
+- **Round trip** — a transaction is written through SQLAlchemy, every cached
+  object is expired (`expunge_all()`), and the row is re-read through a
+  *separate* session so the assertions prove the data really landed in
+  PostgreSQL rather than in the identity map.
+- **Native column types** — `pg_typeof()` is queried directly to confirm
+  `numeric` money, `date` dates and `json` payloads (a SQLite backend could
+  not answer these).
+- **User isolation** — two users share a merchant name; listing, searching and
+  a direct identifier lookup must only ever return the caller's own rows, and
+  deleting one user must cascade away only that user's transactions.
+
+The tests generate unique emails and `trx_id` values per run, so repeated and
+parallel runs never collide on the unique indexes.
+
+> PostgreSQL must be healthy before running these tests:
+> `docker compose up -d` (then `pytest backend -v`).
 
 ---
 
@@ -589,6 +670,8 @@ Zyra is built as a practical AI product, not just a tutorial project.
 - [x] Authentication flow (JWT access + refresh, peppered bcrypt, rate-limit)
 - [x] Transaction ingestion (CSV) + search + category summaries + per-user isolation
 - [x] DB relationship test (`backend/test_database.py`)
+- [x] PostgreSQL integration tests (`backend/test_transaction_integration.py`) — round trip, native column types, cross-user isolation
+- [x] Migration parity verified (`alembic current` = `alembic heads`, `alembic check` clean)
 - [x] Market audit + Bangladesh premium vault → `FEATURES.md`
 - [ ] Router split (`main.py` → `api/*` + `schemas/*` + `services/*`)
 - [ ] Full frontend dashboard (Next.js + PWA)

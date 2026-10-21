@@ -1,12 +1,15 @@
 from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models import User, Account, Transaction
 
-TEST_EMAIL = "test@zyra.local"
+# Unique per run so that repeated (or parallel) test runs never collide on
+# the unique email index.
+TEST_EMAIL = f"test-{uuid4().hex}@zyra.local"
 
 
 def cleanup(db):
