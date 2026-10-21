@@ -21,7 +21,7 @@ from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.api.forecast import router as forecast_router
-
+from app.api.planner import router as planner_router
 
 
 from app.services.transaction_service import save_transactions
@@ -35,6 +35,7 @@ app = FastAPI()
 app.include_router(insights_router)
 app.include_router(transactions_router)
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "*"],  # tighten in prod
@@ -45,6 +46,7 @@ app.add_middleware(
 
 
 app.include_router(forecast_router)
+app.include_router(planner_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
