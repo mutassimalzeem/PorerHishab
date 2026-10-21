@@ -1,30 +1,24 @@
-"""it contains rule-based categorization helpers."""
-# categorizer.py
-# categorizer.py
-import re
+"""it contains rule-based categorization helpers.
 
-# Add / tweak rules as you wish
-RULES = [
-    (r"\b(starbucks|coffee|cafe)\b", "Coffee"),
-    (r"\b(uber|lyft|taxi|ride|cab)\b", "Transport"),
-    (r"\b(walmart|aldi|whole\s*foods|grocery|grocer)\b", "Groceries"),
-    (r"\b(rent|landlord|apartment)\b", "Rent"),
-    (r"\b(salary|payroll|employer|stipend|pay)\b", "Income"),
-    (r"\b(netflix|amazon\s*prime|disney\+|hotstar|movie|cinema|spotify)\b", "Entertainment"),
-    (r"\b(hospital|clinic|doctor|pharmacy|medicine|meds)\b", "Health"),
-    (r"\b(internet|utility|utilities|electric|electricity|water|gas|bill)\b", "Utilities"),
-    (r"\b(gym|membership|fitness|workout)\b", "Fitness"),
-    (r"\b(airline|flight|hotel|booking|train|bus)\b", "Travel"),
-    (r"\b(restaurant|diner|lunch|dinner|food|pizza|burger)\b", "Food"),
-    (r"\b(shopping|mall|clothes|apparel)\b", "Shopping"),
-]
+Backwards-compatible shim. The canonical implementation now lives in
+``backend/app/services/categorization/categorizer.py`` so that it can be
+imported from any working directory. This module is kept so that existing
+``from categorizer import categorize_text`` usage (repository root) keeps
+working.
+"""
 
-COMPILED = [(re.compile(pat, re.I), cat) for pat, cat in RULES]
+import sys
+from pathlib import Path
 
-def categorize_text(text: str) -> str:
-    if not text:
-        return "Other"
-    for pat, cat in COMPILED:
-        if pat.search(text):
-            return cat
-    return "Other"
+# Make the `app` package importable regardless of the current directory.
+_BACKEND_DIR = Path(__file__).resolve().parent / "backend"
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
+from app.services.categorization.categorizer import (  # noqa: E402
+    COMPILED,
+    RULES,
+    categorize_text,
+)
+
+__all__ = ["COMPILED", "RULES", "categorize_text"]

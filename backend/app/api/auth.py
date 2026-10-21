@@ -3,11 +3,15 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 from datetime import timedelta
+from pathlib import Path
 from typing import Optional
 from fastapi import HTTPException
 
 
-load_dotenv()
+# Resolve the repo-root .env explicitly so settings load identically no matter
+# which directory the process was started from.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(REPO_ROOT / ".env")
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
 REFRESH_SECRET_KEY = os.getenv('REFRESH_SECRET_KEY', 'default_refresh_key')

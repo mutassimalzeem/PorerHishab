@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from app.core.database import SessionLocal
 from app.models import User
 from app.repositories.transaction_repository import (
@@ -8,8 +10,11 @@ from app.repositories.transaction_repository import (
 from app.models.transactions import Transaction
 
 
-TEST_EMAIL_1 = "repository-test-1@zyra.local"
-TEST_EMAIL_2 = "repository-test-2@zyra.local"
+# Unique per run so that repeated (or parallel) test runs never collide on
+# the unique email index.
+_RUN_ID = uuid4().hex
+TEST_EMAIL_1 = f"repository-test-1-{_RUN_ID}@zyra.local"
+TEST_EMAIL_2 = f"repository-test-2-{_RUN_ID}@zyra.local"
 
 
 def cleanup():

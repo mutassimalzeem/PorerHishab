@@ -6,7 +6,7 @@ import pandas as pd
 from app.core.database import SessionLocal
 from app.models.transactions import Transaction
 from app.repositories.transaction_repository import create_transactions
-from categorizer import categorize_text
+from app.services.categorization.categorizer import categorize_text
 
 
 REQUIRED_COLUMNS = {"date", "amount"}
