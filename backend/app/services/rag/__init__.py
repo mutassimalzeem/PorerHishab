@@ -15,6 +15,9 @@ from app.services.rag.retrieval import (
     retrieve_transactions,
 )
 
+
+from app.services.rag.qa import (FinanceAnswer, answer_finance_question)
+
 __all__ = [
     "transaction_to_document",
     "transactions_to_documents",
@@ -25,4 +28,6 @@ __all__ = [
     "RetrievedTransaction",
     "retrieve_transactions",
     "format_retrieved_transactions",
+    "FinanceAnswer",
+    "answer_finance_question",
 ]
