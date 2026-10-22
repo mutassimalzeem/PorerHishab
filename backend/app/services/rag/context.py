@@ -9,4 +9,10 @@ def format_retrieved_transactions(transactions: list[RetrievedTransaction]) -> s
     sections = []
 
     for i, transaction in enumerate(transactions, start= 1):
-        sections.append(f"[Transaction {i}]\n")
+        sections.append(
+            f"[Transaction {i}]\n"
+            f"{transaction.content}\n"
+            f"Metadata: {transaction.metadata}\n"
+        )
+
+    return "\n".join(sections)
