@@ -9,6 +9,12 @@ from app.services.rag.vector_store import (
     search_transactions,
 )
 
+from app.services.rag.context import format_retrieved_transactions
+from app.services.rag.retrieval import (
+    RetrievedTransaction,
+    retrieve_transactions,
+)
+
 __all__ = [
     "transaction_to_document",
     "transactions_to_documents",
@@ -16,4 +22,7 @@ __all__ = [
     "get_vector_store",
     "add_transaction_documents",
     "search_transactions",
+    "RetrievedTransaction",
+    "retrieve_transactions",
+    "format_retrieved_transactions",
 ]
