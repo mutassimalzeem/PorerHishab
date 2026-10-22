@@ -8,4 +8,5 @@ class FinanceQuestionRequest(BaseModel):
 
 class FinanceQuestionResponse(BaseModel):
     answer: str
+    intent: str
     sources: list[dict]
