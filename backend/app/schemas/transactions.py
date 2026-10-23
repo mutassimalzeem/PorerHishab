@@ -141,6 +141,28 @@ class TransactionUpdate(BaseModel):
         return value
 
 
+class TransactionCategoryUpdate(BaseModel):
+    """Payload for manually correcting a transaction category."""
+
+    category: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="The category selected by the user.",
+    )
+
+    @field_validator("category")
+    @classmethod
+    def _normalize_category(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("category must not be blank")
+
+        return value
+
+    
+
 class TransactionRead(BaseModel):
     """A transaction as returned by the API."""
 

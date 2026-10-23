@@ -179,6 +179,129 @@ def test_transactions_require_auth():
     assert response.status_code in (401, 403)
 
 
+def test_update_transaction_category_records_correction():
+    cleanup()
+
+    user = create_user(USER_A_EMAIL)
+    headers = auth_headers(user)
+
+    try:
+        create_response = client.post(
+            "/transactions",
+            json={
+                "date": "2026-10-10",
+                "amount": "-850.00",
+                "merchant": "Foodpanda",
+                "description": "Food delivery",
+                "trx_id": f"API-CORRECTION-{_RUN_ID}",
+            },
+            headers=headers,
+        )
+
+        assert create_response.status_code == 201
+
+        transaction = create_response.json()
+
+        assert transaction["category"] == "Food"
+
+        response = client.patch(
+            f"/transactions/{transaction['id']}/category",
+            json={"category": "Business"},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+
+        body = response.json()
+
+        assert body["category"] == "Business"
+        assert body["category_method"] == "user"
+        assert body["category_confidence"] == "1.000"
+        assert (
+            body["category_reason"]
+            == "User changed category from 'Food' to 'Business'."
+        )
+
+    finally:
+        cleanup()
+
+
+def test_update_transaction_category_is_user_scoped():
+    cleanup()
+
+    user_a = create_user(USER_A_EMAIL)
+    user_b = create_user(USER_B_EMAIL)
+
+    headers_a = auth_headers(user_a)
+    headers_b = auth_headers(user_b)
+
+    try:
+        create_response = client.post(
+            "/transactions",
+            json={
+                "date": "2026-10-10",
+                "amount": "-500.00",
+                "merchant": "Foodpanda",
+                "trx_id": f"API-CROSS-USER-{_RUN_ID}",
+            },
+            headers=headers_a,
+        )
+
+        assert create_response.status_code == 201
+
+        transaction_id = create_response.json()["id"]
+
+        response = client.patch(
+            f"/transactions/{transaction_id}/category",
+            json={"category": "Business"},
+            headers=headers_b,
+        )
+
+        assert response.status_code == 404
+
+    finally:
+        cleanup()
+
+
+
+def test_same_category_does_not_create_new_correction():
+    cleanup()
+
+    user = create_user(USER_A_EMAIL)
+    headers = auth_headers(user)
+
+    try:
+        create_response = client.post(
+            "/transactions",
+            json={
+                "date": "2026-10-10",
+                "amount": "-850.00",
+                "merchant": "Foodpanda",
+                "trx_id": f"API-SAME-CATEGORY-{_RUN_ID}",
+            },
+            headers=headers,
+        )
+
+        assert create_response.status_code == 201
+
+        transaction_id = create_response.json()["id"]
+
+        response = client.patch(
+            f"/transactions/{transaction_id}/category",
+            json={"category": "Food"},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+
+        body = response.json()
+
+        assert body["category"] == "Food"
+
+    finally:
+        cleanup()
+              
+
 # ---------------------------------------------------------------------------
 # Insights router
 # ---------------------------------------------------------------------------
