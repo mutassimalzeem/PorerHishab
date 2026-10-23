@@ -159,6 +159,11 @@ class TransactionRead(BaseModel):
     balance: Decimal | None = None
     transaction_type: str | None = None
     category: str | None = None
+    
+    category_confidence: Decimal | None = None
+    category_method: str | None = None
+    category_reason: str | None = None
+
     subcategory: str | None = None
     source: str | None = None
     is_recurring: bool

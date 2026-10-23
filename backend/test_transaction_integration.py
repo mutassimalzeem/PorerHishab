@@ -102,6 +102,11 @@ def test_transaction_round_trip_against_postgres():
             balance=Decimal("9150.00"),
             transaction_type="expense",
             category="Food",
+
+            category_confidence=Decimal("0.950"),
+            category_method="rule",
+            category_reason="Matched Foodpanda merchant rule.",
+
             subcategory="Delivery",
             source="manual",
             is_recurring=True,
@@ -142,6 +147,9 @@ def test_transaction_round_trip_against_postgres():
             assert stored.normalized_merchant == "foodpanda"
             assert stored.transaction_type == "expense"
             assert stored.category == "Food"
+            assert stored.category_confidence == Decimal("0.950")
+            assert stored.category_method == "rule"
+            assert stored.category_reason == "Matched Foodpanda merchant rule."
             assert stored.subcategory == "Delivery"
             assert stored.source == "manual"
             assert stored.is_recurring is True

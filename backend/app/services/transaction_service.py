@@ -69,6 +69,12 @@ def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     """
     result = df.copy()
 
+    # Ensure these columns exist even when no row is newly categorized,
+    # so skipped (already-categorized) rows still have them as NA.
+    for column in ("category_confidence", "category_method", "category_reason"):
+        if column not in result.columns:
+            result[column] = None
+
     for index, row in result.iterrows():
         if row["category"]:
             continue
@@ -83,6 +89,9 @@ def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
         )
 
         result.at[index, "category"] = categorized.category
+        result.at[index, "category_confidence"] = categorized.confidence
+        result.at[index, "category_method"] = categorized.method
+        result.at[index, "category_reason"] = categorized.reason
 
     return result
 
@@ -114,7 +123,14 @@ def save_transactions(
             description=row["description"],
             merchant=row["merchant"],
             amount=Decimal(str(row["amount"])),
+            
             category=row["category"],
+            category_confidence=(Decimal(str(row["category_confidence"])) if row["category_confidence"] is not None
+                and not pd.isna(row["category_confidence"])
+                else None
+            ),
+            category_method=row["category_method"],
+            category_reason=row["category_reason"],
         )
         for _, row in normalized.iterrows()
     ]
