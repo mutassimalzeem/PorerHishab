@@ -124,6 +124,21 @@ class Transaction(Base):
         index=True,
     )
 
+    category_confidence: Mapped[Decimal | None] = mapped_column(
+        Numeric(4, 3),
+        nullable=True,
+    )
+
+    category_method: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
+    category_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     subcategory: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
