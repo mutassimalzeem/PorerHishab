@@ -16,12 +16,18 @@ from app.repositories.transaction_repository import (
     count_transactions,
     create_transactions,
     search_transactions,
+    get_transaction_for_user
 )
 from app.schemas.transactions import (
     TransactionCreate,
     TransactionPage,
     TransactionRead,
+    TransactionCategoryUpdate
 )
+
+from app.models.category_correction import TransactionCategoryCorrection
+from app.models.transactions import Transaction
+
 from app.services.categorization.categorizer import categorize_text
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -131,5 +137,61 @@ def create_transaction(
             status_code=409,
             detail="A transaction with this trx_id already exists for the user",
         )
+
+    return transaction
+
+
+
+@router.patch("/{transaction_id}/category",response_model=TransactionRead)
+def update_transaction_category(
+    transaction_id: int,
+    payload: TransactionCategoryUpdate,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Allow the authenticated user to manually correct a transaction category."""
+
+    transaction = get_transaction_for_user(
+        db=db,
+        transaction_id=transaction_id,
+        user_id=current.id,
+    )
+
+    if transaction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Transaction not found",
+        )
+
+    old_category = transaction.category
+    old_method = transaction.category_method
+
+    if old_category == payload.category:
+        return transaction
+
+    correction = TransactionCategoryCorrection(
+        user_id=current.id,
+        transaction_id=transaction.id,
+        old_category=old_category,
+        new_category=payload.category,
+        old_method=old_method,
+    )
+
+    transaction.category = payload.category
+    transaction.category_confidence = 1.000
+    transaction.category_method = "user"
+    transaction.category_reason = (
+        f"User changed category from "
+        f"'{old_category}' to '{payload.category}'."
+    )
+
+    try:
+        db.add(correction)
+        db.commit()
+        db.refresh(transaction)
+
+    except Exception:
+        db.rollback()
+        raise
 
     return transaction

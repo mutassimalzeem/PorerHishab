@@ -183,3 +183,19 @@ def search_transactions(
         .limit(max(0, int(limit)))
         .all()
     )
+
+
+def get_transaction_for_user(db: Session, transaction_id: int, user_id: int) -> Transaction | None:
+    
+    return (db.query(Transaction).filter(Transaction.id == transaction_id,
+                                         Transaction.user_id == user_id).first())
+
+
+def create_category_correction(
+    db: Session,
+    correction,
+):
+    db.add(correction)
+    db.flush()
+
+    return correction
