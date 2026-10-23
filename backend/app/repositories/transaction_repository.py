@@ -199,3 +199,50 @@ def create_category_correction(
     db.flush()
 
     return correction
+
+
+from app.models.merchant_preference import MerchantCategoryPreference
+
+def get_merchant_category_preference(
+    db: Session,
+    *,
+    user_id: int,
+    normalized_merchant: str,
+) -> MerchantCategoryPreference | None:
+    return (
+        db.query(MerchantCategoryPreference)
+        .filter(
+            MerchantCategoryPreference.user_id == user_id,
+            MerchantCategoryPreference.normalized_merchant == normalized_merchant,
+        )
+        .first()
+    )
+
+def upsert_merchant_category_preference(
+    db: Session,
+    *,
+    user_id: int,
+    normalized_merchant: str,
+    category: str,
+) -> MerchantCategoryPreference:
+    preference = get_merchant_category_preference(
+        db,
+        user_id=user_id,
+        normalized_merchant=normalized_merchant,
+    )
+
+    if preference is None:
+        preference = MerchantCategoryPreference(
+            user_id=user_id,
+            normalized_merchant=normalized_merchant,
+            category=category,
+            correction_count=1,
+        )
+        db.add(preference)
+    else:
+        preference.category = category
+        preference.correction_count += 1
+
+    db.flush()
+
+    return preference

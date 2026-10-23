@@ -62,10 +62,13 @@ def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     return normalized
 
 
-def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
+def categorize_transactions(df: pd.DataFrame, *, user_id=None, db=None) -> pd.DataFrame:
     """
     Fill missing transaction categories using the existing
     rule-based categorizer.
+
+    When ``user_id`` and ``db`` are provided, per-user merchant
+    preferences are checked before rules.
     """
     result = df.copy()
 
@@ -85,7 +88,9 @@ def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
                 "normalized_merchant": row.get("normalized_merchant"),
                 "description": row.get("description"),
                 "amount": row.get("amount"),
-            }
+            },
+            db=db,
+            user_id=user_id,
         )
 
         result.at[index, "category"] = categorized.category
@@ -113,31 +118,31 @@ def save_transactions(
     if normalized.empty:
         return 0
 
-    normalized = categorize_transactions(normalized)
-
-    transactions = [
-        Transaction(
-            user_id=int(user_id),
-            account_id=None,
-            date=row["date"],
-            description=row["description"],
-            merchant=row["merchant"],
-            amount=Decimal(str(row["amount"])),
-            
-            category=row["category"],
-            category_confidence=(Decimal(str(row["category_confidence"])) if row["category_confidence"] is not None
-                and not pd.isna(row["category_confidence"])
-                else None
-            ),
-            category_method=row["category_method"],
-            category_reason=row["category_reason"],
-        )
-        for _, row in normalized.iterrows()
-    ]
-
     db = SessionLocal()
 
     try:
+        normalized = categorize_transactions(normalized, user_id=user_id, db=db)
+
+        transactions = [
+            Transaction(
+                user_id=int(user_id),
+                account_id=None,
+                date=row["date"],
+                description=row["description"],
+                merchant=row["merchant"],
+                amount=Decimal(str(row["amount"])),
+
+                category=row["category"],
+                category_confidence=(Decimal(str(row["category_confidence"])) if row["category_confidence"] is not None
+                    and not pd.isna(row["category_confidence"])
+                    else None
+                ),
+                category_method=row["category_method"],
+                category_reason=row["category_reason"],
+            )
+            for _, row in normalized.iterrows()
+        ]
+
         create_transactions(db, transactions)
         return len(transactions)
     except Exception:

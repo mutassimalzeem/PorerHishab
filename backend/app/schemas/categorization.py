@@ -21,9 +21,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.services.categorization.categories import ALLOWED_CATEGORIES
 
-#: How a category was decided.  ``rule`` = deterministic engine,
-#: ``llm`` = model fallback, ``fallback`` = neither worked (Uncategorized).
-CategorizationMethod = Literal["rule", "llm", "fallback"]
+#: How a category was decided.  ``user_preference`` = per-user merchant
+#: preference, ``rule`` = deterministic engine, ``llm`` = model fallback,
+#: ``fallback`` = neither worked (Uncategorized).
+CategorizationMethod = Literal["user_preference", "rule", "llm", "fallback"]
 
 
 def _validate_category(value: object) -> str:

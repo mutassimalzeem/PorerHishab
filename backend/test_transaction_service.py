@@ -69,7 +69,7 @@ def test_categorization_metadata_is_preserved(monkeypatch):
     monkeypatch.setattr(
         transaction_service,
         "categorize_transaction",
-        lambda transaction: CategorizedTransaction(
+        lambda transaction, **kwargs: CategorizedTransaction(
             category="Food",
             confidence=0.95,
             method="rule",
