@@ -64,8 +64,8 @@ def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
 
 def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Fill missing transaction categories using the existing
-    rule-based categorizer.
+    Fill missing transaction categories using Zyra's
+rules-first + LLM-fallback categorization pipeline.
     """
     result = df.copy()
 
