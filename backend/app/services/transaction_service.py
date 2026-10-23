@@ -6,7 +6,7 @@ import pandas as pd
 from app.core.database import SessionLocal
 from app.models.transactions import Transaction
 from app.repositories.transaction_repository import create_transactions
-from app.services.categorization.categorizer import categorize_text
+from app.services.categorization.service import categorize_transaction
 
 
 REQUIRED_COLUMNS = {"date", "amount"}
@@ -35,12 +35,17 @@ def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
         subset=["date", "amount"]
     )
 
-    for column in ["description", "merchant", "category"]:
+    for column in ["description", "merchant", "normalized_merchant", "category"]:
         if column not in normalized.columns:
             normalized[column] = None
 
     normalized["description"] = normalized["description"].where(
         normalized["description"].notna(),
+        None,
+    )
+
+    normalized["normalized_merchant"] = normalized["normalized_merchant"].where(
+        normalized["normalized_merchant"].notna(),
         None,
     )
 
@@ -57,9 +62,7 @@ def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     return normalized
 
 
-def categorize_transactions(
-    df: pd.DataFrame,
-) -> pd.DataFrame:
+def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     """
     Fill missing transaction categories using the existing
     rule-based categorizer.
@@ -70,16 +73,16 @@ def categorize_transactions(
         if row["category"]:
             continue
 
-        text = " ".join(
-            str(value)
-            for value in [
-                row.get("merchant"),
-                row.get("description"),
-            ]
-            if value
+        categorized = categorize_transaction(
+            {
+                "merchant": row.get("merchant"),
+                "normalized_merchant": row.get("normalized_merchant"),
+                "description": row.get("description"),
+                "amount": row.get("amount"),
+            }
         )
 
-        result.at[index, "category"] = categorize_text(text)
+        result.at[index, "category"] = categorized.category
 
     return result
 
