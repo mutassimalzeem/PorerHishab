@@ -16,7 +16,8 @@ from app.repositories.transaction_repository import (
     count_transactions,
     create_transactions,
     search_transactions,
-    get_transaction_for_user
+    get_transaction_for_user,
+    upsert_merchant_category_preference
 )
 from app.schemas.transactions import (
     TransactionCreate,
@@ -29,6 +30,8 @@ from app.models.category_correction import TransactionCategoryCorrection
 from app.models.transactions import Transaction
 
 from app.services.categorization.categorizer import categorize_text
+from app.services.categorization.merchant import normalize_merchant
+
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -187,6 +190,18 @@ def update_transaction_category(
 
     try:
         db.add(correction)
+
+        normalized_merchant = normalize_merchant(
+            transaction.normalized_merchant or transaction.merchant
+        )
+        if normalized_merchant:
+            upsert_merchant_category_preference(
+                db,
+                user_id=current.id,
+                normalized_merchant=normalized_merchant,
+                category=payload.category,
+            )
+
         db.commit()
         db.refresh(transaction)
 

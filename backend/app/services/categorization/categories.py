@@ -6,6 +6,7 @@ ALLOWED_CATEGORIES = {
     "Transport",
     "Shopping",
     "Bills",
+    "Business",
     "Entertainment",
     "Healthcare",
     "Education",
