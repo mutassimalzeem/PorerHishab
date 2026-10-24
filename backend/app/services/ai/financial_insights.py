@@ -4,42 +4,37 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
-from dotenv import load_dotenv
 
-
+from app.core.config import settings
 from app.schemas.financial_insights import FinancialInsights
 
 
 SYSTEM_PROMPT = """
 You are Zyra, a careful personal finance coach.
 
-You will receive structured financial analytics already calculated by Python.
+You will receive structured financial analytics calculated by Python.
 
 Rules:
-- Treat the supplied analytics as the only source of financial facts.
-- Never invent transactions, amounts, percentages, merchants, or categories.
-- Never recalculate or alter supplied financial figures.
+- Use the supplied analytics as your only source of financial facts.
+- Never invent or alter financial figures, percentages, merchants, or categories.
 - Do not interpret missing data as zero.
-- Do not claim a trend unless the supplied data supports it.
-- Expenses in the monthly breakdown may be negative; expense changes in the
-  month_over_month data are expressed as positive spending magnitudes.
-- A positive expense_change means spending increased; a negative value means
-  spending decreased.
-- If a percentage is null, do not invent a percentage.
+- Do not claim trends that the supplied data does not support.
+- Expenses are negative in monthly and category breakdowns.
+- Expense changes in month_over_month are calculated by the application.
+- If a percentage is null, do not invent one.
 - Return at most 6 useful, non-duplicative insights.
-- Prefer meaningful changes, unusually high spending, savings-rate signals,
-  recurring expenses, and negative net cash flow.
+- Prioritize meaningful spending changes, savings-rate signals, recurring
+  expenses, budget signals, and negative net cash flow.
 - Be concise, supportive, specific, and practical.
+- Do not shame the user for spending.
 - Do not provide investment, tax, legal, or lending advice.
-- Do not shame the user for their spending.
-- If the data is insufficient, return fewer insights or an empty list.
+- If data is insufficient, return fewer insights or an empty list.
 """
 
 
 def _prepare_analytics(analytics: dict[str, Any]) -> str:
-    """Serialize calculated analytics without losing Decimal/date values."""
+    """Serialize approved aggregate analytics, excluding raw transactions."""
     allowed_keys = (
         "summary",
         "monthly",
@@ -62,36 +57,32 @@ def _prepare_analytics(analytics: dict[str, Any]) -> str:
 def generate_financial_insights(
     analytics: dict[str, Any],
 ) -> FinancialInsights:
-    """Ask the configured OpenAI model to explain existing financial signals.
-
-    Requires OPENAI_API_KEY. Financial calculations remain outside the LLM.
-    """
-    
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
+    """Explain application-calculated analytics using the configured LLM."""
+    if not settings.OPENAI_KEY:
         raise RuntimeError(
-            "OPENAI_API_KEY is not configured. Add it to your local .env file."
+            "OPENAI_KEY is not configured. Add it to your root .env file."
         )
 
     try:
         from langchain_openai import ChatOpenAI
     except ImportError as exc:
         raise RuntimeError(
-            "langchain-openai is not installed. Install it in the project "
-            "virtual environment before using AI financial insights."
+            "langchain-openai is not installed. Install the dependency "
+            "in the project virtual environment."
         ) from exc
 
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    llm_options: dict[str, Any] = {
+        "model": settings.OPENAI_CHAT_MODEL,
+        "api_key": settings.OPENAI_KEY,
+        "temperature": 0,
+        "timeout": 30,
+        "max_retries": 2,
+    }
 
-    llm = ChatOpenAI(
-        model=model_name,
-        api_key=api_key,
-        temperature=0,
-        timeout=30,
-        max_retries=2,
-    )
+    if settings.OPENAI_BASE_URL:
+        llm_options["base_url"] = settings.OPENAI_BASE_URL
 
+    llm = ChatOpenAI(**llm_options)
     structured_llm = llm.with_structured_output(FinancialInsights)
 
     result = structured_llm.invoke(
@@ -108,6 +99,5 @@ def generate_financial_insights(
 
     if isinstance(result, FinancialInsights):
         return result
-
-    # Defensive validation in case a provider returns a dictionary.
+    
     return FinancialInsights.model_validate(result)
