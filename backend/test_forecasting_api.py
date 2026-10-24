@@ -11,7 +11,7 @@ from app.main import app
 from app.models import Transaction, User
 
 _RUN_ID = uuid4().hex
-USER_EMAIL = f"api-forecast-{_RUN_ID}@zyra.local"
+USER_EMAIL = f"api-forecast-{_RUN_ID}@porer-hishab.local"
 
 
 client = TestClient(app)

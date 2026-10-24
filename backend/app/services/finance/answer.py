@@ -4,7 +4,7 @@ from app.services.rag.chat_model import get_chat_model
 
 
 FINANCE_ANSWER_SYSTEM_PROMPT = """
-You are Zyra, a personal finance assistant.
+You are PorerHishab, a personal finance assistant.
 
 You must answer using ONLY the evidence provided to you.
 

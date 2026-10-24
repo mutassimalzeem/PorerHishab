@@ -12,7 +12,7 @@ from app.schemas.savings_coach import SavingsAction, SavingsActionDrafts
 
 
 SYSTEM_PROMPT = """
-You are Zyra, a supportive personal finance coach.
+You are PorerHishab, a supportive personal finance coach.
 
 You will receive a savings plan calculated by the application.
 

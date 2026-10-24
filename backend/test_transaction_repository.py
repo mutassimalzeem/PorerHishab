@@ -13,8 +13,8 @@ from app.models.transactions import Transaction
 # Unique per run so that repeated (or parallel) test runs never collide on
 # the unique email index.
 _RUN_ID = uuid4().hex
-TEST_EMAIL_1 = f"repository-test-1-{_RUN_ID}@zyra.local"
-TEST_EMAIL_2 = f"repository-test-2-{_RUN_ID}@zyra.local"
+TEST_EMAIL_1 = f"repository-test-1-{_RUN_ID}@porer-hishab.local"
+TEST_EMAIL_2 = f"repository-test-2-{_RUN_ID}@porer-hishab.local"
 
 
 def cleanup():

@@ -1,12 +1,14 @@
-# Zyra — Smart Finance Coach for Bangladesh 🇧🇩
+# PorerHishab — Smart Finance Coach for Bangladesh 🇧🇩
 ## Complete Feature Vault & Implementation Plan (2026 → 2027+)
 
+> **Planned product direction:** This document describes a proposed roadmap, pricing, and positioning examples, not a list of shipped capabilities. WhatsApp/Messenger, MFS SMS parsing, bank PDF ingestion, and production integrations are planned. See README.md for implemented and in-progress functionality.
+>
 > Single source of truth for the 2026 market audit. **Bangladesh-first:** bKash / Nagad / Rocket / Upay, not UPI. Complements `README.md`.
 
 ### 0. Vision
 **Your Money's ChatGPT on WhatsApp/Messenger — it doesn't just track your Taka, it protects it.**
 
-Zyra turns messy bKash SMS, bank PDFs, Nagad cash-outs, DPS slips, family khoroch into one **Privacy-First AI Coach** that lives where Bangladesh lives: **WhatsApp & Messenger**. Ask in Bangla / Roman Bangla / English: *“Ei mashe koto bKash e khorcha korsi? iPhone EMI nite parbo?”*
+The planned PorerHishab experience would turn messy bKash SMS, bank PDFs, Nagad cash-outs, DPS slips, family khoroch into one **Privacy-First AI Coach** that lives where Bangladesh lives: **WhatsApp & Messenger**. Ask in Bangla / Roman Bangla / English: *“Ei mashe koto bKash e khorcha korsi? iPhone EMI nite parbo?”*
 
 **Target:** 60M+ salaried youth, freelancers, students, young families, remittance households.
 
@@ -65,7 +67,7 @@ Zyra turns messy bKash SMS, bank PDFs, Nagad cash-outs, DPS slips, family khoroc
 
 **E) Conversational AI Coach on WhatsApp/Messenger — THE 2027 MOAT**
 - Not a chatbot — proactive agent (pgvector memory).
-- `User: “iPhone EMI nite parbo?”` → `Zyra: “EBL bill 42k 5 tarikhe + Foodpanda 32% barse. 2 mas por cash e nile 8k bachba. Goal banabo?”`
+- `User: “iPhone EMI nite parbo?”` → `PorerHishab: “EBL bill 42k 5 tarikhe + Foodpanda 32% barse. 2 mas por cash e nile 8k bachba. Goal banabo?”`
 - Bangla/English mix, voice notes, daily 8 AM brief. Stack: `POST /coach/chat` + LLM function calling.
 
 **F) Bangladesh Wealth OS**

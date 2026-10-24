@@ -30,8 +30,8 @@ from app.repositories.transaction_repository import (
 # Unique per run so that repeated (or parallel) test runs never collide on
 # the unique email index.
 _RUN_ID = uuid4().hex
-USER_A_EMAIL = f"integration-a-{_RUN_ID}@zyra.local"
-USER_B_EMAIL = f"integration-b-{_RUN_ID}@zyra.local"
+USER_A_EMAIL = f"integration-a-{_RUN_ID}@porer-hishab.local"
+USER_B_EMAIL = f"integration-b-{_RUN_ID}@porer-hishab.local"
 
 TX_A_FOOD = f"INT-A-FOOD-{_RUN_ID}"
 TX_A_SALARY = f"INT-A-SALARY-{_RUN_ID}"
