@@ -20,9 +20,11 @@ from app.schemas.insights import (
     InsightsOverview,
     MerchantInsight,
     MonthlyInsight,
+    MonthOverMonthInsight,
     RecurringInsight,
     SummaryInsight,
 )
+from app.services.analytics.insights import compute_month_over_month, get_user_month_over_month
 from app.services.analytics import (
     get_user_budget_baseline,
     get_user_cashflow,
@@ -80,6 +82,24 @@ def insights_monthly(
         db, current.id, start_date=start_date, end_date=end_date
     )
 
+
+
+@router.get(
+    "/month-over-month",
+    response_model=list[MonthOverMonthInsight],
+)
+def insights_month_over_month(
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_user_month_over_month(
+        db,
+        current_user.id,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
 @router.get("/categories", response_model=CategoryBreakdown)
 def insights_categories(

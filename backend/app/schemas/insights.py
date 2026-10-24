@@ -105,13 +105,33 @@ class BudgetBaselineInsight(BaseModel):
     categories: list[BudgetBaselineCategory]
 
 
+
+class MonthOverMonthInsight(BaseModel):
+    """Change in financial activity versus the previous observed month"""
+
+    month: str = Field(..., pattern= r"^\d{4}-\d{2}$")
+
+    previous_month: str = Field(..., pattern = r"^\d{4}-\d{2}$")
+
+    income_change: Decimal
+    income_change_pct: Decimal | None = None
+
+    expense_change: Decimal
+    expense_change_pct: Decimal | None = None
+
+    net_change: Decimal
+    net_change_pct: Decimal | None = None
+
+
 class InsightsOverview(BaseModel):
     """Every intelligence metric in one payload."""
 
     summary: SummaryInsight
     monthly: list[MonthlyInsight]
+    month_over_month: list[MonthOverMonthInsight]
     categories: CategoryBreakdown
     top_merchants: list[MerchantInsight]
     recurring: list[RecurringInsight]
     cashflow: list[CashflowPoint]
     budget_baseline: BudgetBaselineInsight
+

@@ -19,7 +19,7 @@ from app.services.analytics import (
     compute_top_merchants,
     detect_recurring_transactions,
 )
-
+from app.services.analytics.insights import compute_month_over_month
 
 def tx(
     amount: str,
@@ -111,6 +111,73 @@ def test_monthly_breakdown_groups_and_sorts():
 
 def test_monthly_breakdown_empty():
     assert compute_monthly_breakdown([]) == []
+
+def test_compute_month_over_month():
+    transactions = [
+        Transaction(
+            id=1,
+            date=date(2026, 9, 10),
+            amount=Decimal("50000.00"),
+            category="Income",
+        ),
+        Transaction(
+            id=2,
+            date=date(2026, 9, 15),
+            amount=Decimal("-40000.00"),
+            category="Food",
+        ),
+        Transaction(
+            id=3,
+            date=date(2026, 10, 10),
+            amount=Decimal("52000.00"),
+            category="Income",
+        ),
+        Transaction(
+            id=4,
+            date=date(2026, 10, 15),
+            amount=Decimal("-50000.00"),
+            category="Food",
+        ),
+    ]
+
+    result = compute_month_over_month(transactions)
+
+    assert len(result) == 1
+
+    comparison = result[0]
+
+    assert comparison["month"] == "2026-10"
+    assert comparison["previous_month"] == "2026-09"
+
+    assert comparison["income_change"] == Decimal("2000.00")
+    assert comparison["income_change_pct"] == Decimal("0.0400")
+
+    assert comparison["expense_change"] == Decimal("10000.00")
+    assert comparison["expense_change_pct"] == Decimal("0.2500")
+
+    assert comparison["net_change"] == Decimal("-8000.00")
+
+
+def test_compute_month_over_month_handles_zero_previous_value():
+    transactions = [
+        Transaction(
+            id=1,
+            date=date(2026, 9, 10),
+            amount=Decimal("0.00"),
+        ),
+        Transaction(
+            id=2,
+            date=date(2026, 10, 10),
+            amount=Decimal("10000.00"),
+        ),
+    ]
+
+    result = compute_month_over_month(transactions)
+
+    assert len(result) == 1
+    assert result[0]["income_change"] == Decimal("10000.00")
+    assert result[0]["income_change_pct"] is None
+
 
 
 # ---------------------------------------------------------------------------

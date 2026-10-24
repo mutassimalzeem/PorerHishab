@@ -128,6 +128,68 @@ def compute_monthly_breakdown(transactions: Sequence[Transaction]) -> list[dict]
     ]
 
 
+
+def compute_month_over_month(transactions: Sequence[Transaction]) -> list[dict]:
+    """Compare each month with the immediately preceding observed month.
+
+    Percentage changes are based on absolute expense/income magnitudes.
+    When the previous value is zero, the percentage change is ``None``.
+    """
+
+    monthly = compute_monthly_breakdown(transactions)
+
+    def percentage_change(current: Decimal, previous: Decimal) -> Decimal | None:
+        if previous == 0:
+            return None
+
+        return _q(((current - previous) / abs(previous)), FOUR_PLACES)
+
+    comparisons: list[dict] = []
+
+    for index in range(1, len(monthly)):
+        previous = monthly[index - 1]
+        current = monthly[index]
+
+        current_income = current["income"]
+        previous_income = previous["income"]
+
+        current_expenses = abs(current["expenses"])
+        previous_expenses = abs(previous["expenses"])
+
+        current_net = current["net"]
+        previous_net = previous["net"]
+
+        comparisons.append(
+            {
+                "month": current["month"],
+                "previous_month": previous["month"],
+                "income_change": _q(
+                    current_income - previous_income
+                ),
+                "income_change_pct": percentage_change(
+                    current_income,
+                    previous_income,
+                ),
+                "expense_change": _q(
+                    current_expenses - previous_expenses
+                ),
+                "expense_change_pct": percentage_change(
+                    current_expenses,
+                    previous_expenses,
+                ),
+                "net_change": _q(
+                    current_net - previous_net
+                ),
+                "net_change_pct": percentage_change(
+                    current_net,
+                    previous_net,
+                ),
+            }
+        )
+
+    return comparisons
+
+
 def compute_category_breakdown(transactions: Sequence[Transaction]) -> dict:
     """Income, expenses, and net grouped by category (``None`` → Uncategorized)."""
     income_by: dict[str, Decimal] = {}
@@ -378,6 +440,7 @@ def compute_insights(
     return {
         "summary": compute_summary(transactions),
         "monthly": compute_monthly_breakdown(transactions),
+        "month_over_month": compute_month_over_month(transactions),
         "categories": compute_category_breakdown(transactions),
         "top_merchants": compute_top_merchants(
             transactions, limit=top_merchants_limit
@@ -437,6 +500,23 @@ def get_user_monthly(
     return compute_monthly_breakdown(
         _user_transactions(db, user_id, start_date, end_date)
     )
+
+
+def get_user_month_over_month(
+    db: Session,
+    user_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None) -> list[dict]:
+    
+    return compute_month_over_month(
+        _user_transactions(
+            db,
+            user_id,
+            start_date,
+            end_date,
+        )
+    )
+
 
 
 def get_user_categories(
