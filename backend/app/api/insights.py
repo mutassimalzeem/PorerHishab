@@ -7,7 +7,7 @@ numbers because every query is user-scoped at the repository layer.
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -35,6 +35,10 @@ from app.services.analytics import (
     get_user_summary,
     get_user_top_merchants,
 )
+
+from app.schemas.financial_insights import FinancialInsights
+from app.services.ai.financial_insights import generate_financial_insights
+
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -169,3 +173,36 @@ def insights_budget_baseline(
     return get_user_budget_baseline(
         db, current.id, start_date=start_date, end_date=end_date
     )
+
+
+
+@router.get("/ai", response_model=FinancialInsights)
+def insights_ai(
+    start_date: date | None = None,
+    end_date: date | None = None,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate AI explanations from the authenticated user's analytics."""
+
+    analytics = get_user_insights(
+        db,
+        current.id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    try:
+        return generate_financial_insights(analytics)
+    except RuntimeError as exc:
+        # Missing API key or missing optional dependency.
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        # Avoid exposing provider errors or request details to API clients.
+        raise HTTPException(
+            status_code=502,
+            detail="The financial insight service is temporarily unavailable.",
+        ) from exc
