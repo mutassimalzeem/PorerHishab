@@ -363,6 +363,7 @@ def test_insights_overview_endpoint():
         assert set(overview) == {
             "summary",
             "monthly",
+            "month_over_month",
             "categories",
             "top_merchants",
             "recurring",
@@ -371,6 +372,7 @@ def test_insights_overview_endpoint():
         }
         assert overview["summary"]["net"] == "25000.00"
         assert overview["monthly"][0]["month"] == "2026-10"
+        assert overview["month_over_month"] == []
         assert overview["top_merchants"][0]["merchant"] == "Landlord"
         assert overview["cashflow"][-1]["running_balance"] == "25000.00"
         assert overview["budget_baseline"]["monthly_total_baseline"] == "25000.00"
