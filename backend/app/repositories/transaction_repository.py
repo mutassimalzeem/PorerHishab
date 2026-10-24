@@ -93,14 +93,14 @@ def list_transactions_in_range(
     db: Session,
     user_id: int,
     start_date: date | None = None,
-    end_date: date | None = None,
-    limit: int = 10000,
-) -> list[Transaction]:
+    end_date: date | None = None) -> list[Transaction]:
+
     """All of a user's transactions, oldest first, optionally date-bounded.
 
     Ordered ascending by ``(date, id)`` so analytics code (cash-flow
     timeline, recurring detection) sees a stable chronological input.
     """
+
     query = db.query(Transaction).filter(Transaction.user_id == user_id)
 
     if start_date is not None:
@@ -109,12 +109,7 @@ def list_transactions_in_range(
     if end_date is not None:
         query = query.filter(Transaction.date <= end_date)
 
-    return (
-        query
-        .order_by(Transaction.date.asc(), Transaction.id.asc())
-        .limit(max(0, int(limit)))
-        .all()
-    )
+    return (query.order_by(Transaction.date.asc(), Transaction.id.asc()).all())
 
 
 def count_transactions(
