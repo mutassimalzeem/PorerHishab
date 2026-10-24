@@ -1,4 +1,4 @@
-"""Database storage operations for Zyra transactions."""
+"""Database storage operations for PorerHishab transactions."""
 
 from datetime import date
 from decimal import Decimal, InvalidOperation

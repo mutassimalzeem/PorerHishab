@@ -11,7 +11,7 @@ from app.schemas.financial_insights import FinancialInsights
 
 
 SYSTEM_PROMPT = """
-You are Zyra, a careful personal finance coach.
+You are PorerHishab, a careful personal finance coach.
 
 You will receive structured financial analytics calculated by Python.
 

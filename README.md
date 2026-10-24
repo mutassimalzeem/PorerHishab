@@ -1,774 +1,199 @@
-# Zyra — Smart Personal Finance Coach
+# পরের হিসাব — PorerHishab
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-Backend-blue?style=for-the-badge&logo=python" />
-  <img src="https://img.shields.io/badge/FastAPI-API-009688?style=for-the-badge&logo=fastapi" />
-  <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql" />
-  <img src="https://img.shields.io/badge/LangChain-AI%20Workflow-green?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/RAG-Finance%20Q%26A-purple?style=for-the-badge" />
-</p>
+**আজকের খরচ, আগামীর পরিকল্পনা।**
 
-<p align="center">
-  <b>An AI-powered personal finance coach that helps users understand spending, ask natural-language finance questions, forecast budgets, and receive personalized savings recommendations.</b>
-</p>
+PorerHishab is a Bangladesh-first personal finance coach that helps users understand their current financial position and work toward knowing what they can safely spend after accounting for upcoming obligations and expected income.
 
-> 🇧🇩 **Bangladesh-First Update (Oct 2026 audit):** Zyra is now **Bangladesh-tailored — bKash / Nagad / Rocket / Upay + Bank BEFTN/NPSB + DPS/FDR**. The full market audit, premium feature vault (Taka Sesh Date, WhatsApp Coach, NBR & Household OS) and 9-month roadmap for 2027 lives in **[FEATURES.md](./FEATURES.md)**. Global Plaid → **MFS SMS Parser + Bank PDF OCR**.
+The product direction is a Bangla-first AI financial coach: **Know what you can spend after accounting for what comes next.** Bangla-first interaction and obligation-aware safe-to-spend decisions are goals; the current repository implements the backend capabilities listed below.
 
----
+## Implementation status
 
-## Overview
+### Implemented
 
-**Zyra** is a smart personal finance coach built with a production-minded full-stack architecture.
+- JWT access/refresh authentication and user-scoped transaction access.
+- CSV transaction ingestion, transaction creation/listing, filtering, search, and category corrections.
+- Categorization using merchant preferences, deterministic rules, and validated LLM fallback.
+- Financial analytics: income, expenses, savings rate, monthly and month-over-month breakdowns, categories, merchants, recurring charges, cashflow history, and budget baselines.
+- Finance Q&A using structured financial evidence and transaction retrieval, with LLM-generated answers.
+- Budget forecasting from historical and recent monthly spending, with category forecasts.
+- Savings goal planning and AI-generated savings actions grounded in the plan.
+- AI-generated financial insights grounded in analytics.
+- PostgreSQL models, Alembic migrations, and backend unit/API/integration tests.
 
-The project allows users to upload transaction data, analyze spending behavior, ask questions about their finances in natural language, and receive personalized budgeting and saving suggestions.
+AI features require a configured compatible provider and credentials. Their presence in the source does not imply production readiness or guaranteed financial outcomes.
 
-The goal is not just to build another finance dashboard. Zyra is designed as an AI-powered financial assistant where backend engineering, data processing, retrieval-augmented generation, and practical financial insights work together.
+### In progress
 
----
+- Cashflow forecasting: the current working tree includes a forecast service, response schema, `/forecast/cashflow` route, and calculation tests. This work is uncommitted and under development.
+- Keeping documentation and packaging aligned with the PorerHishab brand.
 
-## Why I Built This
+### Planned
 
-Most people track expenses, but they still struggle to answer simple questions like:
+- Frontend dashboard and Bangla/Roman Bangla interaction. No frontend source exists in this repository yet.
+- MFS SMS and bank PDF ingestion, banking integrations, and automatic syncing.
+- Explicit upcoming-bill/income scheduling and safe-to-spend decisions.
+- WhatsApp/Messenger delivery, household tools, and production deployment.
 
-- Where is my money going every month?
-- Which category is quietly draining my budget?
-- How much can I realistically save this month?
-- Am I overspending compared to my previous months?
-- What small changes can improve my financial habits?
+[FEATURES.md](FEATURES.md) describes proposed product directions and a roadmap, including integrations and pricing that are not shipped capabilities.
 
-Zyra tries to solve that by combining transaction analysis with AI-assisted financial reasoning.
+## Product direction
 
-Instead of only showing charts, Zyra helps users understand their financial behavior in plain language.
+The historical view asks: **Where did my money go?**
 
----
+The forward-looking view asks: **What can I safely spend next?**
 
-## Core Features
+Positioning examples for future decision support include:
 
-### Transaction Upload & Ingestion
+- “Can I spend ৳2,000 today?”
+- “How much will remain after my upcoming bills?”
+- “How much can I save this month without running short?”
+- “Will my money last until my next income?”
 
-Users can upload transaction data through CSV files.
+These are product goals, not claims that current forecasts model scheduled bills or guarantee spending safety.
 
-The backend processes the uploaded file, validates required fields, cleans messy values, and stores transactions in the database.
+## Architecture
 
-Planned production upgrade:
+The current API entry point is `backend/app/main.py` (`app.main:app`). Authentication and several legacy endpoints remain in this module; additional routes live in `backend/app/api/`.
 
-- Bank account connection using services like Plaid or similar APIs
-- Automatic transaction syncing
-- Background ingestion jobs
-
----
-
-### Transaction Categorization
-
-Zyra categorizes transactions using a combination of:
-
-- Rule-based matching
-- Merchant name patterns
-- Keyword-based category detection
-- LLM fallback for uncertain transactions
-
-This makes the system practical for real-world messy transaction data where merchant names are not always clean.
-
----
-
-### Natural Language Finance Q&A
-
-Users can ask questions such as:
-
-```txt
-How much did I spend on food last month?
-```
-
-```txt
-Which category increased the most compared to the previous month?
-```
-
-```txt
-What are my top unnecessary expenses?
-```
-
-```txt
-Can I save 5000 BDT this month?
-```
-
-The system answers using the user's own transaction history, not generic finance advice.
-
----
-
-### RAG-Based Financial Search
-
-Zyra uses retrieval-augmented generation to ground AI answers in the user's personal transaction data.
-
-Basic flow:
-
-```txt
-User Question
-     ↓
-Query Understanding
-     ↓
-Relevant Transaction Retrieval
-     ↓
-LLM Reasoning
-     ↓
-Grounded Financial Answer
-```
-
-This makes AI responses more useful, personalized, and connected to actual spending behavior.
-
----
-
-### Budget Forecasting
-
-Zyra includes simple forecasting logic to estimate upcoming spending patterns based on historical transaction data.
-
-The first version focuses on beginner-friendly forecasting methods such as:
-
-- Monthly spending averages
-- Category-wise trend analysis
-- Recent spending velocity
-- Simple time-series forecasting
-
-Future versions can include more advanced models.
-
----
-
-### Personalized Saving Suggestions
-
-Zyra recommends practical saving actions based on spending behavior.
-
-Example:
-
-```txt
-You spent 18% more on food this month compared to last month.
-Reducing food delivery by 2 orders per week could save around 1200–1800 BDT monthly.
-```
-
-The focus is on realistic, behavior-based suggestions instead of generic advice.
-
----
-
-## Tech Stack
-
-### Backend
-
-- Python + FastAPI (`backend/app/main.py` — live: auth, CSV upload, search, summaries,
-  transaction CRUD at `/transactions`, intelligence metrics at `/insights/*`)
-- SQLAlchemy 2.0 (typed `Mapped` models) + Alembic migrations (`alembic/versions/`)
-- PostgreSQL 16 via Docker (`docker-compose.yml` → `zyra-db`)
-- JWT access + refresh (peppered bcrypt, per-IP rate-limit) — see `backend/app/api/auth.py`
-- Pydantic v2 + pydantic-settings (`.env` → `DATABASE_URL`)
-- Uvicorn
-
-> Note: `backend/app/main.py` is the current runnable entrypoint. The
-> `transactions` and `insights` routers live in `backend/app/api/`, and the
-> intelligence engine in `backend/app/services/analytics/`. The remaining
-> `backend/app/api/*` modules (`chat`, `forecast`, `planner`, `users`) are
-> placeholders (empty stubs) reserved for the upcoming phases.
-
-### AI / ML
-
-- LangChain
-- OpenAI API or Hugging Face models
-- FAISS / Chroma for vector search
-- Embeddings for transaction retrieval
-- Rule-based + LLM-assisted categorization
-
-### Data Processing
-
-- Pandas
-- CSV parsing
-- Transaction cleaning
-- Category mapping
-- Monthly aggregation
-
-### Frontend
-
-- React
-- Vite
-- Tailwind CSS
-- Dashboard UI
-- Charts and analytics views
-
-### DevOps / Tooling
-
-- Docker
-- Docker Compose
-- `.env` based configuration
-- PostgreSQL container setup
-- Local development workflow
-
----
-
-## Data Model (v2 — `feature/zyra-v2`)
-
-Live on this branch via `alembic revisions b348fd279e16 → c2d11a3f4b5c`
-(`dates` → `date` rename):
-
-```txt
-users (id, email unique, hashed_password, full_name, created_at, updated_at)
-  ├── accounts (id, user_id → users.id CASCADE, name, source [bkash/nagad/bank/cash],
-  │              account_type [cash/mobile_wallet/bank], currency default BDT,
-  │              current_balance NUMERIC(14,2), created_at)
-  └── transactions (id, user_id → users.id CASCADE, account_id → accounts.id SET NULL,
-                    trx_id, date DATE, description, merchant, normalized_merchant,
-                    amount NUMERIC(14,2), fee NUMERIC(14,2) default 0, balance,
-                    transaction_type, category, subcategory,
-                    source [manual/csv/sms/pdf], is_recurring bool,
-                    raw_data JSONB, created_at,
-                    UNIQUE(user_id, trx_id))
-```
-
-- Money-safe: `NUMERIC(14,2)` for `amount/fee/balance` (never float).
-- Bangladesh-ready: `fee` + `balance` + `trx_id` columns capture
-  `Cash Out Tk1,500 to 017XX TrxID 9AX Fee Tk27.50` SMS shapes (parser lands in M1-2 per `FEATURES.md`).
-- Verified by `backend/test_database.py::test_database_relationships`
-  (user → bKash account → Foodpanda transaction).
-
----
-
-## Project Architecture (target — see `architecture.md`)
-
-> Current runnable code lives in `backend/app/main.py`. The tree below is the
-> v2 target; `api/*`, `schemas/*`, `services/*` stubs are empty and tracked
-> for the upcoming router split.
-
-```txt
-Zyra/
-│
+```text
+PorerHishab/
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── auth.py
-│   │   │   ├── transactions.py
-│   │   │   ├── insights.py
-│   │   │   └── chat.py
-│   │   │
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── security.py
-│   │   │   └── database.py
-│   │   │
-│   │   ├── models/
-│   │   │   ├── user.py
-│   │   │   └── transaction.py
-│   │   │
-│   │   ├── schemas/
-│   │   │   ├── user.py
-│   │   │   └── transaction.py
-│   │   │
-│   │   ├── services/
-│   │   │   ├── ingestion.py
-│   │   │   ├── categorization.py
-│   │   │   ├── forecasting.py
-│   │   │   ├── savings_planner.py
-│   │   │   └── rag_service.py
-│   │   │
-│   │   └── main.py
-│   │
+│   │   ├── main.py
+│   │   ├── api/             # Transactions, insights, chat, forecast, planner
+│   │   ├── core/            # Settings, authentication dependencies, database
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── schemas/         # Pydantic requests and responses
+│   │   ├── repositories/    # User-scoped persistence and queries
+│   │   └── services/        # Ingestion, analytics, finance, RAG, forecasting, planning, AI
+│   ├── test_*.py
 │   ├── requirements.txt
 │   └── Dockerfile
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   └── App.jsx
-│   │
-│   ├── package.json
-│   └── vite.config.js
-│
+├── alembic/versions/
 ├── docs/
-│   ├── architecture.md
-│   ├── api-design.md
-│   └── roadmap.md
-│
+├── scripts/check_uvicorn.py
 ├── docker-compose.yml
-├── .env.example
-├── README.md
-└── LICENSE
+├── pyproject.toml
+└── .env.example
 ```
 
----
+The Python import package remains `app`. The distribution name is `porer-hishab-backend`; `porer_hishab` is the convention for future brand-specific Python identifiers. No source package rename is needed.
 
-## System Design Overview
+Backend tools include FastAPI, Pydantic, SQLAlchemy, PostgreSQL, Alembic, pandas, Uvicorn, LangChain, and Chroma. AI/RAG modules also require their provider and LangChain dependencies in the environment; the existing requirements file is not a complete reproducible AI environment specification.
 
-```txt
-                ┌────────────────────┐
-                │      Frontend       │
-                │   React + Vite      │
-                └─────────┬──────────┘
-                          │
-                          ▼
-                ┌────────────────────┐
-                │      FastAPI        │
-                │   Backend Server    │
-                └─────────┬──────────┘
-                          │
-        ┌─────────────────┼─────────────────┐
-        ▼                 ▼                 ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│ PostgreSQL   │   │ Vector Store │   │ AI Services  │
-│ Transactions │   │ FAISS/Chroma │   │ LangChain    │
-└──────────────┘   └──────────────┘   └──────────────┘
-        │                 │                 │
-        └─────────────────┼─────────────────┘
-                          ▼
-                ┌────────────────────┐
-                │ Personalized        │
-                │ Finance Insights    │
-                └────────────────────┘
-```
+`architecture.md` is a target layout rather than an exact listing of implemented files.
 
----
+## API surface
 
-## Main User Flow
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/register`, `/login`, `/refresh` | Authentication |
+| GET | `/me` | Current user |
+| POST | `/upload-csv` | CSV ingestion |
+| GET | `/transactions`, `/transactions/me` | User transactions |
+| POST | `/transactions` | Create a transaction |
+| PATCH | `/transactions/{transaction_id}/category` | Correct a category |
+| GET | `/search`, `/summary`, `/categories/summary` | Legacy search and summaries |
+| GET | `/insights/overview` | Combined analytics |
+| GET | `/insights/summary`, `/insights/monthly`, `/insights/month-over-month` | Summary and monthly comparisons |
+| GET | `/insights/categories`, `/insights/merchants`, `/insights/recurring` | Spending analysis |
+| GET | `/insights/cashflow`, `/insights/budget-baseline` | Historical cashflow and budget baseline |
+| GET | `/insights/ai` | AI financial insights |
+| POST | `/chat/ask` | Finance Q&A |
+| GET | `/forecast/budget` | Historical-spending budget forecast |
+| GET | `/forecast/cashflow` | In-progress cashflow projection |
+| POST | `/planner/savings` | Savings goal plan |
+| POST | `/planner/savings/coach` | Plan plus AI guidance |
 
-```txt
-1. User creates an account
-2. User uploads transaction CSV
-3. Backend cleans and stores transactions
-4. System categorizes transactions
-5. Transactions are embedded for retrieval
-6. User views dashboard insights
-7. User asks finance questions
-8. RAG pipeline retrieves relevant data
-9. AI generates grounded answers
-10. System recommends saving actions
-```
+See `/docs` for current request parameters and response schemas. Existing API paths are preserved by the rebrand.
 
----
+## Local development
 
-## Example Questions Zyra Can Answer
+The repository root is the canonical working directory.
 
-```txt
-How much did I spend this month?
-```
-
-```txt
-What are my top 5 expense categories?
-```
-
-```txt
-Did my food spending increase compared to last month?
-```
-
-```txt
-Which transactions look unnecessary?
-```
-
-```txt
-How much can I save if I reduce entertainment spending?
-```
-
-```txt
-Create a savings plan for the next 3 months.
-```
-
----
-
-## API Endpoints (live on this branch)
-
-| Method | Endpoint | Description | Status |
-|---|---|---|---|
-| `POST` | `/register` | Create user, return access token | ✅ live in `main.py` |
-| `POST` | `/login` | Login (rate-limited) → access + refresh | ✅ live |
-| `POST` | `/refresh` | Exchange refresh token for access token | ✅ live |
-| `GET` | `/me` | Current user profile | ✅ live |
-| `POST` | `/upload-csv` | Upload CSV (requires `amount`; optional `description/merchant/category`) | ✅ live |
-| `GET` | `/transactions/me?limit=100` | List own transactions | ✅ live |
-| `GET` | `/search?q=&category=&limit=` | Full-text + category + amount + date search | ✅ live |
-| `GET` | `/summary` | Income / expenses / balance totals | ✅ live |
-| `GET` | `/categories/summary` | Income / expenses / net per category | ✅ live |
-| `POST` | `/chat/ask` | RAG finance Q&A | 🔜 stub per `architecture.md` |
-| `GET` | `/forecast/budget` | Taka Sesh Date predictor | 🔜 per `FEATURES.md M3-5` |
-| `GET` | `/planner/savings` | Fee Killer + saving plan | 🔜 per `FEATURES.md M3-5` |
-
----
-
-## Environment Variables
-
-Create a `.env` file at repo root (loaded by `backend/app/core/config.py`).
-
-```env
-DATABASE_URL=postgresql+psycopg2://zyra:zyra_password@localhost:5432/zyra
-SECRET_KEY=change-me-in-prod
-REFRESH_SECRET_KEY=change-me-in-prod-refresh
-PEPPER=
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=14
-RATE_LIMIT_WINDOW_SECONDS=300
-RATE_LIMIT_MAX_ATTEMPTS=5
-```
-
-> `DATABASE_URL` must use `+psycopg2` (sync) — `create_engine(...)` in
-> `core/database.py` is sync. See `.env.example`. OpenAI / HF embedding keys
-> arrive with the RAG service (M3-5).
-
----
-
-## Getting Started
-
-### 1. Clone the Repository
+The intended repository name is **PorerHishab**. The owner must rename the existing GitHub repository before relying on this clone URL:
 
 ```bash
-git clone https://github.com/mutassimalzeem/Zyra.git
-cd Zyra
-```
-
----
-
-### 2. Start PostgreSQL with Docker
-
-```bash
-docker compose up -d
-```
-
-Or manually run PostgreSQL:
-
-```bash
-docker run --name zyra-postgres \
-  -e POSTGRES_USER=zyra \
-  -e POSTGRES_PASSWORD=zyra \
-  -e POSTGRES_DB=zyra \
-  -p 5432:5432 \
-  -d postgres:16
-```
-
-For Windows PowerShell, use this one-line version:
-
-```powershell
-docker run --name zyra-postgres -e POSTGRES_USER=zyra -e POSTGRES_PASSWORD=zyra -e POSTGRES_DB=zyra -p 5432:5432 -d postgres:16
-```
-
----
-
-### 3. Setup Backend
-
-The repository root is the **canonical working directory** for every backend
-command (venv, Alembic, pytest, Uvicorn). All tooling resolves paths relative
-to the repository root, so commands also work from `backend/` — but the root
-is the supported default.
-
-```bash
-# From the repository root
+git clone https://github.com/mutassimalzeem/PorerHishab.git
+cd PorerHishab
 python -m venv .venv
 ```
 
 Activate the environment:
 
-```bash
-# Windows
-.venv\Scripts\activate
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
+On macOS/Linux:
+
 ```bash
-# macOS/Linux
 source .venv/bin/activate
 ```
 
-Install dependencies and the backend package (editable install makes the
-`app` package importable from the repository root):
+Install the existing dependencies and editable backend package:
 
 ```bash
-pip install -r backend/requirements.txt
-pip install -e .
+python -m pip install -r backend/requirements.txt
+python -m pip install -e .
 ```
 
-> The editable install (`pip install -e .`) is what allows `import app.main`
-> to resolve from the repository root. Without it, either run commands from
-> `backend/` or export `PYTHONPATH=backend`.
-
-Copy env, migrate, test, and run (all from the repository root):
+Copy `.env.example` to `.env`, then configure the environment locally. Do not commit credentials. Settings resolve `.env` from the repository root, independent of the shell's working directory. Preserve existing database connection values during the rebrand.
 
 ```bash
-cp .env.example .env
-docker compose up -d          # PostgreSQL must be healthy before migrating
+docker compose up -d
 alembic upgrade head
 alembic current
 alembic check
-pytest backend -v
+python -m pytest backend -q
 uvicorn app.main:app --reload
 ```
 
-Backend will run at:
+The API runs at `http://localhost:8000`, with documentation at `http://localhost:8000/docs`. Database-backed tests require PostgreSQL. Some existing RAG smoke tests call an external embedding provider and write vector data; they require configured credentials and network access.
 
-```txt
-http://localhost:8000
-```
+`python scripts/check_uvicorn.py` provides a startup smoke check. From `backend/`, the Alembic shim and pytest bootstrap also support local commands, but the repository root remains the recommended starting point.
 
-API docs:
+## Storage compatibility
 
-```txt
-http://localhost:8000/docs
-```
+The rebrand changes display names and package metadata, not persistence identifiers:
 
----
+- PostgreSQL database and role: `zyra`.
+- Existing Compose container: `zyra-db`; service: `db`.
+- Existing Compose volume key: `zyra_postgres_data`.
+- Existing Chroma collection default: `zyra_transactions`, stored under `data/chroma`.
 
-### 3.1 Working Directory Reference
+These are **legacy storage identifiers retained for compatibility**. Keep the current checkout directory and Compose project identity when using existing local volumes: a different directory/project name can select a different Compose-prefixed volume even if the volume key is unchanged.
 
-| Task | From repository root | From `backend/` |
-| --- | --- | --- |
-| Import the app | `python -c "import app.main"` | `python -c "import app.main"` |
-| Apply migrations | `alembic upgrade head` | `alembic upgrade head` |
-| Check migration state | `alembic current` / `alembic check` | `alembic current` / `alembic check` |
-| Run tests | `pytest backend -v` | `pytest -v` |
-| Start the API | `uvicorn app.main:app --reload` | `uvicorn app.main:app --reload` |
-| Smoke-test startup | `python scripts/check_uvicorn.py` | `python ../scripts/check_uvicorn.py` |
+Tables remain `users`, `accounts`, `transactions`, `transaction_category_corrections`, and `merchant_category_preferences`. No Alembic filenames, revisions, or database schema changes are required.
 
-Notes:
+The historical development branch name `feature/zyra-v2` and the historical report in `docs/db-batch-db08-db10-status.md` retain their original names for accuracy.
 
-- `.env` is always read from the **repository root**, never from the current
-  directory (`backend/app/core/config.py` resolves it via `__file__`).
-- `alembic.ini` uses `%(here)s`, so `script_location` and `prepend_sys_path`
-  are resolved relative to the config file — not the shell's working directory.
-  `backend/alembic.ini` is a thin shim that delegates to the root config.
-- PostgreSQL **must be running** (`docker compose up -d`) before
-  `alembic upgrade head` and before the integration tests, which use the
-  real database.
-- The rule-based categorizer lives at
-  `backend/app/services/categorization/categorizer.py`. The root
-  `categorizer.py` remains as a backwards-compatible shim that re-exports
-  `categorize_text`.
+After changing distribution metadata, refresh the editable installation with `python -m pip install -e .`. Generated metadata such as the old `zyra_backend.egg-info` directory is tooling output, not a Python source package; do not edit it by hand.
 
----
+## CSV input
 
-### 3.2 Database Tests
-
-The suite is split between fast checks and tests that need a live PostgreSQL:
-
-| File | Needs PostgreSQL | What it covers |
-| --- | --- | --- |
-| `backend/test_database.py` | yes | Model relationships (`User` → `Account` → `Transaction`) |
-| `backend/test_transaction_repository.py` | yes | Repository CRUD, user-scoped listing and search |
-| `backend/test_transaction_service.py` | no | CSV ingestion normalisation + categorisation rules |
-| `backend/test_transaction_integration.py` | yes | Full PostgreSQL round trip, native column types, cross-user isolation |
-| `backend/test_insights.py` | no | Intelligence engine calculations (summary, monthly, categories, merchants, savings rate, recurring, cash-flow, budget baseline) |
-| `backend/test_insights_integration.py` | yes | Intelligence service → repository → PostgreSQL → back |
-| `backend/test_insights_api.py` | yes | `/transactions` + `/insights/*` routers through `TestClient` with JWT auth |
-
-`backend/test_transaction_integration.py` is the end-to-end guard for the
-database layer:
-
-- **Round trip** — a transaction is written through SQLAlchemy, every cached
-  object is expired (`expunge_all()`), and the row is re-read through a
-  *separate* session so the assertions prove the data really landed in
-  PostgreSQL rather than in the identity map.
-- **Native column types** — `pg_typeof()` is queried directly to confirm
-  `numeric` money, `date` dates and `json` payloads (a SQLite backend could
-  not answer these).
-- **User isolation** — two users share a merchant name; listing, searching and
-  a direct identifier lookup must only ever return the caller's own rows, and
-  deleting one user must cascade away only that user's transactions.
-
-The tests generate unique emails and `trx_id` values per run, so repeated and
-parallel runs never collide on the unique indexes.
-
-> PostgreSQL must be healthy before running these tests:
-> `docker compose up -d` (then `pytest backend -v`).
-
----
-
-### 4. Setup Frontend (planned)
-
-> No `frontend/` directory on this branch yet — Next.js + PWA lands in M1-2.
-> Reserved flow from `architecture.md`:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend will run at:
-
-```txt
-http://localhost:5173
-```
-
----
-
-## CSV Format
-
-The uploaded CSV should contain transaction data.
-
-Recommended columns:
+The upload route requires an `amount` column and accepts optional transaction fields. Use dated rows and signed amounts for meaningful analytics (income positive, expenses negative), for example:
 
 ```csv
-date,description,amount,type
-2026-01-01,Foodpanda Order,450,expense
-2026-01-02,Salary,30000,income
-2026-01-03,Uber Ride,220,expense
+date,description,merchant,amount,category
+2026-10-01,Monthly salary,Employer,50000.00,Income
+2026-10-02,Groceries,Local shop,-1500.00,Groceries
 ```
 
-Minimum required fields:
+## Validation
 
-| Column | Description |
-|---|---|
-| `date` | Transaction date |
-| `description` | Merchant or transaction description |
-| `amount` | Transaction amount |
-
-Optional fields:
-
-| Column | Description |
-|---|---|
-| `type` | income or expense |
-| `category` | food, transport, rent, salary, etc. |
-| `account` | bank, card, wallet, cash |
-
----
-
-## Example AI Response
-
-User question:
-
-```txt
-Where did I overspend this month?
+```bash
+python -m pytest backend -q
+python -m pytest backend/test_cashflow_forecast.py -q
+git diff --check
 ```
 
-Zyra response:
-
-```txt
-Your food and transport spending increased compared to last month.
-
-Food spending increased by 22%.
-Transport spending increased by 14%.
-
-The biggest change came from repeated food delivery transactions.
-If you reduce food delivery by 2 orders per week, you could save approximately 1200–1800 BDT per month.
-```
-
----
-
-## What Makes This Project Valuable
-
-This project combines multiple real-world engineering skills:
-
-- Backend API design
-- Authentication and user-specific data handling
-- Database modeling
-- CSV ingestion and data validation
-- Financial data analysis
-- RAG-based AI question answering
-- Forecasting and recommendation logic
-- Frontend dashboard development
-- Docker-based local development
-- Production-minded project structure
-
-Zyra is built as a practical AI product, not just a tutorial project.
-
----
-
-## Current Status (`feature/zyra-v2` @ Oct 2026)
-
-- [x] Project idea and architecture (`architecture.md`)
-- [x] Backend planning + v2 data model (`users` → `accounts` → `transactions`)
-- [x] Alembic baseline `b348fd279e16` + rename `c2d11a3f4b5c` (NUMERIC money, `trx_id`, `fee`, `balance`, `raw_data`)
-- [x] Authentication flow (JWT access + refresh, peppered bcrypt, rate-limit)
-- [x] Transaction ingestion (CSV) + search + category summaries + per-user isolation
-- [x] DB relationship test (`backend/test_database.py`)
-- [x] PostgreSQL integration tests (`backend/test_transaction_integration.py`) — round trip, native column types, cross-user isolation
-- [x] Migration parity verified (`alembic current` = `alembic heads`, `alembic check` clean)
-- [x] Market audit + Bangladesh premium vault → `FEATURES.md`
-- [ ] Router split (`main.py` → `api/*` + `schemas/*` + `services/*`)
-- [ ] Full frontend dashboard (Next.js + PWA)
-- [ ] MFS SMS + Bank PDF ingestion (Bangladesh-first)
-- [ ] FinBangla-BERT categorizer + fee/balance model
-- [ ] Taka Sesh Date predictor + Fee Killer
-- [ ] WhatsApp/Messenger Coach + NBR/DPS OS
-- [ ] Production deployment (Postgres + Docker + SSLCommerz)
-
----
-
-## Premium Roadmap for Bangladesh (2027) — See FEATURES.md
-
-> Full audit + tiered Bangladesh stack: **bKash/Nagad SMS Parser + Bank PDF OCR, Taka Sesh Date predictor, Fee Killer, WhatsApp/Messenger Coach, NBR Wealth OS, Household & Mess OS.**
-
-Tiers: **Free 0 | PRO Tk 2,999/yr | PREMIUM Tk 4,999/yr** via bKash/Nagad/SSLCommerz. See `FEATURES.md §3-7`.
-
-## Future Improvements
-
-- MFS SMS auto-parse (bKash/Nagad/Rocket/Upay) + Bank PDF OCR (BRAC/City/EBL/DBBL/Islami)
-- FinBangla-BERT categorizer for Bangla/Roman Bangla + fee split
-- Taka Sesh Date cashflow predictor (Eid-aware) + Fee & Subscription Killer
-- WhatsApp/Messenger AI Coach + NBR e-TIN + DPS/FDR + CIB health
-- Household & Mess shared vault (5 members)
-- More advanced forecasting models
-- Spending anomaly detection
-- Multi-account (MFS + Bank + Cash) support
-- Exportable finance reports
-- Monthly WhatsApp/email summaries
-- Mobile-friendly PWA + Voice assistant
-- Deployment with Docker and cloud hosting
-
----
-
-## Learning Goals
-
-Through this project, I am focusing on:
-
-- Building production-minded backend systems
-- Connecting AI with real user data
-- Designing practical RAG workflows
-- Improving API and database design
-- Learning how to turn ML/AI concepts into useful products
-- Writing cleaner project documentation
-- Building portfolio projects that solve real problems
-
----
-
-## Suggested GitHub Repository Description
-
-```txt
-AI-powered personal finance coach with transaction ingestion, budget insights, RAG-based finance Q&A, forecasting, and personalized savings recommendations.
-```
-
----
-
-## Suggested GitHub Topics
-
-```txt
-fastapi
-python
-postgresql
-langchain
-rag
-personal-finance
-finance-ai
-openai
-machine-learning
-react
-vite
-docker
-ai-application
-budgeting
-```
-
----
+Tests cover calculation services, categorization, finance evidence and routing, schemas, repository/database round trips, user isolation, and API behavior. AI tests include mocked checks and live-provider smoke checks; passing local tests does not establish production readiness.
 
 ## Author
 
-**Shahriar Zeem**  
-Backend Developer | ML Enthusiast | FastAPI, Python, PostgreSQL  
-Building AI-powered apps and solving real-world engineering problems.
+**Shahriar Zeem** — Backend Developer | ML Enthusiast
 
-- GitHub: [mutassimalzeem](https://github.com/mutassimalzeem)
-- Portfolio: [mutassimalzeem.vercel.app](https://mutassimalzeem.vercel.app/)
-- LinkedIn: [mutassimalzeem](https://www.linkedin.com/in/mutassimalzeem/)
-
----
-
-## License
-
-This project is open-source and available under the MIT License.
-
----
-
-## Final Note
-
-Zyra is still evolving.
-
-The long-term goal is to turn it into a complete AI-powered personal finance assistant that can understand transactions, explain spending behavior, forecast budgets, and help users make better money decisions.
+- [GitHub](https://github.com/mutassimalzeem)
+- [Portfolio](https://mutassimalzeem.vercel.app/)
+- [LinkedIn](https://www.linkedin.com/in/mutassimalzeem/)

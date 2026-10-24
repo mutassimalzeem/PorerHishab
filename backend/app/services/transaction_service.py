@@ -14,7 +14,7 @@ REQUIRED_COLUMNS = {"date", "amount"}
 
 def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalize raw transaction data into Zyra's internal format.
+    Normalize raw transaction data into PorerHishab's internal format.
     """
     normalized = df.copy()
 

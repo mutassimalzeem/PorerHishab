@@ -8,7 +8,7 @@ from app.models.category_correction import TransactionCategoryCorrection
 
 
 RUN_ID = uuid4().hex
-TEST_EMAIL = f"category-correction-{RUN_ID}@zyra.local"
+TEST_EMAIL = f"category-correction-{RUN_ID}@porer-hishab.local"
 
 
 def cleanup():

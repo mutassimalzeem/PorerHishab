@@ -9,7 +9,7 @@ from app.models import User, Account, Transaction
 
 # Unique per run so that repeated (or parallel) test runs never collide on
 # the unique email index.
-TEST_EMAIL = f"test-{uuid4().hex}@zyra.local"
+TEST_EMAIL = f"test-{uuid4().hex}@porer-hishab.local"
 
 
 def cleanup(db):

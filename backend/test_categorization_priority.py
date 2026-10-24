@@ -30,7 +30,7 @@ def test_user_preference_result_is_built_from_stored_preference():
     db = _memory_db()
 
     user = User(
-        email="preference-priority@zyra.local",
+        email="preference-priority@porer-hishab.local",
         hashed_password="test-password",
         full_name="Preference Test User",
     )
@@ -84,7 +84,7 @@ def test_user_preference_beats_rules():
     db = _memory_db()
 
     user = User(
-        email="preference-priority-rules@zyra.local",
+        email="preference-priority-rules@porer-hishab.local",
         hashed_password="test-password",
         full_name="Preference Priority User",
     )

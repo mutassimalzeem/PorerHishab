@@ -30,7 +30,14 @@ from app.repositories.transaction_repository import (
     search_transactions,
 )
 
-app = FastAPI()
+app = FastAPI(
+    title="PorerHishab API",
+    description=(
+        "PorerHishab (পরের হিসাব) provides transaction ingestion and categorization, "
+        "financial analytics, finance Q&A, budget and cashflow forecasting, "
+        "savings planning, and AI guidance grounded in financial data."
+    ),
+)
 
 app.include_router(insights_router)
 app.include_router(transactions_router)
@@ -152,7 +159,7 @@ def refresh_token(refresh_token: str = Form(...)):
 
 @app.get("/")
 def read_root():
-    return {"message": "Smart Finance Coach is alive!"}
+    return {"message": "PorerHishab is alive!"}
 
 
 @app.get("/summary")

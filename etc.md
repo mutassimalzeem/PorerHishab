@@ -42,7 +42,7 @@ Don't write:
 
 That's easy.
 
-Instead, Zyra will have a progression:
+Instead, PorerHishab will have a progression:
 
 
 V1

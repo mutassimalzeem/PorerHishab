@@ -16,8 +16,8 @@ from app.models import Transaction, User
 from app.services.analytics import get_user_insights
 
 _RUN_ID = uuid4().hex
-USER_EMAIL = f"insights-integration-{_RUN_ID}@zyra.local"
-OTHER_EMAIL = f"insights-integration-other-{_RUN_ID}@zyra.local"
+USER_EMAIL = f"insights-integration-{_RUN_ID}@porer-hishab.local"
+OTHER_EMAIL = f"insights-integration-other-{_RUN_ID}@porer-hishab.local"
 
 
 def cleanup() -> None:

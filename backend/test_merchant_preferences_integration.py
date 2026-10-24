@@ -31,7 +31,7 @@ def sessions():
 def users(sessions):
     with sessions() as db:
         users = [
-            User(email=f"merchant-{name}@zyra.local", hashed_password="test-password")
+            User(email=f"merchant-{name}@porer-hishab.local", hashed_password="test-password")
             for name in ("a", "b")
         ]
         db.add_all(users)

@@ -1,6 +1,6 @@
 """Transaction intelligence engine.
 
-Pure calculation layer for Zyra's finance insights.  Every function in this
+Pure calculation layer for PorerHishab's finance insights.  Every function in this
 module takes plain :class:`~app.models.transactions.Transaction` rows (or
 anything exposing the same attributes) and returns ``Decimal``-based results —
 no floating point money math anywhere.

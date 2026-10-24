@@ -17,8 +17,8 @@ from app.main import app
 from app.models import Transaction, User
 
 _RUN_ID = uuid4().hex
-USER_A_EMAIL = f"api-insights-a-{_RUN_ID}@zyra.local"
-USER_B_EMAIL = f"api-insights-b-{_RUN_ID}@zyra.local"
+USER_A_EMAIL = f"api-insights-a-{_RUN_ID}@porer-hishab.local"
+USER_B_EMAIL = f"api-insights-b-{_RUN_ID}@porer-hishab.local"
 
 client = TestClient(app)
 
