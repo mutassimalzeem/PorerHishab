@@ -170,7 +170,6 @@ def get_user_budget_forecast(
     transactions = list_transactions_in_range(
         db,
         user_id,
-        
     )
 
     forecast = forecast_monthly_spending(
