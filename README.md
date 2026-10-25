@@ -24,8 +24,19 @@ AI features require a configured compatible provider and credentials. Their pres
 
 ### In progress
 
-- Cashflow forecasting: the current working tree includes a forecast service, response schema, `/forecast/cashflow` route, and calculation tests. This work is uncommitted and under development.
-- Keeping documentation and packaging aligned with the PorerHishab brand.
+- Cashflow forecast v1: the `/forecast/cashflow` API and deterministic monthly projection service are implemented on the current feature branch. Contract documentation, edge-case coverage, and authenticated API/database validation are being completed before merge.
+- Final repository and public-facing brand consistency checks.
+
+
+### Known cashflow limitations
+
+- Forecasts use simple historical monthly averages; they are not seasonal or trend-adjusted predictions.
+- Missing calendar months between the first and last usable transaction months count as zero activity. Incomplete transaction imports can therefore distort averages.
+- The API uses a caller-supplied starting balance and does not reconcile it with bank, bKash, Nagad, or other account balances.
+- Transactions are pooled across the authenticated user's accounts; account-specific forecasts are not supported.
+- Cash depletion is estimated at monthly resolution from projected ending balances, not as an exact date or time.
+- The `healthy`, `break_even`, and `at_risk` labels describe average net cashflow. They are not a guarantee that a particular purchase is safe.
+- A forecast based on a short history can be unreliable. Historical coverage is returned to help users understand this limitation.
 
 ### Planned
 
@@ -197,3 +208,5 @@ Tests cover calculation services, categorization, finance evidence and routing, 
 - [GitHub](https://github.com/mutassimalzeem)
 - [Portfolio](https://mutassimalzeem.vercel.app/)
 - [LinkedIn](https://www.linkedin.com/in/mutassimalzeem/)
+
+

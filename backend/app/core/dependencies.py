@@ -13,11 +13,11 @@ from app.api.auth import decode_access_token
 from app.core.database import get_db
 from app.models.user import User
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    creds: HTTPAuthorizationCredentials = Depends(security),
+    creds: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
     """Resolve the authenticated user from the bearer token.
@@ -26,6 +26,13 @@ def get_current_user(
     session that the endpoint dependency yields, and closing it would break
     the request-scoped unit of work.
     """
+    if creds is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = creds.credentials
 
     try:
