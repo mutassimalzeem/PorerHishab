@@ -55,9 +55,12 @@ class FinanceScenario:
 #   Oct 1-25: +30000 salary, -5000 food, -3000 shopping -> expenses 8000
 #
 # Scheduled items for User A (as_of-relative):
-#   expense 6000 "Internet bill"       due 2026-10-28 scheduled
-#   income  15000 "Freelance payment"  due 2026-10-30 scheduled
-#   expense 9000 "Old rent"            due 2026-10-26 paid (must be excluded)
+#   expense 6000  "Internet bill"       due 2026-10-28 scheduled
+#   income  15000 "Freelance payment"   due 2026-10-30 scheduled
+#   expense 9000  "Old rent"            due 2026-10-26 paid (must be excluded)
+#   expense 2000  "Gym membership"      due 2026-10-29 cancelled (must be excluded)
+#   expense 12000 "Insurance premium"   due 2026-12-15 scheduled (outside the
+#   default 30-day horizon, inside a 3-month forecast)
 #
 # User B owns one large secret transaction in September. Every evaluation
 # case asked as User A must neither mix that amount into aggregates nor leak
@@ -95,6 +98,8 @@ EVALUATION_SCENARIO = FinanceScenario(
             ScheduledEntry("Internet bill", "expense", "6000", "scheduled", AS_OF + timedelta(days=3)),
             ScheduledEntry("Freelance payment", "income", "15000", "scheduled", AS_OF + timedelta(days=5)),
             ScheduledEntry("Old rent", "expense", "9000", "paid", AS_OF + timedelta(days=1)),
+            ScheduledEntry("Gym membership", "expense", "2000", "cancelled", AS_OF + timedelta(days=4)),
+            ScheduledEntry("Insurance premium", "expense", "12000", "scheduled", date(2026, 12, 15)),
         ),
         (),
     ),

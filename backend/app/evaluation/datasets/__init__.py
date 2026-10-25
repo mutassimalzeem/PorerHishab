@@ -17,6 +17,7 @@ from app.evaluation.datasets.finance_scenario import (
     scenario_totals,
     seed_scenario,
 )
+from app.evaluation.datasets.grounded_chat_stress import STRESS_CASES
 from app.evaluation.datasets.finance_questions import EVALUATION_CASES
 
 __all__ = [
@@ -30,4 +31,5 @@ __all__ = [
     "scenario_totals",
     "seed_scenario",
     "EVALUATION_CASES",
+    "STRESS_CASES",
 ]

@@ -12,6 +12,7 @@ from app.evaluation.metrics import (
     summarize,
 )
 from app.evaluation.runner import (
+    ALL_CASES,
     EVALUATION_CASES,
     EVALUATION_SCENARIO,
     EVALUATION_SCENARIO_AS_OF,
@@ -21,6 +22,7 @@ from app.evaluation.runner import (
     run_dataset,
 )
 from app.evaluation.datasets.finance_scenario import AS_OF
+from app.evaluation.datasets.grounded_chat_stress import STRESS_CASES
 
 __all__ = [
     "SCORE_DIMENSIONS",
@@ -28,7 +30,9 @@ __all__ = [
     "EvaluationReport",
     "numeric_score",
     "summarize",
+    "ALL_CASES",
     "EVALUATION_CASES",
+    "STRESS_CASES",
     "EVALUATION_SCENARIO",
     "EVALUATION_SCENARIO_AS_OF",
     "format_report",

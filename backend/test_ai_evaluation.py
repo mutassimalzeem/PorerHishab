@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models import SavingsGoal, ScheduledCashflowItem
 from app.evaluation import (
+    ALL_CASES,
     EVALUATION_CASES,
     EVALUATION_SCENARIO,
     AS_OF,
@@ -24,6 +25,7 @@ from app.evaluation import (
     run_dataset,
 )
 from app.evaluation.datasets.finance_scenario import seed_scenario, clear_scenario
+from app.evaluation.datasets.grounded_chat_stress import STRESS_CASES
 
 
 @pytest.fixture
@@ -89,7 +91,8 @@ def test_full_finance_evaluation_passes(db, capsys):
     """Run the whole AI-12A dataset and require a clean report."""
     report = run_dataset(db)
     print(format_report(report))
-    assert report.case_count == len(EVALUATION_CASES)
+    assert report.case_count == len(ALL_CASES)
+    assert len(STRESS_CASES) >= 50, "AI-12B should add substantial stress coverage"
     assert report.passed, format_report(report)
     metrics = report.metrics
     for dimension in ("intent", "date", "numeric", "status", "grounding", "safety"):
