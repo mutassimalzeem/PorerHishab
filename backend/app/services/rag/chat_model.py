@@ -1,17 +1,6 @@
-from __future__ import annotations
-
-from langchain_openai import ChatOpenAI
-
-from app.core.config import settings
+"""Optional chat factory, imported without loading vector or provider dependencies."""
+from app.services.ai.provider import build_chat_model
 
 
-def get_chat_model() -> ChatOpenAI:
-    if not settings.OPENAI_KEY:
-        raise RuntimeError("OPENAI_KEY is required for chat.")
-
-    return ChatOpenAI(
-        model=settings.OPENAI_CHAT_MODEL,
-        api_key=settings.OPENAI_KEY,
-        base_url=settings.OPENAI_BASE_URL,
-        temperature=0,
-    )
+def get_chat_model():
+    return build_chat_model()

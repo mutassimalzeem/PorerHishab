@@ -14,17 +14,21 @@ The product direction is a Bangla-first AI financial coach: **Know what you can 
 - CSV transaction ingestion, transaction creation/listing, filtering, search, and category corrections.
 - Categorization using merchant preferences, deterministic rules, and validated LLM fallback.
 - Financial analytics: income, expenses, savings rate, monthly and month-over-month breakdowns, categories, merchants, recurring charges, cashflow history, and budget baselines.
-- Finance Q&A using structured financial evidence and transaction retrieval, with LLM-generated answers.
+- Finance Q&A using exact date-scoped SQL aggregates and structured coverage; optional semantic retrieval remains isolated.
 - Budget forecasting from historical and recent monthly spending, with category forecasts.
-- Savings goal planning and AI-generated savings actions grounded in the plan.
-- AI-generated financial insights grounded in analytics.
+- Savings goal planning, persistent user-reported goals, deterministic recommendations and optional AI savings actions.
+- Deterministic proactive insights and optional AI presentation grounded in analytics.
 - PostgreSQL models, Alembic migrations, and backend unit/API/integration tests.
 
-AI features require a configured compatible provider and credentials. Their presence in the source does not imply production readiness or guaranteed financial outcomes.
+The complete coach milestone adds deterministic date-aware chat, savings recommendations,
+proactive insights, persistent self-reported goals, scheduled cashflow CRUD, and opt-in obligation
+scenarios. These work without an external AI provider. Optional categorization and wording use a
+configured compatible provider when explicitly enabled. See [AI coach APIs and setup](docs/ai-coach.md)
+for endpoint examples, assumptions, migration instructions, privacy and offline testing.
 
 ### In progress
 
-- Cashflow forecast v1: the `/forecast/cashflow` API and deterministic monthly projection service are implemented on the current feature branch. Contract documentation, edge-case coverage, and authenticated API/database validation are being completed before merge.
+- Cashflow forecast v1 and spending decisions are implemented. The complete coach branch adds separate, opt-in scheduled-obligation scenarios; review and deployment remain pending.
 - Final repository and public-facing brand consistency checks.
 
 
@@ -90,7 +94,7 @@ PorerHishab/
 
 The Python import package remains `app`. The distribution name is `porer-hishab-backend`; `porer_hishab` is the convention for future brand-specific Python identifiers. No source package rename is needed.
 
-Backend tools include FastAPI, Pydantic, SQLAlchemy, PostgreSQL, Alembic, pandas, Uvicorn, LangChain, and Chroma. AI/RAG modules also require their provider and LangChain dependencies in the environment; the existing requirements file is not a complete reproducible AI environment specification.
+Core backend tools include FastAPI, Pydantic, SQLAlchemy, PostgreSQL, Alembic, pandas and Uvicorn. Optional provider/RAG dependencies are separated into `backend/requirements-ai.txt` and `backend/requirements-rag.txt`; they are unnecessary for core coach APIs.
 
 `architecture.md` is a target layout rather than an exact listing of implemented files.
 
@@ -112,7 +116,7 @@ Backend tools include FastAPI, Pydantic, SQLAlchemy, PostgreSQL, Alembic, pandas
 | GET | `/insights/ai` | AI financial insights |
 | POST | `/chat/ask` | Finance Q&A |
 | GET | `/forecast/budget` | Historical-spending budget forecast |
-| GET | `/forecast/cashflow` | In-progress cashflow projection |
+| GET | `/forecast/cashflow` | Historical monthly cashflow projection |
 | POST | `/planner/savings` | Savings goal plan |
 | POST | `/planner/savings/coach` | Plan plus AI guidance |
 
@@ -160,7 +164,7 @@ python -m pytest backend -q
 uvicorn app.main:app --reload
 ```
 
-The API runs at `http://localhost:8000`, with documentation at `http://localhost:8000/docs`. Database-backed tests require PostgreSQL. Some existing RAG smoke tests call an external embedding provider and write vector data; they require configured credentials and network access.
+The API runs at `http://localhost:8000`, with documentation at `http://localhost:8000/docs`. Database-backed tests require PostgreSQL. The historical live embedding smoke is opt-in (`RUN_LIVE_AI_TESTS=1`); the normal test suite uses no external AI provider. Optional RAG packages are needed to import historical RAG tests.
 
 `python scripts/check_uvicorn.py` provides a startup smoke check. From `backend/`, the Alembic shim and pytest bootstrap also support local commands, but the repository root remains the recommended starting point.
 
@@ -175,7 +179,7 @@ The rebrand changes display names and package metadata, not persistence identifi
 
 These are **legacy storage identifiers retained for compatibility**. Keep the current checkout directory and Compose project identity when using existing local volumes: a different directory/project name can select a different Compose-prefixed volume even if the volume key is unchanged.
 
-Tables remain `users`, `accounts`, `transactions`, `transaction_category_corrections`, and `merchant_category_preferences`. No Alembic filenames, revisions, or database schema changes are required.
+Storage identifiers remain compatible. Scheduled items use `scheduled_cashflow_items`; the complete coach milestone adds `savings_goals` through an additive Alembic migration. Historical migrations are unchanged.
 
 The historical development branch name `feature/zyra-v2` and the historical report in `docs/db-batch-db08-db10-status.md` retain their original names for accuracy.
 
@@ -199,7 +203,7 @@ python -m pytest backend/test_cashflow_forecast.py -q
 git diff --check
 ```
 
-Tests cover calculation services, categorization, finance evidence and routing, schemas, repository/database round trips, user isolation, and API behavior. AI tests include mocked checks and live-provider smoke checks; passing local tests does not establish production readiness.
+Tests cover calculation services, categorization, finance evidence and routing, schemas, repository/database round trips, user isolation, and API behavior. AI tests mock provider failures and malformed output; live-provider smoke checks require explicit opt-in. Passing local tests does not establish production readiness.
 
 ## Author
 
