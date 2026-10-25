@@ -61,14 +61,17 @@ _RULES: tuple[_Rule, ...] = (
                   "subway",), category="Food", confidence=0.95,
         label="Food merchant",
     ),
-    _Rule(
-        keywords=("restaurant", "lunch", "dinner", "breakfast", "dining",),
-        category="Food", confidence=0.85, label="food-related description",
-    ),
     # -- Transport --
+    # Ride-hailing/service keywords sit above the generic meal descriptors so
+    # a transit keyword (e.g. "taxi fare ... dinner") beats "dinner".
     _Rule(
         keywords=("uber", "lyft", "pathao", "obhai", "shohoz", "taxi",),
         category="Transport", confidence=0.95, label="Ride-hailing service",
+    ),
+    # -- Food descriptors (generic meal words after specific merchants) --
+    _Rule(
+        keywords=("restaurant", "lunch", "dinner", "breakfast", "dining",),
+        category="Food", confidence=0.85, label="food-related description",
     ),
     # -- Groceries --
     _Rule(
