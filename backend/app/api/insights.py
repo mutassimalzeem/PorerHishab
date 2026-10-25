@@ -198,7 +198,7 @@ def insights_ai(
         # Missing API key or missing optional dependency.
         raise HTTPException(
             status_code=503,
-            detail=str(exc),
+            detail="The optional insight provider is unavailable.",
         ) from exc
     except Exception as exc:
         # Avoid exposing provider errors or request details to API clients.

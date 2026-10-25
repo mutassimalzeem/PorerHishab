@@ -30,7 +30,9 @@ from sqlalchemy.orm import Session
 from app.repositories.transaction_repository import (
     get_merchant_category_preference,
 )
-from app.schemas.categorization import CategorizedTransaction, LLMCategorization
+from app.schemas.categorization import (
+    CategorizedTransaction, LLMCategorization, UserPreferenceCategorization,
+)
 from app.services.categorization.categories import UNCATEGORIZED
 from app.services.categorization.llm import CategorizationLLMError
 from app.services.categorization.llm import categorize_with_llm
@@ -79,12 +81,12 @@ def get_user_preference_result(
     user_id,
     merchant,
     normalized_merchant,
-) -> CategorizedTransaction | None:
+) -> UserPreferenceCategorization | None:
     """Build the categorization result for a per-user merchant preference.
 
     Normalizes the merchant text, looks up ``(
     user_id, normalized_merchant)`` in ``merchant_category_preferences``,
-    and returns a :class:`CategorizedTransaction` on a hit — or ``None``
+    and returns a :class:`UserPreferenceCategorization` on a hit — or ``None``
     when there is no preference (or no merchant to look up).
     """
     if db is None or user_id is None:
@@ -102,7 +104,7 @@ def get_user_preference_result(
     if preference is None:
         return None
 
-    return CategorizedTransaction(
+    return UserPreferenceCategorization(
         category=preference.category,
         confidence=1.0,
         method="user_preference",
@@ -118,7 +120,9 @@ def categorize_transaction(
     *,
     db: Session | None = None,
     user_id: int | None = None,
-) -> CategorizedTransaction:
+    allow_llm: bool = True,
+    legacy_rules: bool = False,
+) -> CategorizedTransaction | UserPreferenceCategorization:
     """Categorize a single transaction.
 
     ``transaction`` may be a SQLAlchemy ``Transaction``, a schema, or a
@@ -146,6 +150,15 @@ def categorize_transaction(
     if preference is not None:
         return preference
 
+    # Preserve established /transactions creation labels while sharing preferences,
+    # fallback validation, and new rules for descriptions the legacy table misses.
+    if legacy_rules:
+        from app.services.categorization.categorizer import categorize_text
+        legacy_category = categorize_text(" ".join(value for value in (merchant, description) if value))
+        if legacy_category != "Other":
+            return CategorizedTransaction(category=legacy_category, confidence=0.85,
+                                          method="rule", reason="Matched an existing transaction-create rule.")
+
     # 2. RULES
     rule_hit = match_rules(
         merchant=merchant,
@@ -159,6 +172,9 @@ def categorize_transaction(
     if not (merchant or normalized_merchant or description):
         return _fallback_result("No merchant or description text available.")
 
+    if not allow_llm:
+        return _fallback_result("Optional classification limit reached; review the category manually.")
+
     # 3. LLM
     try:
         result = categorize_with_llm(
@@ -169,7 +185,7 @@ def categorize_transaction(
         )
         return _result_from_llm(result)
     except (CategorizationLLMError, ValidationError) as exc:
-        logger.warning("LLM categorization failed, falling back: %s", exc)
+        logger.warning("Optional categorization unavailable; using fallback")
         return _fallback_result(
-            f"LLM categorization failed or returned invalid output: {exc}"
+            "LLM categorization failed or returned invalid output; review manually."
         )

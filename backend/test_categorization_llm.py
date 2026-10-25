@@ -28,6 +28,8 @@ def _stub_chat_model(response_content: str):
 def stub_llm(monkeypatch):
     """Patch ``get_chat_model`` inside the llm module; returns a recorder."""
 
+    monkeypatch.setattr(llm_module.settings, "AI_EXTERNAL_ENABLED", True)
+
     def _install(response_content: str) -> dict:
         chat_model = _stub_chat_model(response_content)
         calls: list[list[tuple[str, str]]] = []
@@ -142,6 +144,7 @@ def test_missing_category_is_rejected(stub_llm):
 
 
 def test_transport_error_is_wrapped(monkeypatch):
+    monkeypatch.setattr(llm_module.settings, "AI_EXTERNAL_ENABLED", True)
     def broken_chat_model():
         raise RuntimeError("provider is down")
 

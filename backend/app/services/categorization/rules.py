@@ -111,8 +111,21 @@ _RULES: tuple[_Rule, ...] = (
     ),
 )
 
+
+# Unicode keyword literals avoid depending on the terminal's output encoding.
+_RULES += (
+    _Rule(("chaldal", "চালডাল", "স্বপ্ন", "বাজার"), "Groceries", 0.95, "Grocery merchant"),
+    _Rule(("খাবার", "ফুডপান্ডা"), "Food", 0.9, "Dining description"),
+    _Rule(("বিদ্যুৎ বিল", "গ্যাস বিল", "পানির বিল"), "Bills", 0.95, "Utility description"),
+    _Rule(("বেতন",), "Salary", 0.95, "Salary description"),
+    _Rule(("tuition", "school fee", "university", "স্কুল ফি"), "Education", 0.9, "Education description"),
+    _Rule(("রিকশা", "পাঠাও", "উবার", "বাস ভাড়া"), "Transport", 0.9, "Transport description"),
+    _Rule(("বাসা ভাড়া",), "Housing", 0.9, "Housing description"),
+    _Rule(("ওষুধ", "হাসপাতাল"), "Healthcare", 0.9, "Healthcare description"),
+)
+
 _COMPILED = tuple(
-    (re.compile(rf"\b{re.escape(keyword)}\b", re.IGNORECASE), rule)
+    (re.compile(rf"(?<![\w\u0980-\u09ff]){re.escape(keyword)}(?![\w\u0980-\u09ff])", re.IGNORECASE), rule)
     for rule in _RULES
     for keyword in rule.keywords
 )
@@ -138,6 +151,12 @@ def match_rules(
 
     if not text.strip():
         return None
+
+    from app.core.config import settings
+    from app.services.categorization.categories import ALLOWED_CATEGORIES
+    for keyword, category in settings.CATEGORY_KEYWORD_RULES.items():
+        if keyword.strip() and category in ALLOWED_CATEGORIES and re.search(r"(?<![\w\u0980-\u09ff])" + re.escape(keyword.strip()) + r"(?![\w\u0980-\u09ff])", text, re.IGNORECASE):
+            return CategorizedTransaction(category=category, confidence=0.9, method="rule", reason="Matched a configured category keyword.").model_dump()
 
     for pattern, rule in _COMPILED:
         match = pattern.search(text)

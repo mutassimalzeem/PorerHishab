@@ -4,6 +4,8 @@ Uses the shared :func:`app.core.dependencies.get_current_user` dependency, so
 every row written or read here is bound to the authenticated user.
 """
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -12,6 +14,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.transactions import Transaction
 from app.models.user import User
+from app.models.account import Account
+from app.services.categorization.service import categorize_transaction
 from app.repositories.transaction_repository import (
     count_transactions,
     create_transactions,
@@ -99,15 +103,15 @@ def create_transaction(
     the merchant/description text.  ``transaction_type`` defaults to
     ``expense``/``income`` based on the amount's sign.
     """
+    if payload.account_id is not None:
+        account = db.query(Account).filter(Account.id == payload.account_id, Account.user_id == current.id).first()
+        if account is None:
+            raise HTTPException(404, "Account not found")
     category = payload.category
-
+    classification = None
     if not category:
-        text = " ".join(
-            value
-            for value in [payload.merchant, payload.description]
-            if value
-        )
-        category = categorize_text(text) or None
+        classification = categorize_transaction(payload, db=db, user_id=current.id, legacy_rules=True)
+        category = classification.category
 
     transaction_type = payload.transaction_type
 
@@ -126,6 +130,9 @@ def create_transaction(
         balance=payload.balance,
         transaction_type=transaction_type,
         category=category,
+        category_method=classification.method if classification else "user",
+        category_confidence=classification.confidence if classification else Decimal("1.000"),
+        category_reason=classification.reason if classification else "Category supplied by the user.",
         subcategory=payload.subcategory,
         source=payload.source or "manual",
         is_recurring=payload.is_recurring,

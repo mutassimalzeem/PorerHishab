@@ -104,6 +104,8 @@ def execute_finance_query(
             k=k,
         )
 
+        transactions = [item for item in transactions if item.metadata.get("user_id") == user_id]
+
         rag_data = [
             {
                 "content": transaction.content,

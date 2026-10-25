@@ -155,10 +155,13 @@ def calculate_savings_plan(
         raise ValueError("current_saved cannot be negative")
 
     if today is None:
-        today = date.today()
+        from app.services.finance.coach import today_dhaka
+        today = today_dhaka()
 
     if target_date < today:
         raise ValueError("target_date cannot be in the past")
+
+    transactions = [item for item in transactions if item.date <= today and item.amount != 0]
 
     remaining_goal = max(
         Decimal("0"),
@@ -206,6 +209,8 @@ def calculate_savings_plan(
 
     if required_monthly_saving == 0:
         status = "complete"
+    elif not transactions:
+        status = "insufficient_data"
     elif estimated_surplus >= required_monthly_saving:
         status = "on_track"
     else:
@@ -255,7 +260,9 @@ def calculate_savings_plan(
         estimated_surplus + recommended_cut
     )
 
-    return {
+    result = {
+        "historical_transaction_count": len(transactions),
+        "limitations": ["Current savings are caller-reported; imported history may be incomplete and future income is uncertain."],
         "goal_amount": _q(goal_amount),
         "current_saved": _q(current_saved),
         "remaining_goal": _q(remaining_goal),
@@ -282,6 +289,11 @@ def calculate_savings_plan(
         "status": status,
         "recommendations": recommendations,
     }
+    if not transactions:
+        for field in ("estimated_monthly_income", "estimated_monthly_spending", "estimated_monthly_surplus", "projected_monthly_saving"):
+            result[field] = None
+        result["limitations"].append("No usable actual history is recorded; income, spending and affordability are unknown.")
+    return result
 
 
 def get_user_savings_plan(
@@ -294,7 +306,6 @@ def get_user_savings_plan(
     transactions = list_transactions_in_range(
         db,
         user_id,
-        limit=10000,
     )
 
     return calculate_savings_plan(

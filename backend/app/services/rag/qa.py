@@ -30,6 +30,8 @@ def answer_finance_question(
         k=k,
     )
 
+    transactions = [item for item in transactions if item.metadata.get("user_id") == user_id]
+
     context = format_retrieved_transactions(transactions)
 
     prompt = FINANCE_QA_PROMPT.invoke(

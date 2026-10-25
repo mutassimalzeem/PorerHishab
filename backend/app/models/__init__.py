@@ -1,3 +1,4 @@
+from app.models.savings_goal import SavingsGoal
 from app.models.account import Account
 from app.models.category_correction import TransactionCategoryCorrection
 from app.models.transactions import Transaction
@@ -11,5 +12,6 @@ __all__ = [
     "Transaction",
     "TransactionCategoryCorrection",
     "MerchantCategoryPreference",
+    "SavingsGoal",
     "ScheduledCashflowItem"
 ]

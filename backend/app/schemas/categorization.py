@@ -1,6 +1,6 @@
 """Schemas for the transaction categorization pipeline.
 
-Two models live here:
+Three models live here:
 
 * :class:`LLMCategorization` — the *raw* LLM answer.  It is the only
   representation of model output allowed across the pipeline boundary;
@@ -10,8 +10,11 @@ Two models live here:
   alongside the transaction as ``category``/``confidence``/.. ``method``/
   ``reason``).
 
-Malformed model output must never reach the database, so every category
-value is validated against :data:`ALLOWED_CATEGORIES` and every
+* :class:`UserPreferenceCategorization` accepts a bounded, nonblank category
+  explicitly chosen by the user, without extending the system taxonomy.
+
+Malformed model output must never reach the database, so system-generated
+category values are validated against :data:`ALLOWED_CATEGORIES` and every
 confidence value must be between 0 and 1.
 """
 
@@ -61,7 +64,7 @@ class LLMCategorization(_CategoryValidation):
 
     category: str
     confidence: float
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=400)
 
     @field_validator("reason", mode="before")
     @classmethod
@@ -77,4 +80,20 @@ class CategorizedTransaction(_CategoryValidation):
     category: str
     confidence: float
     method: CategorizationMethod
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=400)
+
+
+class UserPreferenceCategorization(BaseModel):
+    """Trusted user correction, separate from the system/LLM taxonomy boundary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: str = Field(min_length=1, max_length=100)
+    confidence: Literal[1.0] = 1.0
+    method: Literal["user_preference"] = "user_preference"
+    reason: str | None = Field(default=None, max_length=400)
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value):
+        return value.strip() if isinstance(value, str) else value

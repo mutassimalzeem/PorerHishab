@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_CHECK_CTX_LENGTH: bool = True
     OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
 
+    # External inference is optional. Categorization can disclose description text;
+    # keep it disabled until the operator explicitly enables it.
+    CATEGORY_EXTRA_LABELS: list[str] = []
+    CATEGORY_KEYWORD_RULES: dict[str, str] = {}
+    AI_EXTERNAL_ENABLED: bool = False
+    AI_TIMEOUT_SECONDS: float = 10
+    AI_MAX_OUTPUT_TOKENS: int = 800
+
     VECTOR_STORE_PATH: str = "./data/chroma"
     VECTOR_COLLECTION_NAME: str = "zyra_transactions"
 

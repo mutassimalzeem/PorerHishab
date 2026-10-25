@@ -1,0 +1,3 @@
+# Optional legacy semantic retrieval and historical RAG tests.
+-r requirements-ai.txt
+langchain-chroma==1.1.0

@@ -168,3 +168,19 @@ def test_unknown_category_from_llm_is_sanitized(monkeypatch):
     # Invalid model output degrades to Uncategorized, never crashes.
     assert result.category == "Uncategorized"
     assert result.method == "fallback"
+
+
+def test_custom_user_categories_do_not_weaken_system_validation():
+    import pytest
+    from pydantic import ValidationError
+    from app.schemas.categorization import CategorizedTransaction, LLMCategorization, UserPreferenceCategorization
+
+    assert UserPreferenceCategorization(category=" Family support ").category == "Family support"
+    with pytest.raises(ValidationError):
+        LLMCategorization(category="Family support", confidence=0.9)
+    for method in ("rule", "llm", "fallback"):
+        with pytest.raises(ValidationError):
+            CategorizedTransaction(category="Family support", confidence=0.9, method=method)
+    for invalid in (" ", "x" * 101):
+        with pytest.raises(ValidationError):
+            UserPreferenceCategorization(category=invalid)

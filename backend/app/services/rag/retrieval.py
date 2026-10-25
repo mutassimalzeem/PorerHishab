@@ -38,4 +38,5 @@ def retrieve_transactions(query: str, user_id: int, k: int = 5) -> list[Retrieve
             metadata=document.metadata,
         )
         for document in documents
+        if document.metadata.get("user_id") == user_id
     ]

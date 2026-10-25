@@ -54,50 +54,42 @@ def _prepare_analytics(analytics: dict[str, Any]) -> str:
     return json.dumps(payload, default=str, ensure_ascii=False)
 
 
-def generate_financial_insights(
-    analytics: dict[str, Any],
-) -> FinancialInsights:
-    """Explain application-calculated analytics using the configured LLM."""
-    if not settings.OPENAI_KEY:
-        raise RuntimeError(
-            "OPENAI_KEY is not configured. Add it to your root .env file."
-        )
+def generate_financial_insights(analytics: dict[str, Any]) -> FinancialInsights:
+    """Provider can select grounded observations, never author financial claims."""
+    from decimal import Decimal, InvalidOperation
+    from typing import Annotated
+    from pydantic import BaseModel, ConfigDict, Field
+    from app.schemas.financial_insights import FinancialInsight
+    from app.services.ai.provider import structured_optional
 
+    class Selection(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        indices: list[Annotated[int, Field(ge=0, le=5)]] = Field(max_length=6)
+
+    monthly = analytics.get("monthly") or []
+    candidates = []
+    if not monthly:
+        return FinancialInsights()
+    last = monthly[-1]
     try:
-        from langchain_openai import ChatOpenAI
-    except ImportError as exc:
-        raise RuntimeError(
-            "langchain-openai is not installed. Install the dependency "
-            "in the project virtual environment."
-        ) from exc
-
-    llm_options: dict[str, Any] = {
-        "model": settings.OPENAI_CHAT_MODEL,
-        "api_key": settings.OPENAI_KEY,
-        "temperature": 0,
-        "timeout": 30,
-        "max_retries": 2,
-    }
-
-    if settings.OPENAI_BASE_URL:
-        llm_options["base_url"] = settings.OPENAI_BASE_URL
-
-    llm = ChatOpenAI(**llm_options)
-    structured_llm = llm.with_structured_output(FinancialInsights)
-
-    result = structured_llm.invoke(
-        [
-            ("system", SYSTEM_PROMPT),
-            (
-                "human",
-                "Generate useful financial observations from these "
-                "application-calculated analytics:\n\n"
-                + _prepare_analytics(analytics),
-            ),
-        ]
-    )
-
-    if isinstance(result, FinancialInsights):
-        return result
-    
-    return FinancialInsights.model_validate(result)
+        net = Decimal(str(last.get("net")))
+        if net.is_finite() and net < 0:
+            candidates.append(FinancialInsight(type="cashflow_risk", severity="warning",
+                title="Recorded expenses exceed income",
+                message="Review the latest recorded month's spending and confirm import completeness before changing your plan."))
+        elif net.is_finite() and net > 0:
+            candidates.append(FinancialInsight(type="savings_rate", severity="positive",
+                title="Recorded income exceeds expenses",
+                message="The latest recorded month has a positive net amount; confirm missing bills before committing it to savings."))
+    except (InvalidOperation, TypeError, ValueError):
+        pass
+    if not candidates:
+        return FinancialInsights()
+    payload = json.dumps([item.model_dump() for item in candidates], ensure_ascii=False)
+    selection = structured_optional(Selection,
+        "Select useful supplied observation indices only. Do not create observations or financial claims. Return JSON with indices.", payload)
+    if selection is not None:
+        chosen = [candidates[index] for index in dict.fromkeys(selection.indices) if index < len(candidates)]
+        if chosen:
+            return FinancialInsights(insights=chosen)
+    return FinancialInsights(insights=candidates)

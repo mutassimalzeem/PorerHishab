@@ -51,9 +51,7 @@ class ScheduledCashflowItem(Base):
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        
-    )
+        nullable=False)
 
     title: Mapped[str] = mapped_column(
         String(160),
@@ -72,9 +70,7 @@ class ScheduledCashflowItem(Base):
 
     due_date: Mapped[date] = mapped_column(
         Date,
-        nullable=False,
-        
-    )
+        nullable=False)
 
     status: Mapped[str] = mapped_column(
         String(12),
