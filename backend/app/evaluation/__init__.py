@@ -1,5 +1,5 @@
 """AI evaluation layer (AI-12A foundation, AI-12C categorization, AI-12D
-recommendations and proactive insights).
+recommendations and proactive insights, AI-12E quality gate).
 
 Evaluation is deliberately offline: every case runs the deterministic
 pipeline against seeded or labeled ground truth and compares structured
@@ -87,6 +87,32 @@ from app.evaluation.recommendation_runner import (
     run_recommendation_dataset,
 )
 
+# -- AI-12E: quality gate -------------------------------------------------------
+# Imported lazily (PEP 562) so ``python -m app.evaluation.quality_gate`` does
+# not emit the runpy re-import warning.
+_GATE_EXPORTS = {
+    "PASS": "PASS", "FAIL": "FAIL", "ERROR": "ERROR",
+    "QualityThresholds": "QualityThresholds",
+    "QualityGateResult": "QualityGateResult",
+    "SectionResult": "SectionResult",
+    "format_quality_report": "format_quality_report",
+    "run_quality_gate": "run_quality_gate",
+    "run_quality_gate_main": "main",
+}
+
+
+def __getattr__(name):  # noqa: D103 - PEP 562 lazy attribute
+    export = _GATE_EXPORTS.get(name)
+    if export is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    module = importlib.import_module("app.evaluation.quality_gate")
+    value = getattr(module, export)
+    globals()[name] = value
+    return value
+
+
 __all__ = [
     "SCORE_DIMENSIONS",
     "CaseResult",
@@ -144,4 +170,14 @@ __all__ = [
     "run_plan_case",
     "run_recommendation_dataset",
     "validate_recommendation_dataset",
+    # AI-12E quality gate
+    "PASS",
+    "FAIL",
+    "ERROR",
+    "QualityThresholds",
+    "QualityGateResult",
+    "SectionResult",
+    "format_quality_report",
+    "run_quality_gate",
+    "run_quality_gate_main",
 ]
