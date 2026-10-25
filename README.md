@@ -44,7 +44,7 @@ for endpoint examples, assumptions, migration instructions, privacy and offline 
 
 ### Planned
 
-- Frontend dashboard and Bangla/Roman Bangla interaction. No frontend source exists in this repository yet.
+- Full Bangla/Roman Bangla interaction. The React frontend now lives in `frontend/`; English questions and Bangla-ready content are supported.
 - MFS SMS and bank PDF ingestion, banking integrations, and automatic syncing.
 - Explicit upcoming-bill/income scheduling and safe-to-spend decisions.
 - WhatsApp/Messenger delivery, household tools, and production deployment.
@@ -213,4 +213,6 @@ Tests cover calculation services, categorization, finance evidence and routing, 
 - [Portfolio](https://mutassimalzeem.vercel.app/)
 - [LinkedIn](https://www.linkedin.com/in/mutassimalzeem/)
 
+## Frontend
 
+The React + TypeScript application is in [`frontend/`](frontend/README.md), with overview, cashflow, transactions, plans, insights, Ask and settings screens connected to the existing API. Start the backend, then run `npm ci` and `npm run dev` from `frontend/`. See the [frontend implementation audit](docs/frontend-implementation.md) for API contracts, verification results and limitations.
