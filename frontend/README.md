@@ -1,6 +1,6 @@
 # PorerHishab frontend
 
-A React + TypeScript + Vite application connected to the existing FastAPI backend. See [the implementation audit](../docs/frontend-implementation.md) for UX decisions, API contracts and limitations.
+A React + TypeScript + Vite application connected to the existing FastAPI backend. The current refinement adds direct AI-13 snapshot/coverage integration, keyboard-accessible chart inspection and supported goal/schedule editing. See [the implementation audit](../docs/frontend-implementation.md) for UX decisions, API contracts and limitations.
 
 ## Run
 
@@ -37,11 +37,11 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-The test suite covers unknown versus zero, Dhaka date boundaries, authenticated requests, refresh concurrency, expiry, validation, CSV content types, empty dashboards, grounded Ask responses and stale request protection. Automated accessibility checks cover representative page states through axe-core; they do not certify WCAG compliance or replace keyboard and screen-reader review.
+The test suite covers native dialog focus, goal editing, monthly chart inspection, sign-out/refresh races, unknown versus zero, Dhaka date boundaries, authenticated requests, refresh concurrency, expiry, validation, CSV content types, empty dashboards, grounded Ask responses and stale request protection. Automated accessibility checks cover representative page states through axe-core; they do not certify WCAG compliance or replace keyboard and screen-reader review.
 
 ## Deploy
 
-`npm run build` creates `dist`. Serve it behind HTTPS with SPA fallback to `index.html`. Route `/api/*` to the backend and strip the `/api` prefix, or set a trusted absolute `VITE_API_BASE_URL` at build time. `npm run preview` only serves static build output; it does not provide the development API proxy. No backend code, database migrations or credentials are changed by this frontend.
+`npm run build` creates `dist`. Serve it behind HTTPS with SPA fallback to `index.html`. Route `/api/*` to the backend and strip the `/api` prefix, or set a trusted absolute `VITE_API_BASE_URL` at build time. `npm run preview` only serves static build output; it does not provide the development API proxy. The frontend now consumes the additive read-only `/finance/intelligence` adapter. Deploy the matching backend revision alongside it. Existing calculations, routes, database migrations and credentials are preserved.
 
 IBM Plex Sans and Noto Sans Bengali are loaded through Google Fonts; installed/system sans-serif fonts provide fallbacks. Self-host fonts for production deployments that prohibit external font requests.
 
@@ -53,3 +53,18 @@ npm run test:browser
 ```
 
 Browser tests use isolated synthetic API fixtures; they never sign in to or write to a real account. Desktop/mobile QA screenshots and exact results are linked from the implementation audit. They do not establish live API integration or full accessibility compliance.
+
+## API contract synchronization
+
+Response types in `src/generated/api.ts` are generated from the actual FastAPI OpenAPI schema. `src/domain.ts` selects the fields each view needs from those generated types. Monetary response fields remain Decimal strings. Legacy authentication endpoints lack response models, so `User` and `Tokens` remain explicit adapters verified by real-route backend tests.
+
+Run from the repository root after backend schema changes:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/generate_frontend_contracts.py
+.\.venv\Scripts\python.exe scripts/generate_frontend_contracts.py --check
+```
+
+Schema generation needs backend dependencies but makes no database query or external request. Do not format generated files by hand. CI checks for drift, runs the AI-13 route/engine tests, then runs frontend typecheck, lint, unit, build and desktop/mobile browser checks.
+
+See [the refinement audit](../docs/frontend-refinement.md) for the current changes, validation scope and remaining product limitations.

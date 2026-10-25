@@ -1,4 +1,6 @@
-# Frontend product map and implementation audit
+# Initial frontend product map and implementation audit
+
+This report records the first frontend implementation. The current [refinement audit](frontend-refinement.md) supersedes its architecture, API integration and validation notes.
 
 ## Discovery and architecture
 

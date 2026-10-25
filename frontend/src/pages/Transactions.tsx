@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, Upload, X } from "lucide-react";
+import { Plus, Search, Upload } from "lucide-react";
 import type { Transaction } from "../domain";
 import { api } from "../lib/api";
 import { errorMessage, today } from "../lib/format";
@@ -14,6 +14,7 @@ import {
   Pager,
   ResourceView,
 } from "../components/ui";
+import { Dialog } from "../components/Dialog";
 import { TransactionTable } from "../components/TransactionTable";
 export function Transactions() {
   const [params, setParams] = useSearchParams();
@@ -132,7 +133,7 @@ export function Transactions() {
         }}
       />
       <p className="muted">
-        CSV: amount required; date, description, merchant and category
+        CSV: date and amount required; description, merchant and category
         supported. Positive amounts are income; negative amounts are expenses.
       </p>
       {notice && (
@@ -140,59 +141,51 @@ export function Transactions() {
           {notice}
         </p>
       )}
-      {error && <ErrorNotice message={error} />}
-      {params.get("add") === "1" && (
-        <section className="editor">
-          <div className="section-heading">
-            <h2>Record a transaction</h2>
-            <button
-              aria-label="Close transaction form"
-              onClick={() => {
-                params.delete("add");
-                setParams(params);
-              }}
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <form onSubmit={create} className="form-grid">
-            <Field
-              label="Description"
-              name="description"
-              required
-              maxLength={1000}
-            />
-            <Field
-              label="Merchant (optional)"
-              name="merchant"
-              maxLength={255}
-            />
-            <Field
-              label="Date"
-              name="date"
-              type="date"
-              required
-              defaultValue={today()}
-            />
-            <Field
-              label="Signed amount (BDT)"
-              name="amount"
-              type="number"
-              step="0.01"
-              required
-              hint="Use a negative amount for an expense."
-            />
-            <Field
-              label="Category (optional)"
-              name="category"
-              maxLength={100}
-            />
-            <button className="primary form-end" disabled={busy}>
-              {busy ? "Saving..." : "Record transaction"}
-            </button>
-          </form>
-        </section>
+      {error && !selected && params.get("add") !== "1" && (
+        <ErrorNotice message={error} />
       )}
+      <Dialog
+        open={params.get("add") === "1"}
+        title="Record a transaction"
+        description="Record money that has already occurred. Use negative amounts for expenses."
+        busy={busy}
+        onClose={() => {
+          const next = new URLSearchParams(params);
+          next.delete("add");
+          setParams(next);
+          setError(null);
+        }}
+      >
+        {error && <ErrorNotice message={error} />}
+        <form onSubmit={create} className="form-grid">
+          <Field
+            label="Description"
+            name="description"
+            required
+            maxLength={1000}
+          />
+          <Field label="Merchant (optional)" name="merchant" maxLength={255} />
+          <Field
+            label="Date"
+            name="date"
+            type="date"
+            required
+            defaultValue={today()}
+          />
+          <Field
+            label="Signed amount (BDT)"
+            name="amount"
+            type="number"
+            step="0.01"
+            required
+            hint="Use a negative amount for an expense."
+          />
+          <Field label="Category (optional)" name="category" maxLength={100} />
+          <button className="primary form-end" disabled={busy}>
+            {busy ? "Saving..." : "Record transaction"}
+          </button>
+        </form>
+      </Dialog>
       <form
         className="filters"
         onSubmit={(e) => {
@@ -285,45 +278,48 @@ export function Transactions() {
           </>
         )}
       </ResourceView>
-      {selected && (
-        <section className="editor" aria-label="Transaction details">
-          <div className="section-heading">
-            <h2>
-              {selected.merchant ||
-                selected.description ||
-                "Transaction details"}
-            </h2>
-            <button
-              aria-label="Close transaction details"
-              onClick={() => setSelected(null)}
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <Amount value={selected.amount} />
-          <p>{selected.description}</p>
-          <p className="muted">
-            Source: {selected.source || "Not supplied"} / Fee:{" "}
-            <Amount value={selected.fee} />
-          </p>
-          <p>
-            {selected.category_reason ||
-              "No categorization explanation supplied."}
-          </p>
-          <form onSubmit={correct} className="inline-form">
-            <Field
-              label="Correct category"
-              name="category"
-              required
-              maxLength={100}
-              defaultValue={selected.category || ""}
-            />
-            <button className="primary form-end" disabled={busy}>
-              Save category
-            </button>
-          </form>
-        </section>
-      )}
+      <Dialog
+        open={selected !== null}
+        title="Transaction details"
+        description="Review the recorded amount and the reason for its category."
+        drawer
+        busy={busy}
+        onClose={() => {
+          setSelected(null);
+          setError(null);
+        }}
+      >
+        {selected && (
+          <>
+            <h3>
+              {selected.merchant || selected.description || "Transaction"}
+            </h3>
+            {error && <ErrorNotice message={error} />}
+            <Amount value={selected.amount} />
+            <p>{selected.description}</p>
+            <p className="muted">
+              Source: {selected.source || "Not supplied"} / Fee:{" "}
+              <Amount value={selected.fee} />
+            </p>
+            <p>
+              {selected.category_reason ||
+                "No categorization explanation supplied."}
+            </p>
+            <form onSubmit={correct} className="inline-form">
+              <Field
+                label="Correct category"
+                name="category"
+                required
+                maxLength={100}
+                defaultValue={selected.category || ""}
+              />
+              <button className="primary form-end" disabled={busy}>
+                Save category
+              </button>
+            </form>
+          </>
+        )}
+      </Dialog>
     </>
   );
 }

@@ -16,12 +16,14 @@ import {
   ResourceView,
   Section,
 } from "../components/ui";
+import { Dialog } from "../components/Dialog";
 import { CashflowChart } from "../components/CashflowChart";
 export function Cashflow() {
   const [offset, setOffset] = useState(0);
   const [filter, setFilter] = useState("scheduled");
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Scheduled | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -47,12 +49,17 @@ export function Cashflow() {
     if (kind === "purchase") setDecision(null);
     try {
       if (kind === "schedule") {
-        await api.addScheduled({
+        const payload = {
           title: String(f.get("title")),
           kind: String(f.get("kind")) as "income" | "expense",
           amount: String(f.get("amount")),
           due_date: String(f.get("due_date")),
-        });
+        };
+        if (editing) await api.editScheduled(editing.id, payload);
+        else await api.addScheduled(payload);
+        setEditing(null);
+        setScenario(null);
+        setDecision(null);
         setAdding(false);
         setRevision((v) => v + 1);
         setNotice("Scheduled item saved. No actual transaction was created.");
@@ -102,7 +109,14 @@ export function Cashflow() {
         title="Make room for what comes next."
         description="Recorded money, scheduled commitments and estimates each tell a different story."
         action={
-          <button className="primary" onClick={() => setAdding(!adding)}>
+          <button
+            className="primary"
+            onClick={() => {
+              setEditing(null);
+              setAdding(true);
+              setError(null);
+            }}
+          >
             <Plus size={17} />
             Schedule an item
           </button>
@@ -124,7 +138,7 @@ export function Cashflow() {
           {notice}
         </p>
       )}
-      {error && <ErrorNotice message={error} />}
+      {error && !adding && <ErrorNotice message={error} />}
       <Section title="Upcoming & scheduled">
         <label className="inline-form">
           Show{" "}
@@ -141,20 +155,29 @@ export function Cashflow() {
             <option value="">All statuses</option>
           </select>
         </label>
-        {adding && (
-          <form
-            className="editor form-grid"
-            onSubmit={(e) => run(e, "schedule")}
-          >
+        <Dialog
+          open={adding}
+          title={editing ? "Edit scheduled item" : "Schedule an item"}
+          description="A scheduled item is a plan. Saving it does not create a transaction."
+          busy={busy}
+          onClose={() => {
+            setAdding(false);
+            setEditing(null);
+            setError(null);
+          }}
+        >
+          {error && <ErrorNotice message={error} />}
+          <form className="form-grid" onSubmit={(e) => run(e, "schedule")}>
             <Field
               name="title"
+              defaultValue={editing?.title ?? ""}
               label="What is it for?"
               required
               maxLength={160}
             />
             <label className="field">
               <span>Kind</span>
-              <select name="kind">
+              <select name="kind" defaultValue={editing?.kind ?? "expense"}>
                 <option value="expense">Planned expense</option>
                 <option value="income">Expected income</option>
               </select>
@@ -162,6 +185,7 @@ export function Cashflow() {
             <Field
               label="Amount (BDT)"
               name="amount"
+              defaultValue={editing?.amount ?? ""}
               type="number"
               min="0.01"
               step="0.01"
@@ -172,13 +196,13 @@ export function Cashflow() {
               name="due_date"
               type="date"
               required
-              defaultValue={today()}
+              defaultValue={editing?.due_date ?? today()}
             />
             <button className="primary form-end" disabled={busy}>
               Save scheduled item
             </button>
           </form>
-        )}
+        </Dialog>
         <ResourceView resource={scheduled}>
           {(p) => (
             <>
@@ -205,6 +229,16 @@ export function Cashflow() {
                       <Amount value={item.amount} />
                       {item.status === "scheduled" && (
                         <div className="actions">
+                          <button
+                            disabled={busy}
+                            onClick={() => {
+                              setEditing(item);
+                              setAdding(true);
+                              setError(null);
+                            }}
+                          >
+                            Edit
+                          </button>
                           <button
                             disabled={busy}
                             onClick={() => update(item, "paid")}

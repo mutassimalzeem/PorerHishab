@@ -1,0 +1,42 @@
+name: Frontend and API contracts
+on:
+  pull_request:
+  push:
+    branches: [main, feature/ai-13-financial-intelligence]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+      AI_EXTERNAL_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install -r backend/requirements.txt pytest httpx
+      - run: python scripts/generate_frontend_contracts.py --check
+      - run: python -m pytest backend/test_intelligence_api.py backend/test_intelligence_snapshot.py backend/test_intelligence_categories.py backend/test_intelligence_signals.py backend/test_intelligence_coverage.py backend/test_intelligence_periods.py -q
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck && npm run lint && npm test && npm run build
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:browser
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-browser-results
+          path: frontend/test-results
+          retention-days: 7

@@ -77,9 +77,30 @@ export function Loading({
   return (
     <div className="loading" role="status">
       <p>{label}</p>
-      <div className="placeholder" />
-      <div className="placeholder short" />
-      <div className="placeholder" />
+      <div className="loading-record" aria-hidden="true">
+        <i />
+        <div>
+          <span />
+          <span />
+        </div>
+        <b />
+      </div>
+      <div className="loading-record" aria-hidden="true">
+        <i />
+        <div>
+          <span />
+          <span />
+        </div>
+        <b />
+      </div>
+      <div className="loading-record" aria-hidden="true">
+        <i />
+        <div>
+          <span />
+          <span />
+        </div>
+        <b />
+      </div>
     </div>
   );
 }
@@ -176,6 +197,52 @@ export function PageHeading({
     </header>
   );
 }
+function EvidenceValue({
+  value,
+  field = "",
+}: {
+  value: unknown;
+  field?: string;
+}) {
+  if (value === null || value === undefined)
+    return <span className="muted">Not available</span>;
+  if (Array.isArray(value))
+    return value.length ? (
+      <ol className="evidence-list">
+        {value.map((v, i) => (
+          <li key={i}>
+            <EvidenceValue value={v} />
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <span className="muted">No records supplied</span>
+    );
+  if (typeof value === "object")
+    return (
+      <dl className="evidence-grid">
+        {Object.entries(value).map(([key, v]) => (
+          <div key={key}>
+            <dt>{key.replaceAll("_", " ")}</dt>
+            <dd>
+              <EvidenceValue value={v} field={key} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    );
+  if (typeof value === "boolean") return <span>{value ? "Yes" : "No"}</span>;
+  if (
+    (typeof value === "string" || typeof value === "number") &&
+    /amount|income|expenses|balance|saving|net$|reserve|capacity|delta$/.test(
+      field,
+    ) &&
+    !field.includes("count") &&
+    Number.isFinite(Number(value))
+  )
+    return <Amount value={value} />;
+  return <span>{String(value)}</span>;
+}
 export function Evidence({
   value,
   label = "View evidence",
@@ -186,7 +253,7 @@ export function Evidence({
   return (
     <details className="notes">
       <summary>{label}</summary>
-      <pre>{JSON.stringify(value, null, 2)}</pre>
+      <EvidenceValue value={value} />
     </details>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
-import { Plus } from "lucide-react";
-import type { Goal } from "../domain";
+import { Plus, Pencil, Target } from "lucide-react";
+import type { Goal, GoalUpdate } from "../domain";
 import { api } from "../lib/api";
 import { date, errorMessage, today } from "../lib/format";
 import { useResource } from "../lib/useResource";
@@ -15,39 +15,38 @@ import {
   Pager,
   ResourceView,
 } from "../components/ui";
-function GoalDetail({ goal, onSaved }: { goal: Goal; onSaved: () => void }) {
+import { Dialog } from "../components/Dialog";
+function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
   const plan = useResource(
     useCallback(() => api.goalPlan(goal.id), [goal.id]),
-    goal.current_saved,
+    `${goal.current_saved}:${goal.target_date}:${goal.target_amount}:${goal.status}`,
   );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [cadence, setCadence] = useState<"monthly" | "weekly">("monthly");
   const saved = goal.current_saved;
   const progress =
     saved === null
       ? null
       : Math.min(100, (Number(saved) / Number(goal.target_amount)) * 100);
-  async function update(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const value = new FormData(e.currentTarget).get("saved");
-    setBusy(true);
-    setError(null);
-    try {
-      await api.updateGoal(goal.id, value ? String(value) : null);
-      onSaved();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <article className="goal">
       <div className="section-heading">
-        <h2>{goal.name}</h2>
-        <span className="status-label">{goal.status}</span>
+        <span className="goal-icon">
+          <Target size={20} />
+        </span>
+        <span className={`status-label status-${goal.status}`}>
+          {goal.status}
+        </span>
+        <button
+          className="text-button"
+          onClick={onEdit}
+          aria-label={`Edit ${goal.name}`}
+        >
+          <Pencil size={15} />
+          Edit
+        </button>
       </div>
-      <p>{goal.description}</p>
+      <h2>{goal.name}</h2>
+      {goal.description && <p>{goal.description}</p>}
       <div className="goal-numbers">
         <div>
           <small>Self-reported savings</small>
@@ -58,61 +57,79 @@ function GoalDetail({ goal, onSaved }: { goal: Goal; onSaved: () => void }) {
           <Amount value={goal.target_amount} />
         </div>
       </div>
-      {progress !== null ? (
+      {progress === null ? (
+        <p className="callout">
+          Savings are unknown. Report an amount to calculate contributions.
+        </p>
+      ) : (
         <>
           <progress
             aria-label={`${goal.name} progress`}
             value={progress}
             max="100"
           />
-          <p className="muted">
-            {progress.toFixed(0)}% of target, based on your reported amount.
+          <p className="progress-label">
+            <strong>{progress.toFixed(0)}%</strong> of target, based on your
+            reported amount.
           </p>
         </>
-      ) : (
-        <p className="callout">
-          Savings are unknown. Report an amount to calculate contributions.
-        </p>
       )}
-      <ResourceView resource={plan}>
+      <ResourceView resource={plan} label="Checking contribution needs...">
         {(p) => (
           <>
-            <div className="goal-numbers">
-              <div>
-                <small>Required monthly contribution</small>
-                <Amount value={p.required_monthly} />
+            <div className="contribution-plan">
+              <div className="section-heading">
+                <span className="value-kind">Required contribution</span>
+                <div
+                  className="segmented"
+                  role="group"
+                  aria-label={`${goal.name} contribution period`}
+                >
+                  <button
+                    aria-pressed={cadence === "monthly"}
+                    onClick={() => setCadence("monthly")}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    aria-pressed={cadence === "weekly"}
+                    onClick={() => setCadence("weekly")}
+                  >
+                    Weekly
+                  </button>
+                </div>
               </div>
-              <div>
-                <small>Estimated monthly capacity</small>
-                <Amount value={p.estimated_monthly_capacity} />
-              </div>
+              <Amount
+                value={
+                  cadence === "monthly" ? p.required_monthly : p.required_weekly
+                }
+              />
+              <small>To reach the target by {date(goal.target_date)}.</small>
             </div>
-            <p className="muted">
-              Assessment: {p.affordability.replaceAll("_", " ")}. Calculated as
-              of {date(p.as_of_date)}. This is not a guaranteed timeline.
+            <div className="capacity-line">
+              <span>Estimated monthly capacity</span>
+              <Amount value={p.estimated_monthly_capacity} />
+            </div>
+            <p className={`assessment assessment-${p.affordability}`}>
+              {
+                {
+                  unknown: "Capacity is not established",
+                  appears_feasible: "Appears feasible from recorded history",
+                  at_risk: "The target may need more room",
+                  completed: "Target reported as complete",
+                  cancelled: "This plan is cancelled",
+                  overdue: "The target date has passed",
+                }[p.affordability]
+              }
+            </p>
+            <p className="source">
+              As of {date(p.as_of_date)}. Estimates are not a guaranteed
+              timeline.
             </p>
             <Notes assumptions={p.assumptions} limitations={p.limitations} />
           </>
         )}
       </ResourceView>
-      <details className="notes">
-        <summary>Update reported savings</summary>
-        <form className="inline-form" onSubmit={update}>
-          <Field
-            label="Amount saved (BDT)"
-            name="saved"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue={saved ?? ""}
-            hint="Leave blank if unknown. This does not move money."
-          />
-          <button className="form-end" disabled={busy}>
-            Save reported amount
-          </button>
-        </form>
-      </details>
-      {error && <ErrorNotice message={error} />}
     </article>
   );
 }
@@ -120,6 +137,7 @@ export function Plans() {
   const [offset, setOffset] = useState(0);
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Goal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -127,23 +145,41 @@ export function Plans() {
     useCallback(() => api.goals(offset), [offset]),
     revision,
   );
-  async function create(e: FormEvent<HTMLFormElement>) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setBusy(true);
     setError(null);
+    const values = {
+      name: String(f.get("name")).trim(),
+      target_amount: String(f.get("target_amount")),
+      current_saved: f.get("current_saved")
+        ? String(f.get("current_saved"))
+        : null,
+      target_date: String(f.get("target_date")),
+    };
     try {
-      await api.addGoal({
-        name: String(f.get("name")),
-        target_amount: String(f.get("target_amount")),
-        current_saved: f.get("current_saved")
-          ? String(f.get("current_saved"))
-          : null,
-        target_date: String(f.get("target_date")),
-      });
+      if (editing) {
+        const changes: GoalUpdate = {};
+        if (values.name !== editing.name) changes.name = values.name;
+        if (values.target_amount !== editing.target_amount)
+          changes.target_amount = values.target_amount;
+        if (values.current_saved !== editing.current_saved)
+          changes.current_saved = values.current_saved;
+        if (values.target_date !== editing.target_date)
+          changes.target_date = values.target_date;
+        const status = f.get("status") as Goal["status"];
+        if (status && status !== editing.status) changes.status = status;
+        await api.editGoal(editing.id, changes);
+      } else await api.addGoal(values);
       setAdding(false);
+      setEditing(null);
       setRevision((v) => v + 1);
-      setNotice("Goal created. Savings are self-reported.");
+      setNotice(
+        editing
+          ? "Goal updated. Reported savings remain separate from account balances."
+          : "Goal created. Savings are self-reported.",
+      );
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -154,28 +190,54 @@ export function Plans() {
     <>
       <PageHeading
         title="Give your savings a purpose."
-        description="Set a target. See the contribution it needs. Keep the assumptions in view."
+        description="A clear target, a realistic contribution, and room for your commitments."
         action={
-          <button className="primary" onClick={() => setAdding(!adding)}>
+          <button
+            className="primary"
+            onClick={() => {
+              setEditing(null);
+              setAdding(true);
+              setError(null);
+            }}
+          >
             <Plus size={17} />
             New goal
           </button>
         }
       />
-      <p className="callout">
-        Goals are planning records. Reported savings are not reconciled with
-        accounts, and contributions do not move money. Upcoming obligations are
-        included in the backend affordability assessment.
-      </p>
-      {error && <ErrorNotice message={error} />}{" "}
+      <div className="planning-guidance">
+        <Target size={22} />
+        <p>
+          <strong>A plan, not a money transfer.</strong> Savings are
+          self-reported. The contribution assessment accounts for recorded
+          history and scheduled obligations.
+        </p>
+      </div>
       {notice && (
         <p role="status" className="success">
           {notice}
         </p>
       )}
-      {adding && (
-        <form className="editor form-grid" onSubmit={create}>
-          <Field label="Goal name" name="name" required maxLength={160} />
+      <Dialog
+        open={adding}
+        title={editing ? "Edit savings goal" : "Create a savings goal"}
+        description="Set the target and report what you have saved. Leave savings blank when unknown."
+        busy={busy}
+        onClose={() => {
+          setAdding(false);
+          setEditing(null);
+          setError(null);
+        }}
+      >
+        {error && <ErrorNotice message={error} />}
+        <form className="form-grid" onSubmit={save}>
+          <Field
+            label="Goal name"
+            name="name"
+            required
+            maxLength={160}
+            defaultValue={editing?.name ?? ""}
+          />
           <Field
             label="Target amount (BDT)"
             name="target_amount"
@@ -183,6 +245,7 @@ export function Plans() {
             min="0.01"
             step="0.01"
             required
+            defaultValue={editing?.target_amount ?? ""}
           />
           <Field
             label="Already saved (optional)"
@@ -191,31 +254,67 @@ export function Plans() {
             min="0"
             step="0.01"
             hint="Blank means unknown, not zero."
+            defaultValue={editing?.current_saved ?? ""}
           />
           <Field
             label="Target date"
             name="target_date"
             type="date"
-            min={today()}
+            min={editing ? undefined : today()}
             required
+            defaultValue={editing?.target_date ?? ""}
           />
-          <button className="primary form-end" disabled={busy}>
-            Create goal
-          </button>
+          {editing && (
+            <label className="field">
+              <span>Goal status</span>
+              <select name="status" defaultValue={editing.status}>
+                {editing.status === "active" ? (
+                  <>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </>
+                ) : (
+                  <option value={editing.status}>{editing.status}</option>
+                )}
+              </select>
+              <small>
+                Completing requires reported savings at least equal to the
+                target. Completed and cancelled goals cannot reopen.
+              </small>
+            </label>
+          )}
+          <div className="dialog-actions">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setAdding(false)}
+            >
+              Keep existing records
+            </button>
+            <button className="primary" disabled={busy}>
+              {busy
+                ? "Saving..."
+                : editing
+                  ? "Save goal changes"
+                  : "Create goal"}
+            </button>
+          </div>
         </form>
-      )}
-      <ResourceView resource={goals}>
+      </Dialog>
+      <ResourceView resource={goals} label="Reading your savings plans...">
         {(p) => (
           <>
             {p.items.length ? (
               <div className="goal-grid">
-                {p.items.map((g) => (
+                {p.items.map((goal) => (
                   <GoalDetail
-                    key={g.id}
-                    goal={g}
-                    onSaved={() => {
-                      setRevision((v) => v + 1);
-                      setNotice("Reported savings updated.");
+                    key={goal.id}
+                    goal={goal}
+                    onEdit={() => {
+                      setEditing(goal);
+                      setAdding(true);
+                      setError(null);
                     }}
                   />
                 ))}
@@ -224,7 +323,7 @@ export function Plans() {
               <Empty
                 title="What are you saving for?"
                 action={
-                  <button onClick={() => setAdding(true)}>
+                  <button className="primary" onClick={() => setAdding(true)}>
                     Create your first goal
                   </button>
                 }

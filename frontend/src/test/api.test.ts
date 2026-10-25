@@ -118,4 +118,26 @@ describe("API boundary", () => {
     );
     expect(await request("/example", { method: "DELETE" })).toBeUndefined();
   });
+  it("does not resurrect a signed-out session when a refresh finishes late", async () => {
+    setSession({ access_token: "old", refresh_token: "refresh" });
+    let finish: (value: Response) => void = () => {};
+    const pending = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(json({ detail: "Expired" }, 401))
+      .mockImplementationOnce(() => pending)
+      .mockResolvedValue(json({ id: 1 }));
+    vi.stubGlobal("fetch", fetcher);
+    const request = api.me();
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    setSession(null);
+    finish(json({ access_token: "late" }));
+    await expect(request).rejects.toThrow("Expired");
+    await api.me();
+    expect(
+      new Headers(fetcher.mock.calls[2][1].headers).has("Authorization"),
+    ).toBe(false);
+  });
 });

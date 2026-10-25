@@ -19,8 +19,9 @@ import {
   MessageSquare,
   Settings as SettingsIcon,
   Target,
-  X,
 } from "lucide-react";
+import { Dialog } from "./components/Dialog";
+import { useMediaQuery } from "./lib/useMediaQuery";
 import type { Tokens, User } from "./domain";
 import { api, setSession } from "./lib/api";
 import { date, errorMessage, today } from "./lib/format";
@@ -43,6 +44,7 @@ const navigation = [
 ];
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
+  const mobile = useMediaQuery("(max-width:760px)");
   const location = useLocation();
   useEffect(() => {
     document.title = `${navigation.find((n) => n.to === location.pathname)?.label || "Settings"} | PorerHishab`;
@@ -53,74 +55,124 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <aside
-        className={`sidebar ${open ? "is-open" : ""}`}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setOpen(false);
-            document.getElementById("nav-toggle")?.focus();
-          }
-        }}
-      >
-        <Link to="/" className="brand" onClick={() => setOpen(false)}>
-          <span className="brand-mark">{"\u09aa"}</span>
-          <span>
-            PorerHishab
-            <small lang="bn">
-              {"\u09aa\u09b0\u09c7\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac"}
-            </small>
-          </span>
-        </Link>
-        <button
-          className="mobile-close"
-          aria-label="Close navigation"
-          onClick={() => setOpen(false)}
+      {mobile ? (
+        <Dialog
+          open={open}
+          title="Your workspace"
+          drawer
+          onClose={() => setOpen(false)}
         >
-          <X size={18} />
-        </button>
-        <nav aria-label="Main navigation">
-          {navigation.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.to === "/"}
-              onClick={() => setOpen(false)}
-            >
-              <n.icon size={19} strokeWidth={1.7} />
-              {n.label}
-              {n.to === "/ask" && (
-                <ArrowUpRight size={14} className="nav-arrow" />
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="small-mark" />
-            <p>
-              A little ahead.
-              <br />A lot more clear.
-            </p>
-          </div>
-          <NavLink to="/settings" onClick={() => setOpen(false)}>
-            <SettingsIcon size={18} />
-            Settings
-          </NavLink>
-          <button className="text-button" onClick={onLogout}>
-            <LogOut size={17} />
-            Sign out
-          </button>
-          <div className="account">
-            <span className="avatar">
-              {(user.full_name || user.email).slice(0, 1).toUpperCase()}
-            </span>
-            <div>
-              <strong>{user.full_name || "Your account"}</strong>
-              <small>{user.email}</small>
+          <div className="mobile-nav-content">
+            {" "}
+            <Link to="/" className="brand" onClick={() => setOpen(false)}>
+              <span className="brand-mark">{"\u09aa"}</span>
+              <span>
+                PorerHishab
+                <small lang="bn">
+                  {"\u09aa\u09b0\u09c7\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac"}
+                </small>
+              </span>
+            </Link>
+            <nav aria-label="Main navigation">
+              {navigation.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.to === "/"}
+                  onClick={() => setOpen(false)}
+                >
+                  <n.icon size={19} strokeWidth={1.7} />
+                  {n.label}
+                  {n.to === "/ask" && (
+                    <ArrowUpRight size={14} className="nav-arrow" />
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="sidebar-bottom">
+              <div className="sidebar-note">
+                <span className="small-mark" />
+                <p>
+                  A little ahead.
+                  <br />A lot more clear.
+                </p>
+              </div>
+              <NavLink to="/settings" onClick={() => setOpen(false)}>
+                <SettingsIcon size={18} />
+                Settings
+              </NavLink>
+              <button className="text-button" onClick={onLogout}>
+                <LogOut size={17} />
+                Sign out
+              </button>
+              <div className="account">
+                <span className="avatar">
+                  {(user.full_name || user.email).slice(0, 1).toUpperCase()}
+                </span>
+                <div>
+                  <strong>{user.full_name || "Your account"}</strong>
+                  <small>{user.email}</small>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </aside>
+        </Dialog>
+      ) : (
+        <aside className="sidebar">
+          {" "}
+          <Link to="/" className="brand" onClick={() => setOpen(false)}>
+            <span className="brand-mark">{"\u09aa"}</span>
+            <span>
+              PorerHishab
+              <small lang="bn">
+                {"\u09aa\u09b0\u09c7\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac"}
+              </small>
+            </span>
+          </Link>
+          <nav aria-label="Main navigation">
+            {navigation.map((n) => (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.to === "/"}
+                onClick={() => setOpen(false)}
+              >
+                <n.icon size={19} strokeWidth={1.7} />
+                {n.label}
+                {n.to === "/ask" && (
+                  <ArrowUpRight size={14} className="nav-arrow" />
+                )}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="sidebar-note">
+              <span className="small-mark" />
+              <p>
+                A little ahead.
+                <br />A lot more clear.
+              </p>
+            </div>
+            <NavLink to="/settings" onClick={() => setOpen(false)}>
+              <SettingsIcon size={18} />
+              Settings
+            </NavLink>
+            <button className="text-button" onClick={onLogout}>
+              <LogOut size={17} />
+              Sign out
+            </button>
+            <div className="account">
+              <span className="avatar">
+                {(user.full_name || user.email).slice(0, 1).toUpperCase()}
+              </span>
+              <div>
+                <strong>{user.full_name || "Your account"}</strong>
+                <small>{user.email}</small>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
       <div className="workspace">
         <header className="topbar">
           <button
@@ -132,7 +184,13 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
           >
             <Menu size={21} />
           </button>
-          <span>Personal workspace</span>
+          <span className="workspace-label">
+            Personal workspace <span aria-hidden="true">/</span>{" "}
+            <strong>
+              {navigation.find((n) => n.to === location.pathname)?.label ||
+                "Settings"}
+            </strong>
+          </span>
           <time dateTime={today()}>{date(today())}</time>
           <span className="currency-label">BDT</span>
         </header>
@@ -171,6 +229,20 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
           </footer>
         </main>
       </div>
+      {mobile && (
+        <nav className="mobile-quick-nav" aria-label="Quick navigation">
+          {navigation
+            .filter((n) =>
+              ["/", "/cashflow", "/transactions", "/ask"].includes(n.to),
+            )
+            .map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.to === "/"}>
+                <n.icon size={20} />
+                <span>{n.to === "/ask" ? "Ask" : n.label}</span>
+              </NavLink>
+            ))}
+        </nav>
+      )}
     </div>
   );
 }

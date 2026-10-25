@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
+import { IntelligencePanels } from "../components/IntelligencePanels";
 import { api } from "../lib/api";
 import { useResource } from "../lib/useResource";
 import { date } from "../lib/format";
@@ -13,6 +14,7 @@ import {
   Section,
 } from "../components/ui";
 export function Insights() {
+  const intelligence = useResource(useCallback(() => api.intelligence(), []));
   const nudges = useResource(useCallback(() => api.nudges(), []));
   const recommendations = useResource(
     useCallback(() => api.recommendations(), []),
@@ -134,6 +136,12 @@ export function Insights() {
           )}
         </ResourceView>
       </Section>
+      <ResourceView
+        resource={intelligence}
+        label="Reading your history and coverage..."
+      >
+        {(data) => <IntelligencePanels data={data} />}
+      </ResourceView>
     </>
   );
 }

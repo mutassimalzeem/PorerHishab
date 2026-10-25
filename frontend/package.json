@@ -11,7 +11,8 @@
     "test": "vitest run",
     "preview": "vite preview --host 127.0.0.1",
     "format": "prettier --write .",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "contracts:check": "python ../scripts/generate_frontend_contracts.py --check"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

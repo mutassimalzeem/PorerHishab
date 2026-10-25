@@ -1,5 +1,8 @@
 import type {
   Answer,
+  Intelligence,
+  GoalUpdate,
+  ScheduledUpdate,
   Cashflow,
   Decision,
   Goal,
@@ -20,8 +23,10 @@ import type {
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 let tokens: Tokens | null = null;
 let refreshFlight: Promise<boolean> | null = null;
+let sessionVersion = 0;
 export function setSession(value: Tokens | null) {
   tokens = value;
+  sessionVersion += 1;
 }
 export class ApiError extends Error {
   constructor(
@@ -46,14 +51,18 @@ function detail(value: unknown): string {
 }
 async function refresh(): Promise<boolean> {
   if (!tokens?.refresh_token) return false;
+  const version = sessionVersion;
+  const previous = tokens;
   try {
     const response = await fetch(`${base}/refresh`, {
       method: "POST",
-      body: new URLSearchParams({ refresh_token: tokens.refresh_token }),
+      body: new URLSearchParams({ refresh_token: previous.refresh_token! }),
+      signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) return false;
     const next: Tokens = await response.json();
-    tokens = { ...tokens, access_token: next.access_token };
+    if (version !== sessionVersion) return false;
+    tokens = { ...previous, access_token: next.access_token };
     return true;
   } catch {
     return false;
@@ -64,6 +73,7 @@ export async function request<T>(
   init: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  const version = sessionVersion;
   const headers = new Headers(init.headers);
   if (tokens) headers.set("Authorization", `Bearer ${tokens.access_token}`);
   if (init.body && !(init.body instanceof FormData))
@@ -83,15 +93,17 @@ export async function request<T>(
       "Could not reach PorerHishab. Check your connection and that the API is running.",
     );
   }
-  if (response.status === 401 && tokens) {
+  if (response.status === 401 && tokens && version === sessionVersion) {
     if (retry) {
       refreshFlight ??= refresh().finally(() => {
         refreshFlight = null;
       });
       if (await refreshFlight) return request<T>(path, init, false);
     }
-    setSession(null);
-    window.dispatchEvent(new Event("session-expired"));
+    if (version === sessionVersion) {
+      setSession(null);
+      window.dispatchEvent(new Event("session-expired"));
+    }
   }
   if (!response.ok) {
     let message = "The service is unavailable. Try again.";
@@ -122,6 +134,17 @@ export const api = {
   register: (email: string, password: string, full_name: string) =>
     post<Tokens>("/register", { email, password, full_name }),
   me: () => request<User>("/me"),
+  intelligence: () => request<Intelligence>("/finance/intelligence"),
+  editGoal: (id: number, body: GoalUpdate) =>
+    request<Goal>(`/finance/goals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  editScheduled: (id: number, body: ScheduledUpdate) =>
+    request<Scheduled>(`/finance/scheduled-cashflow/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   summary: (period: Record<string, string>) =>
     request<Summary>(`/insights/summary${query(period)}`),
   transactions: (filters: Record<string, string | number | undefined>) =>

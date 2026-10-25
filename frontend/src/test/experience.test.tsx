@@ -6,6 +6,7 @@ import { Auth } from "../pages/Auth";
 import { Dashboard } from "../pages/Dashboard";
 import { Ask } from "../pages/Ask";
 import { Amount } from "../components/ui";
+import { emptyIntelligence } from "./intelligence.fixture";
 import { api } from "../lib/api";
 import { useResource } from "../lib/useResource";
 import { useCallback } from "react";
@@ -36,13 +37,7 @@ describe("trustworthy financial experiences", () => {
     expect(screen.getByLabelText("Email address")).toHaveValue("a@example.com");
   });
   it("uses real empty states and never calls an empty history an available balance", async () => {
-    vi.spyOn(api, "summary").mockResolvedValue({
-      transaction_count: 0,
-      total_income: "0",
-      total_expenses: "0",
-      net: "0",
-      savings_rate: null,
-    });
+    vi.spyOn(api, "intelligence").mockResolvedValue(emptyIntelligence);
     vi.spyOn(api, "transactions").mockResolvedValue({
       items: [],
       total: 0,

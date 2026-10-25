@@ -215,4 +215,4 @@ Tests cover calculation services, categorization, finance evidence and routing, 
 
 ## Frontend
 
-The React + TypeScript application is in [`frontend/`](frontend/README.md), with overview, cashflow, transactions, plans, insights, Ask and settings screens connected to the existing API. Start the backend, then run `npm ci` and `npm run dev` from `frontend/`. See the [frontend implementation audit](docs/frontend-implementation.md) for API contracts, verification results and limitations.
+The React + TypeScript application is in [`frontend/`](frontend/README.md), with overview, cashflow, transactions, plans, insights, Ask and settings screens connected to the existing API. Start the backend, then run `npm ci` and `npm run dev` from `frontend/`. See the [frontend refinement audit](docs/frontend-refinement.md) for current API contracts, verification results and limitations.

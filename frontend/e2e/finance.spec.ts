@@ -1,4 +1,8 @@
 import { test, expect } from "@playwright/test";
+import {
+  emptyIntelligence,
+  richIntelligence,
+} from "../src/test/intelligence.fixture";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 // Synthetic test-only contracts. Never bundled into the application or persisted to the API.
@@ -22,7 +26,30 @@ const coverage = {
   last_transaction_date: null,
   limitations: ["History is incomplete."],
 };
-async function connect(page: import("@playwright/test").Page) {
+async function connect(page: import("@playwright/test").Page, rich = false) {
+  const intelligence = rich ? richIntelligence : emptyIntelligence;
+  let goals = intelligence.snapshot.goals.map((g) => ({
+    id: g.goal_id,
+    name: g.name,
+    description: null,
+    target_amount: g.target_amount,
+    current_saved: g.current_saved,
+    target_date: g.target_date,
+    status: g.status,
+  }));
+  let schedules = intelligence.snapshot.scheduled_obligations.items.map(
+    (i) => ({
+      id: i.scheduled_item_id,
+      title: i.title,
+      kind: i.kind,
+      amount: i.amount,
+      due_date: i.due_date,
+      status: "scheduled",
+      category: null,
+      notes: null,
+    }),
+  );
+
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url()),
       path = url.pathname.replace("/api", "");
@@ -30,6 +57,7 @@ async function connect(page: import("@playwright/test").Page) {
     if (path === "/login") body = { access_token: "test-only-token" };
     else if (path === "/me")
       body = { id: 1, email: "test@example.com", full_name: "Test User" };
+    else if (path === "/finance/intelligence") body = intelligence;
     else if (path === "/insights/summary")
       body = {
         transaction_count: 1,
@@ -40,11 +68,60 @@ async function connect(page: import("@playwright/test").Page) {
       };
     else if (path === "/transactions")
       body = { items: [sample], total: 1, limit: 20, offset: 0 };
-    else if (path === "/finance/scheduled-cashflow")
-      body = { items: [], total: 0, limit: 20, offset: 0 };
-    else if (path === "/finance/goals")
-      body = { items: [], total: 0, limit: 20, offset: 0 };
-    else if (path === "/insights/proactive")
+    else if (path === "/finance/scheduled-cashflow") {
+      if (route.request().method() === "POST") {
+        const item = route.request().postDataJSON();
+        schedules.push({
+          ...item,
+          id: schedules.length + 1,
+          status: "scheduled",
+          category: null,
+          notes: null,
+        });
+        body = schedules.at(-1);
+      } else
+        body = {
+          items: schedules,
+          total: schedules.length,
+          limit: 20,
+          offset: 0,
+        };
+    } else if (path.startsWith("/finance/scheduled-cashflow/")) {
+      const id = Number(path.split("/").at(-1));
+      schedules = schedules.map((item) =>
+        item.id === id ? { ...item, ...route.request().postDataJSON() } : item,
+      );
+      body = schedules.find((item) => item.id === id);
+    } else if (path === "/finance/goals") {
+      if (route.request().method() === "POST") {
+        const item = route.request().postDataJSON();
+        goals.push({
+          ...item,
+          id: goals.length + 1,
+          status: "active",
+          description: null,
+        });
+        body = goals.at(-1);
+      } else body = { items: goals, total: goals.length, limit: 20, offset: 0 };
+    } else if (path.endsWith("/plan") && path.startsWith("/finance/goals/"))
+      body = {
+        goal_id: Number(path.split("/")[3]),
+        as_of_date: "2026-10-25",
+        remaining_amount: "45000.00",
+        required_weekly: "1285.72",
+        required_monthly: "5625.00",
+        estimated_monthly_capacity: "23000.00",
+        affordability: "appears_feasible",
+        assumptions: ["Reported savings are not account allocations."],
+        limitations: ["Future contributions are not guaranteed."],
+      };
+    else if (path.startsWith("/finance/goals/")) {
+      const id = Number(path.split("/").at(-1));
+      goals = goals.map((goal) =>
+        goal.id === id ? { ...goal, ...route.request().postDataJSON() } : goal,
+      );
+      body = goals.find((goal) => goal.id === id);
+    } else if (path === "/insights/proactive")
       body = {
         as_of_date: "2026-10-25",
         insights: [],
@@ -124,7 +201,8 @@ async function accessible(page: import("@playwright/test").Page) {
     "axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}}).then(r=>r.violations.map(v=>({id:v.id,help:v.help,nodes:v.nodes.map(n=>n.target)})))",
   );
   expect(violations).toEqual([]);
-  await page.locator("#main").focus();
+  if ((await page.getByRole("dialog").count()) === 0)
+    await page.locator("#main").focus();
 }
 test("overview, navigation and transaction ledger remain usable", async ({
   page,
@@ -207,4 +285,97 @@ test("plans, insights, Ask and settings explain limitations", async ({
     page.getByRole("heading", { name: "Your account & preferences." }),
   ).toBeVisible();
   await noOverflow(page);
+});
+
+test("populated intelligence, goal editing and modal keyboard behavior", async ({
+  page,
+}, info) => {
+  await connect(page, true);
+  await expect(
+    page.getByText("Three complete months contain records"),
+  ).toBeVisible();
+  await noOverflow(page);
+  await accessible(page);
+  await page.screenshot({
+    path: info.outputPath("overview-populated.png"),
+    fullPage: true,
+  });
+  await navigate(page, "Insights");
+  await expect(
+    page.getByRole("heading", { name: "Which categories changed?" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Internet service" }),
+  ).toBeVisible();
+  await noOverflow(page);
+  await accessible(page);
+  await page.screenshot({
+    path: info.outputPath("insights-populated.png"),
+    fullPage: true,
+  });
+  await navigate(page, "Plans");
+  await page.getByRole("button", { name: "Edit Emergency buffer" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit savings goal" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Goal name")).toBeFocused();
+  await dialog.getByLabel("Goal name").fill("Emergency reserve");
+  await noOverflow(page);
+  await accessible(page);
+  await page.screenshot({
+    path: info.outputPath("goal-editor.png"),
+    fullPage: true,
+  });
+  await dialog.getByRole("button", { name: "Save goal changes" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Emergency reserve" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Weekly" }).click();
+  await expect(page.getByRole("button", { name: "Weekly" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await navigate(page, "Cashflow");
+  await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+  const schedule = page.getByRole("dialog", { name: "Edit scheduled item" });
+  await schedule.getByLabel("What is it for?").fill("Updated rent");
+  await schedule.getByRole("button", { name: "Save scheduled item" }).click();
+  await expect(page.getByText("Updated rent", { exact: true })).toBeVisible();
+  await navigate(page, "Transactions");
+  await page
+    .getByRole("button", { name: "Add transaction", exact: true })
+    .click();
+  const transaction = page.getByRole("dialog", {
+    name: "Record a transaction",
+  });
+  await expect(transaction).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(transaction).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add transaction", exact: true }),
+  ).toBeFocused();
+});
+
+test("mobile navigation contains focus and returns it on Escape", async ({
+  page,
+}) => {
+  await connect(page);
+  const toggle = page.getByRole("button", { name: "Open navigation" });
+  if (!(await toggle.isVisible())) return;
+  await toggle.click();
+  const dialog = page.getByRole("dialog", { name: "Your workspace" });
+  await expect(dialog).toBeVisible();
+  for (let i = 0; i < 16; i++) await page.keyboard.press("Tab");
+  expect(
+    await dialog.evaluate((el) => el.contains(document.activeElement)),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(toggle).toBeFocused();
+  await page
+    .getByRole("navigation", { name: "Quick navigation" })
+    .getByRole("link", { name: "Ask", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "A question worth asking." }),
+  ).toBeVisible();
 });
