@@ -20,9 +20,12 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+
+
 from app.api.forecast import router as forecast_router
 from app.api.planner import router as planner_router
 from app.api.chat import router as chat_router
+from app.api.spending_decision import router as spending_decision_router
 
 from app.services.transaction_service import save_transactions
 from app.repositories.transaction_repository import (
@@ -55,6 +58,7 @@ app.add_middleware(
 
 app.include_router(forecast_router)
 app.include_router(planner_router)
+app.include_router(spending_decision_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
@@ -67,14 +71,14 @@ class LoginIn(BaseModel):
 
 
 @app.post("/register")
-def register(payload: RegisterIn, 
+def register(payload: RegisterIn,
     db: Session = Depends(get_db)):
 
     try:
         existing = db.query(User).filter(User.email == payload.email).first()
         if existing:
             raise HTTPException(status_code= 400, detail= 'Email already registered')
-        
+
         hashed = get_password_hash(payload.password)
         user = User(email = str(payload.email), hashed_password = hashed, full_name = payload.full_name)
         db.add(user)
@@ -84,7 +88,7 @@ def register(payload: RegisterIn,
 
         access_token = create_access_token({"sub": user.email, "user_id": user.id})
         return {'access_token': access_token, "token_type": 'bearer'}
-    
+
     finally:
         db.close()
 
@@ -115,8 +119,8 @@ def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
 @app.get("/search")
 def search(
     q: Optional[str] = None,
-    start_date: Optional[str] = None,  
-    end_date: Optional[str] = None,    
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     min_amount: Optional[float] = None,
     max_amount: Optional[float] = None,
     category: Optional[List[str]] = Query(None, description= "Filter by categories; e.g. ?category=Food&category=Utilities"),
@@ -129,7 +133,7 @@ def search(
     if sort not in ("asc", "desc"):
         raise HTTPException(status_code=400, detail="sort must be 'asc' or 'desc'")
 
-    items = search_transactions(db = db, 
+    items = search_transactions(db = db,
         user_id=current.id,
         q=q,
         start_date=start_date,
@@ -167,7 +171,7 @@ def get_summary(current: User = Depends(get_current_user), db: Session = Depends
     try:
         transactions = list_transactions(db = db, limit=10000, user_id= current.id)  # Get all transactions
         df = pd.DataFrame(transactions)
-        
+
         if df.empty:
             return {
                 "total_income": 0.0,
