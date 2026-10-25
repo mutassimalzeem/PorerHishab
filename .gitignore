@@ -19,7 +19,10 @@ venv/
 # Database files
 *.db
 *.sqlite3
+
+# Generated local vector-store and RAG artifacts (Chroma test runs)
 data/chroma
+/backend/data/
 
 # Environment variables
 .env

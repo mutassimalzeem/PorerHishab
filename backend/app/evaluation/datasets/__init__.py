@@ -18,6 +18,9 @@ from app.evaluation.datasets.finance_scenario import (
     seed_scenario,
 )
 from app.evaluation.datasets.finance_questions import EVALUATION_CASES
+from app.evaluation.datasets.categorization_cases import (
+    CATEGORIZATION_EVALUATION_CASES,
+)
 
 __all__ = [
     "AS_OF",
@@ -30,4 +33,5 @@ __all__ = [
     "scenario_totals",
     "seed_scenario",
     "EVALUATION_CASES",
+    "CATEGORIZATION_EVALUATION_CASES",
 ]
