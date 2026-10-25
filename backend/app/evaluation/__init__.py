@@ -1,4 +1,5 @@
-"""AI evaluation layer (AI-12A foundation, AI-12C categorization).
+"""AI evaluation layer (AI-12A foundation, AI-12C categorization, AI-12D
+recommendations and proactive insights).
 
 Evaluation is deliberately offline: every case runs the deterministic
 pipeline against seeded or labeled ground truth and compares structured
@@ -44,6 +45,48 @@ from app.evaluation.categorization_runner import (
 )
 from app.evaluation.categorization_metrics import format_categorization_report
 
+# -- AI-12D: proactive insights ------------------------------------------------
+from app.evaluation.datasets.insight_scenarios import (
+    INSIGHT_EVALUATION_CASES,
+    INSIGHT_ISOLATION_MARKERS,
+    KNOWN_INSIGHT_TYPES,
+    INSIGHT_AS_OF,
+    validate_insight_dataset,
+)
+from app.evaluation.insight_metrics import (
+    InsightOutcome,
+    InsightReport,
+    detection_rates,
+    format_insight_report,
+    summarize_insights,
+)
+from app.evaluation.insight_runner import (
+    INSIGHT_SCORE_DIMENSIONS,
+    run_insight_case,
+    run_insight_dataset,
+)
+
+# -- AI-12D: savings recommendations ------------------------------------------
+from app.evaluation.datasets.recommendation_cases import (
+    ARITHMETIC_TOLERANCE,
+    COACH_CASES,
+    PLAN_CASES,
+    RECOMMENDATION_AS_OF,
+    validate_recommendation_dataset,
+)
+from app.evaluation.recommendation_metrics import (
+    RECOMMENDATION_SCORE_DIMENSIONS,
+    RecommendationOutcome,
+    RecommendationReport,
+    format_recommendation_report,
+    summarize_recommendations,
+)
+from app.evaluation.recommendation_runner import (
+    run_coach_case,
+    run_plan_case,
+    run_recommendation_dataset,
+)
+
 __all__ = [
     "SCORE_DIMENSIONS",
     "CaseResult",
@@ -73,4 +116,32 @@ __all__ = [
     "run_categorization_case",
     "run_categorization_dataset",
     "validate_dataset",
+    # AI-12D insights
+    "INSIGHT_EVALUATION_CASES",
+    "INSIGHT_ISOLATION_MARKERS",
+    "KNOWN_INSIGHT_TYPES",
+    "INSIGHT_AS_OF",
+    "INSIGHT_SCORE_DIMENSIONS",
+    "InsightOutcome",
+    "InsightReport",
+    "detection_rates",
+    "format_insight_report",
+    "summarize_insights",
+    "run_insight_case",
+    "run_insight_dataset",
+    "validate_insight_dataset",
+    # AI-12D recommendations
+    "ARITHMETIC_TOLERANCE",
+    "PLAN_CASES",
+    "COACH_CASES",
+    "RECOMMENDATION_AS_OF",
+    "RECOMMENDATION_SCORE_DIMENSIONS",
+    "RecommendationOutcome",
+    "RecommendationReport",
+    "format_recommendation_report",
+    "summarize_recommendations",
+    "run_coach_case",
+    "run_plan_case",
+    "run_recommendation_dataset",
+    "validate_recommendation_dataset",
 ]
