@@ -118,7 +118,8 @@ def answer_question(db, user_id, payload, as_of=None):
         return result
     if any(word in question for word in ("balance", "money do i have", "money do i have left")):
         return insufficient("I cannot establish your current available balance from imported transactions. Supply a confirmed balance for a purchase or cashflow scenario.")
-    if not any(word in question for word in ("spent", "spend", "spending", "expense", "income", "earned", "categor", "merchant", "compare")):
+    supports_income_verb = re.search(r"\bearns?\b", question) is not None
+    if not (supports_income_verb or any(word in question for word in ("spent", "spend", "spending", "expense", "income", "earned", "categor", "merchant", "compare"))):
         result.update(intent="unknown", status="unsupported", answer="I can answer spending, income, category, merchant, comparison, upcoming-bill, savings-opportunity and purchase questions. For a custom period, supply explicit dates.")
         return result
     compare = "compare" in question or "compared" in question
@@ -159,7 +160,7 @@ def answer_question(db, user_id, payload, as_of=None):
         # Compare equal elapsed days, capped to the prior calendar month's length.
         previous_end = min(previous_start + timedelta(days=today.day - 1), month_shift(today, 0) - timedelta(days=1))
         previous = totals(db, user_id, previous_start, previous_end, category)
-        metric = "income" if re.search(r"\b(income|earned)\b", question) else "expenses"
+        metric = "income" if re.search(r"\b(income|earns?)\b", question) else "expenses"
         current_value, previous_value = data[metric], previous[metric]
         change = current_value - previous_value if previous_value is not None else None
         change_pct = (
@@ -183,7 +184,7 @@ def answer_question(db, user_id, payload, as_of=None):
         result["calculation"] = {"operation": "ranked_expenses", "group": group, "items": items}
         result["answer"] = "; ".join(f"{row[group]}: BDT {row['expenses']:.2f}" for row in items) or "No expense transactions are recorded in this period."
     else:
-        metric = "income" if "income" in question or "earned" in question else "expenses"
+        metric = "income" if re.search(r"\b(income|earns?)\b", question) else "expenses"
         result["calculation"] = {"operation": "summary", "category": category, **data}
         result["answer"] = f"Recorded {metric} from {start} to {end}: BDT {data[metric]:.2f}. This reflects imported records only."
     return result
