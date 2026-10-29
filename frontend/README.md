@@ -1,6 +1,6 @@
 # PorerHishab frontend
 
-A React + TypeScript + Vite application connected to the existing FastAPI backend. The current refinement adds direct AI-13 snapshot/coverage integration, keyboard-accessible chart inspection and supported goal/schedule editing. See [the implementation audit](../docs/frontend-implementation.md) for UX decisions, API contracts and limitations.
+A React + TypeScript + Vite application connected to the existing FastAPI backend. The Khata redesign brings cream paper surfaces, teal ink, ledger layouts and a persistent English/Bengali language switcher to every page. Existing financial workflows and API contracts are preserved. See [the redesign audit and screenshots](../docs/frontend-khata-redesign.md) for the workflow inventory, localization guide and validation results.
 
 ## Run
 
@@ -43,7 +43,7 @@ The test suite covers native dialog focus, goal editing, monthly chart inspectio
 
 `npm run build` creates `dist`. Serve it behind HTTPS with SPA fallback to `index.html`. Route `/api/*` to the backend and strip the `/api` prefix, or set a trusted absolute `VITE_API_BASE_URL` at build time. `npm run preview` only serves static build output; it does not provide the development API proxy. The frontend now consumes the additive read-only `/finance/intelligence` adapter. Deploy the matching backend revision alongside it. Existing calculations, routes, database migrations and credentials are preserved.
 
-IBM Plex Sans and Noto Sans Bengali are loaded through Google Fonts; installed/system sans-serif fonts provide fallbacks. Self-host fonts for production deployments that prohibit external font requests.
+IBM Plex Sans and Hind Siliguri are loaded through Google Fonts; installed/system sans-serif fonts provide fallbacks. Self-host fonts for production deployments that prohibit external font requests.
 
 On Windows with Google Chrome already installed, the browser suite can use it without downloading Chromium:
 
@@ -68,3 +68,11 @@ Run from the repository root after backend schema changes:
 Schema generation needs backend dependencies but makes no database query or external request. Do not format generated files by hand. CI checks for drift, runs the AI-13 route/engine tests, then runs frontend typecheck, lint, unit, build and desktop/mobile browser checks.
 
 See [the refinement audit](../docs/frontend-refinement.md) for the current changes, validation scope and remaining product limitations.
+
+## Khata design and language support
+
+Use EN / Bangla in the header, authentication screens, Settings or an open dialog. The language preference persists in browser storage; authentication tokens remain in memory. Bengali localizes interface text and financial presentation. User records and backend explanations stay in their original language. Ask starter buttons retain supported English questions.
+
+Add frontend translations to src/lib/translations.ts and use the typed t() helper; subscribe through useLanguage() in rendering components. Never translate API prose or user-entered values through the interface dictionary. Use the locale formatting helpers for display; keep API decimal/date values canonical. All styles now live in src/styles.css.
+
+The nested Redesigned Frontend folder remains the design reference and is excluded from application linting. See [the Khata audit](../docs/frontend-khata-redesign.md) for the complete verification matrix and before/after screenshots.

@@ -1,3 +1,5 @@
+import { useLanguage } from "../lib/useLanguage";
+import { t, uiLabel } from "../lib/locale";
 import { useCallback, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -17,6 +19,7 @@ import {
 import { Dialog } from "../components/Dialog";
 import { TransactionTable } from "../components/TransactionTable";
 export function Transactions() {
+  useLanguage();
   const [params, setParams] = useSearchParams();
   const [revision, setRevision] = useState(0);
   const [selected, setSelected] = useState<Transaction | null>(null);
@@ -87,13 +90,15 @@ export function Transactions() {
   return (
     <>
       <PageHeading
-        title="Every transaction, in context."
-        description="Search your records, review a detail, or correct a category."
+        title={t("Every transaction, in context.")}
+        description={t(
+          "Search your records, review a detail, or correct a category.",
+        )}
         action={
           <div className="actions">
             <button onClick={() => file.current?.click()} disabled={busy}>
               <Upload size={16} />
-              Import CSV
+              {t("Import CSV")}{" "}
             </button>
             <button
               className="primary"
@@ -103,7 +108,7 @@ export function Transactions() {
               }}
             >
               <Plus size={16} />
-              Add transaction
+              {t("Add transaction")}{" "}
             </button>
           </div>
         }
@@ -113,7 +118,7 @@ export function Transactions() {
         accept=".csv,text/csv"
         ref={file}
         className="sr-only"
-        aria-label="Import transaction CSV"
+        aria-label={t("Import transaction CSV")}
         onChange={async (e) => {
           const chosen = e.target.files?.[0];
           if (!chosen) return;
@@ -133,12 +138,13 @@ export function Transactions() {
         }}
       />
       <p className="muted">
-        CSV: date and amount required; description, merchant and category
-        supported. Positive amounts are income; negative amounts are expenses.
+        {t(
+          "CSV: date and amount required; description, merchant and category supported. Positive amounts are income; negative amounts are expenses.",
+        )}{" "}
       </p>
       {notice && (
         <p role="status" className="success">
-          {notice}
+          {uiLabel(notice)}
         </p>
       )}
       {error && !selected && params.get("add") !== "1" && (
@@ -146,8 +152,10 @@ export function Transactions() {
       )}
       <Dialog
         open={params.get("add") === "1"}
-        title="Record a transaction"
-        description="Record money that has already occurred. Use negative amounts for expenses."
+        title={t("Record a transaction")}
+        description={t(
+          "Record money that has already occurred. Use negative amounts for expenses.",
+        )}
         busy={busy}
         onClose={() => {
           const next = new URLSearchParams(params);
@@ -159,30 +167,38 @@ export function Transactions() {
         {error && <ErrorNotice message={error} />}
         <form onSubmit={create} className="form-grid">
           <Field
-            label="Description"
+            label={t("Description")}
             name="description"
             required
             maxLength={1000}
           />
-          <Field label="Merchant (optional)" name="merchant" maxLength={255} />
           <Field
-            label="Date"
+            label={t("Merchant (optional)")}
+            name="merchant"
+            maxLength={255}
+          />
+          <Field
+            label={t("Date")}
             name="date"
             type="date"
             required
             defaultValue={today()}
           />
           <Field
-            label="Signed amount (BDT)"
+            label={t("Signed amount (BDT)")}
             name="amount"
             type="number"
             step="0.01"
             required
-            hint="Use a negative amount for an expense."
+            hint={t("Use a negative amount for an expense.")}
           />
-          <Field label="Category (optional)" name="category" maxLength={100} />
+          <Field
+            label={t("Category (optional)")}
+            name="category"
+            maxLength={100}
+          />
           <button className="primary form-end" disabled={busy}>
-            {busy ? "Saving..." : "Record transaction"}
+            {busy ? t("Saving...") : t("Record transaction")}
           </button>
         </form>
       </Dialog>
@@ -206,33 +222,33 @@ export function Transactions() {
         <label className="field search">
           <span>
             <Search size={15} />
-            Search
+            {t("Search")}{" "}
           </span>
           <input
             name="q"
-            placeholder="Merchant or description"
+            placeholder={t("Merchant or description")}
             defaultValue={params.get("q") || ""}
           />
         </label>
         <Field
-          label="From"
+          label={t("From")}
           name="start_date"
           type="date"
           defaultValue={params.get("start_date") || ""}
         />
         <Field
-          label="To"
+          label={t("To")}
           name="end_date"
           type="date"
           defaultValue={params.get("end_date") || ""}
         />
         <Field
-          label="Category"
+          label={t("Category")}
           name="category"
           defaultValue={params.get("category") || ""}
         />
         <label className="field">
-          <span>Type</span>
+          <span>{t("Type")}</span>
           <select
             name="kind"
             defaultValue={
@@ -243,18 +259,18 @@ export function Transactions() {
                   : ""
             }
           >
-            <option value="">All activity</option>
-            <option value="income">Income</option>
-            <option value="expense">Expenses</option>
+            <option value="">{t("All activity")}</option>
+            <option value="income">{t("Income")}</option>
+            <option value="expense">{t("Expenses")}</option>
           </select>
         </label>
-        <button className="form-end">Apply filters</button>
+        <button className="form-end">{t("Apply filters")}</button>
         <button
           type="button"
           className="text-button form-end"
           onClick={() => setParams({})}
         >
-          Reset
+          {t("Reset")}{" "}
         </button>
       </form>
       <ResourceView resource={records}>
@@ -280,8 +296,10 @@ export function Transactions() {
       </ResourceView>
       <Dialog
         open={selected !== null}
-        title="Transaction details"
-        description="Review the recorded amount and the reason for its category."
+        title={t("Transaction details")}
+        description={t(
+          "Review the recorded amount and the reason for its category.",
+        )}
         drawer
         busy={busy}
         onClose={() => {
@@ -292,29 +310,29 @@ export function Transactions() {
         {selected && (
           <>
             <h3>
-              {selected.merchant || selected.description || "Transaction"}
+              {selected.merchant || selected.description || t("Transaction")}
             </h3>
             {error && <ErrorNotice message={error} />}
             <Amount value={selected.amount} />
             <p>{selected.description}</p>
             <p className="muted">
-              Source: {selected.source || "Not supplied"} / Fee:{" "}
-              <Amount value={selected.fee} />
+              {t("Source:")} {selected.source || t("Not supplied")}{" "}
+              {t("/ Fee:")} <Amount value={selected.fee} />
             </p>
             <p>
               {selected.category_reason ||
-                "No categorization explanation supplied."}
+                t("No categorization explanation supplied.")}
             </p>
             <form onSubmit={correct} className="inline-form">
               <Field
-                label="Correct category"
+                label={t("Correct category")}
                 name="category"
                 required
                 maxLength={100}
                 defaultValue={selected.category || ""}
               />
               <button className="primary form-end" disabled={busy}>
-                Save category
+                {t("Save category")}{" "}
               </button>
             </form>
           </>

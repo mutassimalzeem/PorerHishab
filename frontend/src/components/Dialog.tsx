@@ -1,3 +1,6 @@
+import { LanguageSwitcher } from "../lib/Language";
+import { useLanguage } from "../lib/useLanguage";
+import { t } from "../lib/locale";
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
@@ -19,6 +22,7 @@ export function Dialog({
   busy?: boolean;
   drawer?: boolean;
 }) {
+  useLanguage();
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   useEffect(() => {
@@ -68,9 +72,10 @@ export function Dialog({
           <h2 id={id}>{title}</h2>
           {description && <p id={`${id}-description`}>{description}</p>}
         </div>
+        <LanguageSwitcher />
         <button
           type="button"
-          aria-label={`Close ${title}`}
+          aria-label={t("Close") + " " + title}
           disabled={busy}
           onClick={onClose}
         >

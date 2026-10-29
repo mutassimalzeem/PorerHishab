@@ -1,14 +1,17 @@
+import { useLanguage } from "../lib/useLanguage";
+import { t, getLocale, digits } from "../lib/locale";
 import { useId, useState } from "react";
 import type { CoachMonth } from "../domain";
 import { money } from "../lib/format";
 import { Amount, Empty } from "./ui";
 export function CashflowChart({ months }: { months: CoachMonth[] }) {
+  useLanguage();
   const id = useId();
   const [selected, setSelected] = useState(0);
   if (!months.length)
     return (
-      <Empty title="No outlook points returned">
-        Try building the outlook again.
+      <Empty title={t("No outlook points returned")}>
+        {t("Try building the outlook again.")}{" "}
       </Empty>
     );
   const values = months.flatMap((m) => [
@@ -26,7 +29,7 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
   const active = months[Math.min(selected, months.length - 1)];
   const hasForecast = months.some((m) => m.projected_balance !== null);
   const axis = (n: number) =>
-    new Intl.NumberFormat("en", {
+    new Intl.NumberFormat(getLocale(), {
       notation: "compact",
       maximumFractionDigits: 1,
     }).format(n);
@@ -34,24 +37,30 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
     <figure className="cashflow-chart">
       <figcaption>
         {hasForecast
-          ? "Two possible paths from your starting balance"
-          : "Your known-obligation scenario"}
+          ? t("Two possible paths from your starting balance")
+          : t("Your known-obligation scenario")}
       </figcaption>
       <p className="chart-description">
         {hasForecast
-          ? "Compare the historical estimate with a path that counts no future income."
-          : "There is not enough history for a forecast. Only scheduled expense reserves are shown."}
+          ? t(
+              "Compare the historical estimate with a path that counts no future income.",
+            )
+          : t(
+              "There is not enough history for a forecast. Only scheduled expense reserves are shown.",
+            )}
       </p>
       <svg
         viewBox="0 0 720 280"
         role="img"
         aria-labelledby={`${id}-title ${id}-desc`}
       >
-        <title id={`${id}-title`}>Monthly cashflow scenarios in BDT</title>
+        <title id={`${id}-title`}>
+          {t("Monthly cashflow scenarios in BDT")}
+        </title>
         <desc id={`${id}-desc`}>
-          Solid ochre indicates the balance without future income. Dashed blue
-          indicates an estimate when available. Choose a month below to inspect
-          exact amounts, or read the adjacent data table.
+          {t(
+            "Solid ochre indicates the balance without future income. Dashed blue indicates an estimate when available. Choose a month below to inspect exact amounts, or read the adjacent data table.",
+          )}{" "}
         </desc>
         {[min, min + extent / 2, max].map((tick, i) => (
           <g key={i}>
@@ -73,7 +82,7 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
           </g>
         ))}
         <text x="80" y="26" textAnchor="end" className="chart-label">
-          BDT
+          {t("BDT")}{" "}
         </text>
         <line
           x1={x(Math.min(selected, months.length - 1))}
@@ -86,7 +95,7 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
         {months.map((m, i) => {
           const previous = months[i - 1];
           return (
-            <g key={m.month}>
+            <g key={digits(m.month)}>
               {i > 0 &&
                 m.projected_balance !== null &&
                 previous.projected_balance !== null && (
@@ -105,7 +114,8 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
                 className="obligation-dot"
               >
                 <title>
-                  {m.month}: without future income{" "}
+                  {digits(m.month)}
+                  {t(": without future income")}{" "}
                   {money(m.balance_without_future_income)}
                 </title>
               </circle>
@@ -117,7 +127,8 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
                   className="forecast-dot"
                 >
                   <title>
-                    {m.month}: estimated {money(m.projected_balance)}
+                    {digits(m.month)}
+                    {t(": estimated")} {money(m.projected_balance)}
                   </title>
                 </circle>
               )}
@@ -127,7 +138,7 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
                 textAnchor="middle"
                 className="chart-label"
               >
-                {months.length > 6 ? m.month.slice(5) : m.month}
+                {digits(months.length > 6 ? m.month.slice(5) : m.month)}
               </text>
             </g>
           );
@@ -136,45 +147,45 @@ export function CashflowChart({ months }: { months: CoachMonth[] }) {
       <div className="legend">
         <span>
           <i className="solid-key" />
-          Without future income
+          {t("Without future income")}{" "}
         </span>
         {hasForecast ? (
           <span>
             <i className="dashed-key" />
-            Historical estimate
+            {t("Historical estimate")}{" "}
           </span>
         ) : (
-          <span>Historical estimate unavailable</span>
+          <span>{t("Historical estimate unavailable")}</span>
         )}
       </div>
       <div
         className="chart-months"
         role="group"
-        aria-label="Inspect a cashflow month"
+        aria-label={t("Inspect a cashflow month")}
       >
         {months.map((m, i) => (
           <button
             type="button"
-            key={m.month}
+            key={digits(m.month)}
             aria-pressed={selected === i}
             onClick={() => setSelected(i)}
           >
-            {m.month}
+            {digits(m.month)}
           </button>
         ))}
       </div>
       <div className="chart-readout" aria-live="polite">
-        <strong>{active.month}</strong>
+        <strong>{digits(active.month)}</strong>
         <div>
-          <small>Without future income</small>
+          <small>{t("Without future income")}</small>
           <Amount value={active.balance_without_future_income} />
         </div>
         <div>
-          <small>Estimated balance</small>
+          <small>{t("Estimated balance")}</small>
           <Amount value={active.projected_balance} />
         </div>
         <div>
-          <small>Scheduled expenses</small>
+          <small>{t("Scheduled expenses")}</small>
           <Amount value={active.scheduled_expenses} />
         </div>
       </div>

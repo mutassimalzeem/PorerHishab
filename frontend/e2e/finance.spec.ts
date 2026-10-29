@@ -201,7 +201,10 @@ async function accessible(page: import("@playwright/test").Page) {
     "axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}}).then(r=>r.violations.map(v=>({id:v.id,help:v.help,nodes:v.nodes.map(n=>n.target)})))",
   );
   expect(violations).toEqual([]);
-  if ((await page.getByRole("dialog").count()) === 0)
+  if (
+    (await page.getByRole("dialog").count()) === 0 &&
+    (await page.locator("#main").count())
+  )
     await page.locator("#main").focus();
 }
 test("overview, navigation and transaction ledger remain usable", async ({
@@ -378,4 +381,138 @@ test("mobile navigation contains focus and returns it on Escape", async ({
   await expect(
     page.getByRole("heading", { name: "A question worth asking." }),
   ).toBeVisible();
+});
+
+async function navigatePath(
+  page: import("@playwright/test").Page,
+  path: string,
+) {
+  const toggle = page.locator("#nav-toggle");
+  if (await toggle.isVisible()) {
+    await toggle.click();
+    await page
+      .getByRole("dialog")
+      .locator('a[href="' + path + '"]')
+      .first()
+      .click();
+  } else
+    await page
+      .locator('.sidebar a[href="' + path + '"]')
+      .first()
+      .click();
+  await expect(page.locator("#main h1")).toBeVisible();
+}
+for (const width of [360, 390, 768, 1024, 1440]) {
+  test(
+    "Khata English/Bengali routes at " + width + "px",
+    async ({ page }, info) => {
+      test.skip(
+        info.project.name === "mobile",
+        "The width matrix runs once using the desktop browser; mobile touch flows have separate coverage.",
+      );
+      test.setTimeout(90000);
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.setViewportSize({ width, height: 900 });
+      await connect(page, true);
+      for (const language of ["en", "bn"]) {
+        await page.locator('.topbar button[lang="' + language + '"]').click();
+        await expect(page.locator("html")).toHaveAttribute("lang", language);
+        for (const path of [
+          "/",
+          "/transactions",
+          "/cashflow",
+          "/plans",
+          "/insights",
+          "/ask",
+          "/settings",
+        ]) {
+          await navigatePath(page, path);
+          await noOverflow(page);
+          await accessible(page);
+          if (path === "/" && [390, 1440].includes(width))
+            await page.screenshot({
+              path: info.outputPath("khata-" + language + "-" + width + ".png"),
+              fullPage: true,
+            });
+        }
+      }
+      expect(errors).toEqual([]);
+    },
+  );
+}
+test("language switching retains an open schedule draft, sends canonical decimal payloads, and survives reload", async ({
+  page,
+}, info) => {
+  await connect(page);
+  await navigatePath(page, "/cashflow");
+  await page
+    .getByRole("button", { name: "Schedule an item", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator('input[name="title"]').fill("Original user record");
+  await dialog.locator('input[name="amount"]').fill("1234.50");
+  await dialog.locator('input[name="due_date"]').fill("2026-11-15");
+  await dialog.locator('button[lang="bn"]').click();
+  await expect(dialog.locator('input[name="title"]')).toHaveValue(
+    "Original user record",
+  );
+  await expect(dialog.locator('input[name="amount"]')).toHaveValue("1234.50");
+  await expect(dialog).toBeVisible();
+  await accessible(page);
+  await page.screenshot({
+    path: info.outputPath("khata-bn-schedule-editor.png"),
+    fullPage: true,
+  });
+  const sent = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      request.url().endsWith("/finance/scheduled-cashflow"),
+  );
+  await dialog.locator('button[type="submit"], form button.primary').click();
+  expect((await sent).postDataJSON()).toEqual({
+    title: "Original user record",
+    kind: "expense",
+    amount: "1234.50",
+    due_date: "2026-11-15",
+  });
+  await expect(dialog).not.toBeVisible();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "bn");
+  await expect(page.locator('input[name="email"]')).toBeVisible();
+  await expect(page.locator('.auth button[lang="bn"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await noOverflow(page);
+  await accessible(page);
+});
+test("authentication language switching preserves input and localizes validation", async ({
+  page,
+}, info) => {
+  await page.goto("/login");
+  await page.locator('input[name="email"]').fill("draft@example.com");
+  await page.locator('input[name="password"]').fill("draft-password");
+  await page.locator('.auth button[lang="bn"]').click();
+  await expect(page.locator('input[name="email"]')).toHaveValue(
+    "draft@example.com",
+  );
+  await expect(page.locator('input[name="password"]')).toHaveValue(
+    "draft-password",
+  );
+  await page.locator('input[name="email"]').fill("");
+  await page.locator("form button").click();
+  expect(
+    await page
+      .locator('input[name="email"]')
+      .evaluate((node: HTMLInputElement) => node.validationMessage),
+  ).toMatch(/[\u0980-\u09ff]/);
+  await noOverflow(page);
+  await accessible(page);
+  await page.screenshot({
+    path: info.outputPath("khata-bn-auth.png"),
+    fullPage: true,
+  });
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "bn");
 });

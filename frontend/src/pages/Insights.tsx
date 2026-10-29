@@ -1,3 +1,5 @@
+import { useLanguage } from "../lib/useLanguage";
+import { t, uiLabel, digits } from "../lib/locale";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { IntelligencePanels } from "../components/IntelligencePanels";
@@ -14,6 +16,7 @@ import {
   Section,
 } from "../components/ui";
 export function Insights() {
+  useLanguage();
   const intelligence = useResource(useCallback(() => api.intelligence(), []));
   const nudges = useResource(useCallback(() => api.nudges(), []));
   const recommendations = useResource(
@@ -23,10 +26,12 @@ export function Insights() {
   return (
     <>
       <PageHeading
-        title="The changes that deserve a look."
-        description="A few grounded observations, with the evidence behind each one."
+        title={t("The changes that deserve a look.")}
+        description={t(
+          "A few grounded observations, with the evidence behind each one.",
+        )}
       />
-      <Section title="Worth your attention">
+      <Section title={t("Worth your attention")}>
         <ResourceView resource={nudges}>
           {(p) => (
             <>
@@ -41,21 +46,21 @@ export function Insights() {
                       <div className="section-heading">
                         <span className="context">
                           {n.severity === "info"
-                            ? "Observation"
-                            : "Needs attention"}{" "}
-                          / {n.type.replaceAll("_", " ")}
+                            ? t("Observation")
+                            : t("Needs attention")}{" "}
+                          / {uiLabel(n.type)}
                         </span>
                         <button
                           className="text-button"
                           onClick={() => setHidden((v) => [...v, n.key])}
                         >
-                          Hide for this visit
+                          {t("Hide for this visit")}{" "}
                         </button>
                       </div>
                       <h3>{n.title}</h3>
                       <p>{n.next_action}</p>
                       <small>
-                        {date(n.period_start)} to {date(n.period_end)}
+                        {date(n.period_start)} {t("to")} {date(n.period_end)}
                       </small>
                       <Evidence value={n.evidence} />
                       <Link
@@ -67,20 +72,20 @@ export function Insights() {
                               : "/transactions"
                         }
                       >
-                        Review related records
+                        {t("Review related records")}{" "}
                       </Link>
                     </article>
                   ))
               ) : (
-                <Empty title="Nothing else to review right now">
-                  Observations appear when your records support a useful
-                  comparison. A quiet view does not establish that your finances
-                  are healthy.
+                <Empty title={t("Nothing else to review right now")}>
+                  {t(
+                    "Observations appear when your records support a useful comparison. A quiet view does not establish that your finances are healthy.",
+                  )}{" "}
                 </Empty>
               )}
               {hidden.length > 0 && (
                 <button className="text-button" onClick={() => setHidden([])}>
-                  Restore hidden observations
+                  {t("Restore hidden observations")}{" "}
                 </button>
               )}
               <Notes limitations={p.limitations} />
@@ -88,45 +93,47 @@ export function Insights() {
           )}
         </ResourceView>
       </Section>
-      <Section title="Possible savings, grounded in your history">
+      <Section title={t("Possible savings, grounded in your history")}>
         <ResourceView resource={recommendations}>
           {(p) => (
             <>
               <p className="source">
-                Coverage: {date(p.coverage.start_date)} to{" "}
-                {date(p.coverage.end_date)} / {p.coverage.transaction_count}{" "}
-                records.
+                {t("Coverage:")} {date(p.coverage.start_date)} {t("to")}{" "}
+                {date(p.coverage.end_date)} /{" "}
+                {digits(p.coverage.transaction_count)} {t("records.")}{" "}
               </p>
               {p.recommendations.length ? (
                 p.recommendations.map((r) => (
                   <article className="recommendation" key={r.id}>
                     <span className="context">
-                      Recommended review / {r.category}
+                      {t("Recommended review /")} {r.category}
                     </span>
                     <h3>{r.title}</h3>
                     <div className="goal-numbers">
                       <div>
-                        <small>Estimated monthly reduction</small>
+                        <small>{t("Estimated monthly reduction")}</small>
                         <Amount value={r.estimated_monthly_saving} />
                       </div>
                       <div>
-                        <small>Annual estimate, if sustained</small>
+                        <small>{t("Annual estimate, if sustained")}</small>
                         <Amount value={r.estimated_annual_saving} />
                       </div>
                     </div>
                     <p className="muted">
-                      Confidence: {r.confidence}. An opportunity to review, not
-                      guaranteed savings.
+                      {t("Confidence:")} {uiLabel(r.confidence)}
+                      {t(
+                        ". An opportunity to review, not guaranteed savings.",
+                      )}{" "}
                     </p>
                     <Evidence value={r.evidence} />
                     <Notes assumptions={r.assumptions} />
                   </article>
                 ))
               ) : (
-                <Empty title="A little more history first">
-                  Recommendations need observations across three complete
-                  calendar months. No saving amount is assumed when history is
-                  insufficient.
+                <Empty title={t("A little more history first")}>
+                  {t(
+                    "Recommendations need observations across three complete calendar months. No saving amount is assumed when history is insufficient.",
+                  )}{" "}
                 </Empty>
               )}
               <Notes
@@ -138,7 +145,7 @@ export function Insights() {
       </Section>
       <ResourceView
         resource={intelligence}
-        label="Reading your history and coverage..."
+        label={t("Reading your history and coverage...")}
       >
         {(data) => <IntelligencePanels data={data} />}
       </ResourceView>

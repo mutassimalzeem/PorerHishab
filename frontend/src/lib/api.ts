@@ -1,3 +1,4 @@
+import { getLanguage, t, uiLabel } from "./locale";
 import type {
   Answer,
   Intelligence,
@@ -90,7 +91,9 @@ export async function request<T>(
       throw error;
     throw new ApiError(
       0,
-      "Could not reach PorerHishab. Check your connection and that the API is running.",
+      t(
+        "Could not reach PorerHishab. Check your connection and that the API is running.",
+      ),
     );
   }
   if (response.status === 401 && tokens && version === sessionVersion) {
@@ -111,6 +114,21 @@ export async function request<T>(
       message = detail((await response.json()).detail);
     } catch {
       /* Non-JSON upstream failure. */
+    }
+    if (getLanguage() === "bn") {
+      const known = uiLabel(message);
+      message =
+        known !== message
+          ? known
+          : response.status === 401
+            ? t("Please sign in again to continue.")
+            : response.status === 403
+              ? t("You do not have access to this action.")
+              : response.status === 404
+                ? t("The requested record was not found.")
+                : response.status === 422
+                  ? t("Please check the form and try again.")
+                  : t("The request could not be completed. Please try again.");
     }
     throw new ApiError(response.status, message);
   }

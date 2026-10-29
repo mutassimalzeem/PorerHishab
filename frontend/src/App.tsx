@@ -1,3 +1,6 @@
+import { LanguageSwitcher } from "./lib/Language";
+import { useLanguage } from "./lib/useLanguage";
+import { t, uiLabel } from "./lib/locale";
 import { useEffect, useState } from "react";
 import {
   BrowserRouter,
@@ -43,22 +46,25 @@ const navigation = [
   { to: "/ask", label: "Ask PorerHishab", icon: MessageSquare },
 ];
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const { language } = useLanguage();
   const [open, setOpen] = useState(false);
   const mobile = useMediaQuery("(max-width:760px)");
   const location = useLocation();
   useEffect(() => {
-    document.title = `${navigation.find((n) => n.to === location.pathname)?.label || "Settings"} | PorerHishab`;
+    document.title = `${uiLabel(navigation.find((n) => n.to === location.pathname)?.label || t("Settings"))} | PorerHishab`;
+  }, [location.pathname, language]);
+  useEffect(() => {
     document.getElementById("main")?.focus();
   }, [location.pathname]);
   return (
     <div className="app-shell">
       <a href="#main" className="skip-link">
-        Skip to content
+        {t("Skip to content")}{" "}
       </a>
       {mobile ? (
         <Dialog
           open={open}
-          title="Your workspace"
+          title={t("Your workspace")}
           drawer
           onClose={() => setOpen(false)}
         >
@@ -67,13 +73,13 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             <Link to="/" className="brand" onClick={() => setOpen(false)}>
               <span className="brand-mark">{"\u09aa"}</span>
               <span>
-                PorerHishab
+                {t("PorerHishab")}{" "}
                 <small lang="bn">
                   {"\u09aa\u09b0\u09c7\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac"}
                 </small>
               </span>
             </Link>
-            <nav aria-label="Main navigation">
+            <nav aria-label={t("Main navigation")}>
               {navigation.map((n) => (
                 <NavLink
                   key={n.to}
@@ -82,7 +88,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
                   onClick={() => setOpen(false)}
                 >
                   <n.icon size={19} strokeWidth={1.7} />
-                  {n.label}
+                  {uiLabel(n.label)}
                   {n.to === "/ask" && (
                     <ArrowUpRight size={14} className="nav-arrow" />
                   )}
@@ -93,24 +99,24 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
               <div className="sidebar-note">
                 <span className="small-mark" />
                 <p>
-                  A little ahead.
-                  <br />A lot more clear.
+                  {t("A little ahead.")} <br />
+                  {t("A lot more clear.")}{" "}
                 </p>
               </div>
               <NavLink to="/settings" onClick={() => setOpen(false)}>
                 <SettingsIcon size={18} />
-                Settings
+                {t("Settings")}{" "}
               </NavLink>
               <button className="text-button" onClick={onLogout}>
                 <LogOut size={17} />
-                Sign out
+                {t("Sign out")}{" "}
               </button>
               <div className="account">
                 <span className="avatar">
                   {(user.full_name || user.email).slice(0, 1).toUpperCase()}
                 </span>
                 <div>
-                  <strong>{user.full_name || "Your account"}</strong>
+                  <strong>{user.full_name || t("Your account")}</strong>
                   <small>{user.email}</small>
                 </div>
               </div>
@@ -123,13 +129,13 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
           <Link to="/" className="brand" onClick={() => setOpen(false)}>
             <span className="brand-mark">{"\u09aa"}</span>
             <span>
-              PorerHishab
+              {t("PorerHishab")}{" "}
               <small lang="bn">
                 {"\u09aa\u09b0\u09c7\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac"}
               </small>
             </span>
           </Link>
-          <nav aria-label="Main navigation">
+          <nav aria-label={t("Main navigation")}>
             {navigation.map((n) => (
               <NavLink
                 key={n.to}
@@ -138,7 +144,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
                 onClick={() => setOpen(false)}
               >
                 <n.icon size={19} strokeWidth={1.7} />
-                {n.label}
+                {uiLabel(n.label)}
                 {n.to === "/ask" && (
                   <ArrowUpRight size={14} className="nav-arrow" />
                 )}
@@ -149,24 +155,24 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             <div className="sidebar-note">
               <span className="small-mark" />
               <p>
-                A little ahead.
-                <br />A lot more clear.
+                {t("A little ahead.")} <br />
+                {t("A lot more clear.")}{" "}
               </p>
             </div>
             <NavLink to="/settings" onClick={() => setOpen(false)}>
               <SettingsIcon size={18} />
-              Settings
+              {t("Settings")}{" "}
             </NavLink>
             <button className="text-button" onClick={onLogout}>
               <LogOut size={17} />
-              Sign out
+              {t("Sign out")}{" "}
             </button>
             <div className="account">
               <span className="avatar">
                 {(user.full_name || user.email).slice(0, 1).toUpperCase()}
               </span>
               <div>
-                <strong>{user.full_name || "Your account"}</strong>
+                <strong>{user.full_name || t("Your account")}</strong>
                 <small>{user.email}</small>
               </div>
             </div>
@@ -178,21 +184,24 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
           <button
             id="nav-toggle"
             className="mobile-menu"
-            aria-label="Open navigation"
+            aria-label={t("Open navigation")}
             aria-expanded={open}
             onClick={() => setOpen(true)}
           >
             <Menu size={21} />
           </button>
           <span className="workspace-label">
-            Personal workspace <span aria-hidden="true">/</span>{" "}
+            {t("Personal workspace")} <span aria-hidden="true">/</span>{" "}
             <strong>
-              {navigation.find((n) => n.to === location.pathname)?.label ||
-                "Settings"}
+              {uiLabel(
+                navigation.find((n) => n.to === location.pathname)?.label ||
+                  t("Settings"),
+              )}
             </strong>
           </span>
           <time dateTime={today()}>{date(today())}</time>
-          <span className="currency-label">BDT</span>
+          <LanguageSwitcher />
+          <span className="currency-label">{t("BDT")}</span>
         </header>
         <main id="main" tabIndex={-1}>
           <Routes>
@@ -211,26 +220,30 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
               path="*"
               element={
                 <Empty
-                  title="This page is not here"
+                  title={t("This page is not here")}
                   action={
                     <Link to="/" className="button">
-                      Back to overview
+                      {t("Back to overview")}{" "}
                     </Link>
                   }
                 >
-                  Your financial records are available from the main navigation.
+                  {t(
+                    "Your financial records are available from the main navigation.",
+                  )}{" "}
                 </Empty>
               }
             />
           </Routes>
           <footer className="footer">
-            <span>PorerHishab</span>
-            <span>Based on your records. Built for what comes next.</span>
+            <span>{t("PorerHishab")}</span>
+            <span>
+              {t("Based on your records. Built for what comes next.")}
+            </span>
           </footer>
         </main>
       </div>
       {mobile && (
-        <nav className="mobile-quick-nav" aria-label="Quick navigation">
+        <nav className="mobile-quick-nav" aria-label={t("Quick navigation")}>
           {navigation
             .filter((n) =>
               ["/", "/cashflow", "/transactions", "/ask"].includes(n.to),
@@ -238,7 +251,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             .map((n) => (
               <NavLink key={n.to} to={n.to} end={n.to === "/"}>
                 <n.icon size={20} />
-                <span>{n.to === "/ask" ? "Ask" : n.label}</span>
+                <span>{n.to === "/ask" ? t("Ask") : uiLabel(n.label)}</span>
               </NavLink>
             ))}
         </nav>
@@ -247,6 +260,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 }
 export default function App() {
+  useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [expired, setExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -287,7 +301,7 @@ export default function App() {
           {error && <ErrorNotice message={error} />}{" "}
           {loading ? (
             <div className="auth-pending" role="status">
-              Opening your workspace...
+              {t("Opening your workspace...")}{" "}
             </div>
           ) : (
             <Auth

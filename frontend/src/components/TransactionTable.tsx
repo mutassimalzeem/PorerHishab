@@ -1,3 +1,5 @@
+import { useLanguage } from "../lib/useLanguage";
+import { t } from "../lib/locale";
 import { Link } from "react-router-dom";
 import type { Transaction } from "../domain";
 import { Amount, Empty } from "./ui";
@@ -9,17 +11,20 @@ export function TransactionTable({
   items: Transaction[];
   onSelect?: (item: Transaction) => void;
 }) {
+  useLanguage();
   if (!items.length)
     return (
       <Empty
-        title="No transactions in this period"
+        title={t("No transactions in this period")}
         action={
           <Link className="button" to="/transactions?add=1">
-            Add a transaction
+            {t("Add a transaction")}{" "}
           </Link>
         }
       >
-        Record income and expenses to give your next decisions more context.
+        {t(
+          "Record income and expenses to give your next decisions more context.",
+        )}{" "}
       </Empty>
     );
   return (
@@ -27,54 +32,65 @@ export function TransactionTable({
       className="table-wrap"
       tabIndex={0}
       role="region"
-      aria-label="Transaction records"
+      aria-label={t("Transaction records")}
     >
       <table className="transaction-table">
         <caption className="sr-only">
-          Recorded transactions. Income is positive; expenses are negative.
+          {t(
+            "Recorded transactions. Income is positive; expenses are negative.",
+          )}{" "}
         </caption>
         <thead>
           <tr>
-            <th>Transaction</th>
-            <th>Date</th>
-            <th>Category</th>
-            <th className="numeric">Amount</th>
+            <th>{t("Transaction")}</th>
+            <th>{t("Date")}</th>
+            <th>{t("Category")}</th>
+            <th className="numeric">{t("Amount")}</th>
           </tr>
         </thead>
         <tbody>
-          {items.map((t) => (
-            <tr key={t.id}>
+          {items.map((transaction) => (
+            <tr key={transaction.id}>
               <td>
                 {onSelect ? (
-                  <button className="row-link" onClick={() => onSelect(t)}>
-                    {t.merchant || t.description || "Unnamed transaction"}
+                  <button
+                    className="row-link"
+                    onClick={() => onSelect(transaction)}
+                  >
+                    {transaction.merchant ||
+                      transaction.description ||
+                      t("Unnamed transaction")}
                   </button>
                 ) : (
                   <span className="row-title">
-                    {t.merchant || t.description || "Unnamed transaction"}
+                    {transaction.merchant ||
+                      transaction.description ||
+                      t("Unnamed transaction")}
                   </span>
                 )}
                 <small>
-                  {t.description !== t.merchant ? t.description : null}
+                  {transaction.description !== transaction.merchant
+                    ? transaction.description
+                    : null}
                 </small>
               </td>
-              <td>{date(t.date)}</td>
+              <td>{date(transaction.date)}</td>
               <td>
                 <span className="category">
-                  {t.category || "Uncategorized"}
+                  {transaction.category || t("Uncategorized")}
                 </span>
               </td>
               <td className="numeric">
                 <Amount
-                  value={t.amount}
-                  className={Number(t.amount) > 0 ? "positive" : ""}
+                  value={transaction.amount}
+                  className={Number(transaction.amount) > 0 ? "positive" : ""}
                 />
                 <small>
-                  {Number(t.amount) === 0
-                    ? "No net movement"
-                    : Number(t.amount) > 0
-                      ? "Income"
-                      : "Expense"}
+                  {Number(transaction.amount) === 0
+                    ? t("No net movement")
+                    : Number(transaction.amount) > 0
+                      ? t("Income")
+                      : t("Expense")}
                 </small>
               </td>
             </tr>

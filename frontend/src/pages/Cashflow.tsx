@@ -1,3 +1,5 @@
+import { useLanguage } from "../lib/useLanguage";
+import { t, uiLabel, digits } from "../lib/locale";
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
 import { Plus } from "lucide-react";
@@ -19,6 +21,7 @@ import {
 import { Dialog } from "../components/Dialog";
 import { CashflowChart } from "../components/CashflowChart";
 export function Cashflow() {
+  useLanguage();
   const [offset, setOffset] = useState(0);
   const [filter, setFilter] = useState("scheduled");
   const [revision, setRevision] = useState(0);
@@ -106,8 +109,10 @@ export function Cashflow() {
   return (
     <>
       <PageHeading
-        title="Make room for what comes next."
-        description="Recorded money, scheduled commitments and estimates each tell a different story."
+        title={t("Make room for what comes next.")}
+        description={t(
+          "Recorded money, scheduled commitments and estimates each tell a different story.",
+        )}
         action={
           <button
             className="primary"
@@ -118,30 +123,30 @@ export function Cashflow() {
             }}
           >
             <Plus size={17} />
-            Schedule an item
+            {t("Schedule an item")}{" "}
           </button>
         }
       />
       <div className="meaning-strip">
         <span>
-          <b>Actual</b> Already recorded
+          <b>{t("Actual")}</b> {t("Already recorded")}{" "}
         </span>
         <span>
-          <b>Scheduled</b> A future plan
+          <b>{t("Scheduled")}</b> {t("A future plan")}{" "}
         </span>
         <span>
-          <b>Forecast</b> A historical estimate
+          <b>{t("Forecast")}</b> {t("A historical estimate")}{" "}
         </span>
       </div>
       {notice && (
         <p role="status" className="success">
-          {notice}
+          {uiLabel(notice)}
         </p>
       )}
       {error && !adding && <ErrorNotice message={error} />}
-      <Section title="Upcoming & scheduled">
+      <Section title={t("Upcoming & scheduled")}>
         <label className="inline-form">
-          Show{" "}
+          {t("Show")}{" "}
           <select
             value={filter}
             onChange={(e) => {
@@ -149,16 +154,20 @@ export function Cashflow() {
               setOffset(0);
             }}
           >
-            <option value="scheduled">Scheduled (including overdue)</option>
-            <option value="paid">Paid</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="">All statuses</option>
+            <option value="scheduled">
+              {t("Scheduled (including overdue)")}
+            </option>
+            <option value="paid">{t("Paid")}</option>
+            <option value="cancelled">{t("Cancelled")}</option>
+            <option value="">{t("All statuses")}</option>
           </select>
         </label>
         <Dialog
           open={adding}
-          title={editing ? "Edit scheduled item" : "Schedule an item"}
-          description="A scheduled item is a plan. Saving it does not create a transaction."
+          title={editing ? t("Edit scheduled item") : t("Schedule an item")}
+          description={t(
+            "A scheduled item is a plan. Saving it does not create a transaction.",
+          )}
           busy={busy}
           onClose={() => {
             setAdding(false);
@@ -171,19 +180,19 @@ export function Cashflow() {
             <Field
               name="title"
               defaultValue={editing?.title ?? ""}
-              label="What is it for?"
+              label={t("What is it for?")}
               required
               maxLength={160}
             />
             <label className="field">
-              <span>Kind</span>
+              <span>{t("Kind")}</span>
               <select name="kind" defaultValue={editing?.kind ?? "expense"}>
-                <option value="expense">Planned expense</option>
-                <option value="income">Expected income</option>
+                <option value="expense">{t("Planned expense")}</option>
+                <option value="income">{t("Expected income")}</option>
               </select>
             </label>
             <Field
-              label="Amount (BDT)"
+              label={t("Amount (BDT)")}
               name="amount"
               defaultValue={editing?.amount ?? ""}
               type="number"
@@ -192,14 +201,14 @@ export function Cashflow() {
               required
             />
             <Field
-              label="Due date"
+              label={t("Due date")}
               name="due_date"
               type="date"
               required
               defaultValue={editing?.due_date ?? today()}
             />
             <button className="primary form-end" disabled={busy}>
-              Save scheduled item
+              {t("Save scheduled item")}{" "}
             </button>
           </form>
         </Dialog>
@@ -210,19 +219,24 @@ export function Cashflow() {
                 <div className="schedule-list">
                   {p.items.map((item) => (
                     <div className="schedule-row" key={item.id}>
-                      <div className="date-tile">{item.due_date.slice(8)}</div>
+                      <div className="date-tile">
+                        {digits(item.due_date.slice(8))}
+                      </div>
                       <div>
                         <strong>{item.title}</strong>
                         <small>
-                          {date(item.due_date)} / {item.kind} / {item.status}
+                          {date(item.due_date)} / {uiLabel(item.kind)} /{" "}
+                          {uiLabel(item.status)}
                           {item.status === "scheduled" &&
                           item.due_date < today()
-                            ? " / Overdue - excluded from future scenarios"
+                            ? t(" / Overdue - excluded from future scenarios")
                             : ""}
                         </small>
                         {item.kind === "income" && (
                           <small>
-                            Expected income; not currently available.
+                            {t(
+                              "Expected income; not currently available.",
+                            )}{" "}
                           </small>
                         )}
                       </div>
@@ -237,20 +251,20 @@ export function Cashflow() {
                               setError(null);
                             }}
                           >
-                            Edit
+                            {t("Edit")}{" "}
                           </button>
                           <button
                             disabled={busy}
                             onClick={() => update(item, "paid")}
                           >
-                            Mark paid
+                            {t("Mark paid")}{" "}
                           </button>
                           <button
                             disabled={busy}
                             className="text-button"
                             onClick={() => update(item, "cancelled")}
                           >
-                            Cancel
+                            {t("Cancel")}{" "}
                           </button>
                         </div>
                       )}
@@ -258,8 +272,8 @@ export function Cashflow() {
                   ))}
                 </div>
               ) : (
-                <Empty title="No items in this view">
-                  Schedule a bill or expected income to see it here.
+                <Empty title={t("No items in this view")}>
+                  {t("Schedule a bill or expected income to see it here.")}{" "}
                 </Empty>
               )}
               <Pager
@@ -272,14 +286,15 @@ export function Cashflow() {
           )}
         </ResourceView>
       </Section>
-      <Section title="Your cashflow outlook">
+      <Section title={t("Your cashflow outlook")}>
         <p className="muted">
-          Enter a balance you have checked yourself. We do not infer an account
-          balance from transaction history.
+          {t(
+            "Enter a balance you have checked yourself. We do not infer an account balance from transaction history.",
+          )}{" "}
         </p>
         <form className="inline-form" onSubmit={(e) => run(e, "scenario")}>
           <Field
-            label="Starting balance (BDT)"
+            label={t("Starting balance (BDT)")}
             name="starting_balance"
             type="number"
             min="0"
@@ -287,55 +302,59 @@ export function Cashflow() {
             required
           />
           <label className="field">
-            <span>Look ahead</span>
+            <span>{t("Look ahead")}</span>
             <select name="months_ahead" defaultValue="3">
-              <option value="3">3 months</option>
-              <option value="6">6 months</option>
-              <option value="12">12 months</option>
+              <option value="3">{t("3 months")}</option>
+              <option value="6">{t("6 months")}</option>
+              <option value="12">{t("12 months")}</option>
             </select>
           </label>
           <button className="primary form-end" disabled={busy}>
-            {busy ? "Working..." : "Build outlook"}
+            {busy ? t("Working...") : t("Build outlook")}
           </button>
         </form>
         {!scenario && (
           <p className="callout">
-            Your outlook will appear here after you supply a starting balance.
-            Estimates may be unavailable when recorded history is too short.
+            {t(
+              "Your outlook will appear here after you supply a starting balance. Estimates may be unavailable when recorded history is too short.",
+            )}{" "}
           </p>
         )}
         {scenario && (
           <div aria-live="polite">
             <p className="source">
-              As of {date(scenario.as_of_date)}. User-supplied starting balance:{" "}
+              {t("As of")} {date(scenario.as_of_date)}
+              {t(". User-supplied starting balance:")}{" "}
               <Amount value={scenario.starting_balance} />.{" "}
-              {scenario.coverage.transaction_count} observed records in the
-              coverage window.
+              {digits(scenario.coverage.transaction_count)}{" "}
+              {t("observed records in the coverage window.")}{" "}
             </p>
             <CashflowChart months={scenario.months} />
             <div
               className="table-wrap"
               tabIndex={0}
               role="region"
-              aria-label="Monthly cashflow scenario details"
+              aria-label={t("Monthly cashflow scenario details")}
             >
               <table>
                 <caption>
-                  Monthly scenarios, in BDT. Scheduled income remains uncertain.
+                  {t(
+                    "Monthly scenarios, in BDT. Scheduled income remains uncertain.",
+                  )}{" "}
                 </caption>
                 <thead>
                   <tr>
-                    <th>Month</th>
-                    <th>Scheduled expenses</th>
-                    <th>Expected income (uncertain)</th>
-                    <th>Estimated balance</th>
-                    <th>Without future income</th>
+                    <th>{t("Month")}</th>
+                    <th>{t("Scheduled expenses")}</th>
+                    <th>{t("Expected income (uncertain)")}</th>
+                    <th>{t("Estimated balance")}</th>
+                    <th>{t("Without future income")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {scenario.months.map((m) => (
                     <tr key={m.month}>
-                      <th>{m.month}</th>
+                      <th>{digits(m.month)}</th>
                       <td>
                         <Amount value={m.scheduled_expenses} />
                       </td>
@@ -355,8 +374,9 @@ export function Cashflow() {
             </div>
             {scenario.months.some((m) => m.projected_balance === null) && (
               <p className="callout">
-                Recorded history is insufficient for a reliable projection. The
-                known-obligation scenario is still available.
+                {t(
+                  "Recorded history is insufficient for a reliable projection. The known-obligation scenario is still available.",
+                )}{" "}
               </p>
             )}
             <Notes
@@ -370,14 +390,15 @@ export function Cashflow() {
         )}
       </Section>
       <section id="purchase" className="section">
-        <h2>Can this purchase fit?</h2>
+        <h2>{t("Can this purchase fit?")}</h2>
         <p className="muted">
-          This check reserves upcoming scheduled expenses and your safety
-          buffer. It excludes future income.
+          {t(
+            "This check reserves upcoming scheduled expenses and your safety buffer. It excludes future income.",
+          )}{" "}
         </p>
         <form className="form-grid" onSubmit={(e) => run(e, "purchase")}>
           <Field
-            label="Available balance (BDT)"
+            label={t("Available balance (BDT)")}
             name="starting_balance"
             type="number"
             min="0"
@@ -385,7 +406,7 @@ export function Cashflow() {
             required
           />
           <Field
-            label="Purchase amount (BDT)"
+            label={t("Purchase amount (BDT)")}
             name="purchase_amount"
             type="number"
             min="0.01"
@@ -393,7 +414,7 @@ export function Cashflow() {
             required
           />
           <Field
-            label="Safety buffer (BDT)"
+            label={t("Safety buffer (BDT)")}
             name="safety_buffer"
             type="number"
             min="0"
@@ -401,7 +422,7 @@ export function Cashflow() {
             required
           />
           <Field
-            label="Days ahead"
+            label={t("Days ahead")}
             name="horizon_days"
             type="number"
             min="1"
@@ -410,7 +431,7 @@ export function Cashflow() {
             defaultValue="30"
           />
           <button className="primary form-end" disabled={busy}>
-            Assess purchase
+            {t("Assess purchase")}{" "}
           </button>
         </form>
         {decision && (
@@ -418,21 +439,23 @@ export function Cashflow() {
             <h3>
               {
                 {
-                  safe: "Fits this supplied scenario",
-                  caution: "Leave more room for uncertainty",
-                  not_recommended: "This purchase would leave too little room",
-                  insufficient_data: "More information is needed",
+                  safe: t("Fits this supplied scenario"),
+                  caution: t("Leave more room for uncertainty"),
+                  not_recommended: t(
+                    "This purchase would leave too little room",
+                  ),
+                  insufficient_data: t("More information is needed"),
                 }[decision.status]
               }
             </h3>
             <p>
-              After the purchase and scheduled expense reserve:{" "}
+              {t("After the purchase and scheduled expense reserve:")}{" "}
               <Amount value={decision.remaining_after_purchase_and_reserve} />
             </p>
             <p>
-              Reserved scheduled expenses:{" "}
-              <Amount value={decision.scheduled_expense_reserve} />. Horizon
-              ends {date(decision.horizon_end)}.
+              {t("Reserved scheduled expenses:")}{" "}
+              <Amount value={decision.scheduled_expense_reserve} />
+              {t(". Horizon ends")} {date(decision.horizon_end)}.
             </p>
             <Notes
               assumptions={decision.assumptions}

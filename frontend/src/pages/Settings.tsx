@@ -1,3 +1,6 @@
+import { LanguageSwitcher } from "../lib/Language";
+import { useLanguage } from "../lib/useLanguage";
+import { t } from "../lib/locale";
 import type { User } from "../domain";
 import { PageHeading, Section } from "../components/ui";
 export function Settings({
@@ -7,72 +10,86 @@ export function Settings({
   user: User;
   onLogout: () => void;
 }) {
+  useLanguage();
   return (
     <>
       <PageHeading
-        title="Your account & preferences."
-        description="Know how your information is used and what your numbers mean."
+        title={t("Your account & preferences.")}
+        description={t(
+          "Know how your information is used and what your numbers mean.",
+        )}
       />
       <div className="settings-content">
-        <Section title="Your account">
+        <Section title={t("Your account")}>
           <dl className="settings-list">
             <div>
-              <dt>Name</dt>
-              <dd>{user.full_name || "Not supplied"}</dd>
+              <dt>{t("Name")}</dt>
+              <dd>{user.full_name || t("Not supplied")}</dd>
             </div>
             <div>
-              <dt>Email</dt>
+              <dt>{t("Email")}</dt>
               <dd>{user.email}</dd>
             </div>
             <div>
-              <dt>Currency</dt>
-              <dd>Bangladeshi taka (BDT)</dd>
+              <dt>{t("Currency")}</dt>
+              <dd>{t("Bangladeshi taka (BDT)")}</dd>
             </div>
             <div>
-              <dt>Financial calendar</dt>
-              <dd>Asia/Dhaka</dd>
+              <dt>{t("Financial calendar")}</dt>
+              <dd>{t("Asia/Dhaka")}</dd>
             </div>
             <div>
-              <dt>Interface</dt>
-              <dd>English, with Bangla-ready content and Latin numerals</dd>
+              <dt>{t("Interface")}</dt>
+              <dd>
+                <LanguageSwitcher />
+              </dd>
             </div>
           </dl>
           <p className="muted">
-            Profile editing and password reset are not available through the
-            current API.
+            {t(
+              "Profile editing and password reset are not available through the current API.",
+            )}{" "}
           </p>
         </Section>
-        <Section title="Data & assumptions">
+        <p className="muted">
+          {t(
+            "Backend explanations and your records remain in their original language.",
+          )}
+        </p>
+        <Section title={t("Data & assumptions")}>
           <p>
-            Your recorded net activity is income minus expenses in the selected
-            period. It does not establish your bank or mobile wallet balance.
+            {t(
+              "Your recorded net activity is income minus expenses in the selected period. It does not establish your bank or mobile wallet balance.",
+            )}{" "}
           </p>
           <p>
-            Scheduled records are plans. Marking one paid does not create a
-            transaction. Add the actual transaction separately.
+            {t(
+              "Scheduled records are plans. Marking one paid does not create a transaction. Add the actual transaction separately.",
+            )}{" "}
           </p>
           <p>
-            Goal savings are amounts you report yourself. Forecasts depend on
-            the completeness of your history and the starting balance you
-            supply.
+            {t(
+              "Goal savings are amounts you report yourself. Forecasts depend on the completeness of your history and the starting balance you supply.",
+            )}{" "}
           </p>
           <p>
-            Internal transfers and refunds can affect signed-amount analytics.
-            Review imported categories and records before relying on a
-            comparison.
+            {t(
+              "Internal transfers and refunds can affect signed-amount analytics. Review imported categories and records before relying on a comparison.",
+            )}{" "}
           </p>
         </Section>
-        <Section title="Session & privacy">
+        <Section title={t("Session & privacy")}>
           <p>
-            Tokens are held in memory for this tab. Reloading or signing out
-            ends this frontend session. Insight hiding lasts for the current
-            visit.
+            {t(
+              "Tokens are held in memory for this tab. Reloading or signing out ends this frontend session. Insight hiding lasts for the current visit.",
+            )}{" "}
           </p>
           <p>
-            No frontend analytics or external AI calls are enabled. Optional
-            backend provider settings are controlled by the API operator.
+            {t(
+              "No frontend analytics or external AI calls are enabled. Optional backend provider settings are controlled by the API operator.",
+            )}{" "}
           </p>
-          <button onClick={onLogout}>Sign out</button>
+          <button onClick={onLogout}>{t("Sign out")}</button>
         </Section>
       </div>
     </>

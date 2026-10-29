@@ -1,3 +1,5 @@
+import { useLanguage } from "../lib/useLanguage";
+import { t, uiLabel, percent } from "../lib/locale";
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
 import { Plus, Pencil, Target } from "lucide-react";
@@ -17,6 +19,7 @@ import {
 } from "../components/ui";
 import { Dialog } from "../components/Dialog";
 function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
+  useLanguage();
   const plan = useResource(
     useCallback(() => api.goalPlan(goal.id), [goal.id]),
     `${goal.current_saved}:${goal.target_date}:${goal.target_amount}:${goal.status}`,
@@ -34,68 +37,72 @@ function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
           <Target size={20} />
         </span>
         <span className={`status-label status-${goal.status}`}>
-          {goal.status}
+          {uiLabel(goal.status)}
         </span>
         <button
           className="text-button"
           onClick={onEdit}
-          aria-label={`Edit ${goal.name}`}
+          aria-label={t("Edit") + " " + goal.name}
         >
           <Pencil size={15} />
-          Edit
+          {t("Edit")}{" "}
         </button>
       </div>
       <h2>{goal.name}</h2>
       {goal.description && <p>{goal.description}</p>}
       <div className="goal-numbers">
         <div>
-          <small>Self-reported savings</small>
+          <small>{t("Self-reported savings")}</small>
           <Amount value={saved} />
         </div>
         <div>
-          <small>Target by {date(goal.target_date)}</small>
+          <small>
+            {t("Target by")} {date(goal.target_date)}
+          </small>
           <Amount value={goal.target_amount} />
         </div>
       </div>
       {progress === null ? (
         <p className="callout">
-          Savings are unknown. Report an amount to calculate contributions.
+          {t(
+            "Savings are unknown. Report an amount to calculate contributions.",
+          )}{" "}
         </p>
       ) : (
         <>
           <progress
-            aria-label={`${goal.name} progress`}
+            aria-label={goal.name + " " + uiLabel("progress")}
             value={progress}
             max="100"
           />
           <p className="progress-label">
-            <strong>{progress.toFixed(0)}%</strong> of target, based on your
-            reported amount.
+            <strong>{percent(progress)}</strong>{" "}
+            {t("of target, based on your reported amount.")}{" "}
           </p>
         </>
       )}
-      <ResourceView resource={plan} label="Checking contribution needs...">
+      <ResourceView resource={plan} label={t("Checking contribution needs...")}>
         {(p) => (
           <>
             <div className="contribution-plan">
               <div className="section-heading">
-                <span className="value-kind">Required contribution</span>
+                <span className="value-kind">{t("Required contribution")}</span>
                 <div
                   className="segmented"
                   role="group"
-                  aria-label={`${goal.name} contribution period`}
+                  aria-label={goal.name + " " + uiLabel("contribution period")}
                 >
                   <button
                     aria-pressed={cadence === "monthly"}
                     onClick={() => setCadence("monthly")}
                   >
-                    Monthly
+                    {t("Monthly")}{" "}
                   </button>
                   <button
                     aria-pressed={cadence === "weekly"}
                     onClick={() => setCadence("weekly")}
                   >
-                    Weekly
+                    {t("Weekly")}{" "}
                   </button>
                 </div>
               </div>
@@ -104,27 +111,29 @@ function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
                   cadence === "monthly" ? p.required_monthly : p.required_weekly
                 }
               />
-              <small>To reach the target by {date(goal.target_date)}.</small>
+              <small>
+                {t("To reach the target by")} {date(goal.target_date)}.
+              </small>
             </div>
             <div className="capacity-line">
-              <span>Estimated monthly capacity</span>
+              <span>{t("Estimated monthly capacity")}</span>
               <Amount value={p.estimated_monthly_capacity} />
             </div>
             <p className={`assessment assessment-${p.affordability}`}>
               {
                 {
-                  unknown: "Capacity is not established",
-                  appears_feasible: "Appears feasible from recorded history",
-                  at_risk: "The target may need more room",
-                  completed: "Target reported as complete",
-                  cancelled: "This plan is cancelled",
-                  overdue: "The target date has passed",
+                  unknown: t("Capacity is not established"),
+                  appears_feasible: t("Appears feasible from recorded history"),
+                  at_risk: t("The target may need more room"),
+                  completed: t("Target reported as complete"),
+                  cancelled: t("This plan is cancelled"),
+                  overdue: t("The target date has passed"),
                 }[p.affordability]
               }
             </p>
             <p className="source">
-              As of {date(p.as_of_date)}. Estimates are not a guaranteed
-              timeline.
+              {t("As of")} {date(p.as_of_date)}
+              {t(". Estimates are not a guaranteed timeline.")}{" "}
             </p>
             <Notes assumptions={p.assumptions} limitations={p.limitations} />
           </>
@@ -134,6 +143,7 @@ function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
   );
 }
 export function Plans() {
+  useLanguage();
   const [offset, setOffset] = useState(0);
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -177,8 +187,10 @@ export function Plans() {
       setRevision((v) => v + 1);
       setNotice(
         editing
-          ? "Goal updated. Reported savings remain separate from account balances."
-          : "Goal created. Savings are self-reported.",
+          ? t(
+              "Goal updated. Reported savings remain separate from account balances.",
+            )
+          : t("Goal created. Savings are self-reported."),
       );
     } catch (e) {
       setError(errorMessage(e));
@@ -189,8 +201,10 @@ export function Plans() {
   return (
     <>
       <PageHeading
-        title="Give your savings a purpose."
-        description="A clear target, a realistic contribution, and room for your commitments."
+        title={t("Give your savings a purpose.")}
+        description={t(
+          "A clear target, a realistic contribution, and room for your commitments.",
+        )}
         action={
           <button
             className="primary"
@@ -201,27 +215,30 @@ export function Plans() {
             }}
           >
             <Plus size={17} />
-            New goal
+            {t("New goal")}{" "}
           </button>
         }
       />
       <div className="planning-guidance">
         <Target size={22} />
         <p>
-          <strong>A plan, not a money transfer.</strong> Savings are
-          self-reported. The contribution assessment accounts for recorded
-          history and scheduled obligations.
+          <strong>{t("A plan, not a money transfer.")}</strong>{" "}
+          {t(
+            "Savings are self-reported. The contribution assessment accounts for recorded history and scheduled obligations.",
+          )}{" "}
         </p>
       </div>
       {notice && (
         <p role="status" className="success">
-          {notice}
+          {uiLabel(notice)}
         </p>
       )}
       <Dialog
         open={adding}
-        title={editing ? "Edit savings goal" : "Create a savings goal"}
-        description="Set the target and report what you have saved. Leave savings blank when unknown."
+        title={editing ? t("Edit savings goal") : t("Create a savings goal")}
+        description={t(
+          "Set the target and report what you have saved. Leave savings blank when unknown.",
+        )}
         busy={busy}
         onClose={() => {
           setAdding(false);
@@ -232,14 +249,14 @@ export function Plans() {
         {error && <ErrorNotice message={error} />}
         <form className="form-grid" onSubmit={save}>
           <Field
-            label="Goal name"
+            label={t("Goal name")}
             name="name"
             required
             maxLength={160}
             defaultValue={editing?.name ?? ""}
           />
           <Field
-            label="Target amount (BDT)"
+            label={t("Target amount (BDT)")}
             name="target_amount"
             type="number"
             min="0.01"
@@ -248,16 +265,16 @@ export function Plans() {
             defaultValue={editing?.target_amount ?? ""}
           />
           <Field
-            label="Already saved (optional)"
+            label={t("Already saved (optional)")}
             name="current_saved"
             type="number"
             min="0"
             step="0.01"
-            hint="Blank means unknown, not zero."
+            hint={t("Blank means unknown, not zero.")}
             defaultValue={editing?.current_saved ?? ""}
           />
           <Field
-            label="Target date"
+            label={t("Target date")}
             name="target_date"
             type="date"
             min={editing ? undefined : today()}
@@ -266,21 +283,24 @@ export function Plans() {
           />
           {editing && (
             <label className="field">
-              <span>Goal status</span>
+              <span>{t("Goal status")}</span>
               <select name="status" defaultValue={editing.status}>
                 {editing.status === "active" ? (
                   <>
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="active">{t("Active")}</option>
+                    <option value="completed">{t("Completed")}</option>
+                    <option value="cancelled">{t("Cancelled")}</option>
                   </>
                 ) : (
-                  <option value={editing.status}>{editing.status}</option>
+                  <option value={editing.status}>
+                    {uiLabel(editing.status)}
+                  </option>
                 )}
               </select>
               <small>
-                Completing requires reported savings at least equal to the
-                target. Completed and cancelled goals cannot reopen.
+                {t(
+                  "Completing requires reported savings at least equal to the target. Completed and cancelled goals cannot reopen.",
+                )}{" "}
               </small>
             </label>
           )}
@@ -290,19 +310,19 @@ export function Plans() {
               disabled={busy}
               onClick={() => setAdding(false)}
             >
-              Keep existing records
+              {t("Keep existing records")}{" "}
             </button>
             <button className="primary" disabled={busy}>
               {busy
-                ? "Saving..."
+                ? t("Saving...")
                 : editing
-                  ? "Save goal changes"
-                  : "Create goal"}
+                  ? t("Save goal changes")
+                  : t("Create goal")}
             </button>
           </div>
         </form>
       </Dialog>
-      <ResourceView resource={goals} label="Reading your savings plans...">
+      <ResourceView resource={goals} label={t("Reading your savings plans...")}>
         {(p) => (
           <>
             {p.items.length ? (
@@ -321,15 +341,16 @@ export function Plans() {
               </div>
             ) : (
               <Empty
-                title="What are you saving for?"
+                title={t("What are you saving for?")}
                 action={
                   <button className="primary" onClick={() => setAdding(true)}>
-                    Create your first goal
+                    {t("Create your first goal")}{" "}
                   </button>
                 }
               >
-                An emergency buffer, education, or a planned purchase. Start
-                with a target and a date.
+                {t(
+                  "An emergency buffer, education, or a planned purchase. Start with a target and a date.",
+                )}{" "}
               </Empty>
             )}
             <Pager

@@ -1,3 +1,4 @@
+import { getLanguage, getLocale, t } from "./locale";
 import type { Money } from "../domain";
 export function money(value: Money | number | null | undefined): string {
   if (
@@ -6,8 +7,8 @@ export function money(value: Money | number | null | undefined): string {
     value === "" ||
     !Number.isFinite(Number(value))
   )
-    return "Not available";
-  return new Intl.NumberFormat("en-BD", {
+    return t("Not available");
+  return new Intl.NumberFormat(getLocale(), {
     style: "currency",
     currency: "BDT",
     currencyDisplay: "narrowSymbol",
@@ -24,7 +25,7 @@ export function today(): string {
   }).format(new Date());
 }
 export function date(value: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat(getLanguage() === "bn" ? "bn-BD" : "en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -44,5 +45,5 @@ export function monthRange(month: string) {
 export function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
-    : "Something went wrong. Try again.";
+    : t("Something went wrong. Try again.");
 }

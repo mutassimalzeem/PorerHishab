@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { LanguageSwitcher } from "../lib/Language";
+import { useLanguage } from "../lib/useLanguage";
+import { t } from "../lib/locale";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import type { Tokens } from "../domain";
@@ -12,9 +15,14 @@ export function Auth({
   onLogin: (tokens: Tokens) => void;
   expired: boolean;
 }) {
+  const { language } = useLanguage();
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    document.title =
+      (register ? t("Create account") : t("Sign in")) + " | PorerHishab";
+  }, [language, register]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -42,22 +50,24 @@ export function Auth({
         <a className="brand" href="/">
           <span className="brand-mark">{"\u09aa"}</span>
           <span>
-            PorerHishab
+            {t("PorerHishab")}{" "}
             <small lang="bn">
               {"\u09aa\u09b0\u09c7\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac"}
             </small>
           </span>
         </a>
         <div>
-          <p className="context">A little clarity for what comes next.</p>
+          <p className="context">
+            {t("A little clarity for what comes next.")}
+          </p>
           <h1>
-            Today's money.
-            <br />
-            Tomorrow's plans.
+            {t("Today's money.")} <br />
+            {t("Tomorrow's plans.")}{" "}
           </h1>
           <p>
-            Understand your recorded spending, make room for your commitments,
-            and plan your next move.
+            {t(
+              "Understand your recorded spending, make room for your commitments, and plan your next move.",
+            )}{" "}
           </p>
           <p lang="bn" className="bangla-tagline">
             {
@@ -67,45 +77,48 @@ export function Auth({
         </div>
         <p className="trust">
           <ShieldCheck size={18} />
-          Your records. Clear assumptions. No hidden certainty.
+          {t("Your records. Clear assumptions. No hidden certainty.")}{" "}
         </p>
       </section>
       <section className="auth-form">
         <div>
-          <span className="context">Welcome to PorerHishab</span>
+          <LanguageSwitcher />
+          <span className="context">{t("Welcome to PorerHishab")}</span>
           <h2>
             {register
-              ? "Start with a clearer picture."
-              : "Pick up where you left off."}
+              ? t("Start with a clearer picture.")
+              : t("Pick up where you left off.")}
           </h2>
           <p>
             {register
-              ? "Create an account, then add your first recorded transaction."
-              : "Sign in to see your records and upcoming plans."}
+              ? t(
+                  "Create an account, then add your first recorded transaction.",
+                )
+              : t("Sign in to see your records and upcoming plans.")}
           </p>
           {expired && (
             <p role="status" className="callout">
-              Your session ended. Sign in again to continue.
+              {t("Your session ended. Sign in again to continue.")}{" "}
             </p>
           )}
           <form onSubmit={submit}>
             {register && (
               <Field
-                label="Your name"
+                label={t("Your name")}
                 name="name"
                 autoComplete="name"
                 maxLength={160}
               />
             )}
             <Field
-              label="Email address"
+              label={t("Email address")}
               name="email"
               type="email"
               autoComplete="email"
               required
             />
             <Field
-              label="Password"
+              label={t("Password")}
               name="password"
               type="password"
               autoComplete={register ? "new-password" : "current-password"}
@@ -116,10 +129,10 @@ export function Auth({
             {error && <ErrorNotice message={error} />}
             <button className="button primary" disabled={busy}>
               {busy
-                ? "Please wait..."
+                ? t("Please wait...")
                 : register
-                  ? "Create account"
-                  : "Sign in"}
+                  ? t("Create account")
+                  : t("Sign in")}
               <ArrowUpRight size={18} />
             </button>
           </form>
@@ -131,11 +144,13 @@ export function Auth({
             }}
           >
             {register
-              ? "Already have an account? Sign in"
-              : "New here? Create an account"}
+              ? t("Already have an account? Sign in")
+              : t("New here? Create an account")}
           </button>
           <small className="muted">
-            Your session stays in memory and ends when you reload this page.
+            {t(
+              "Your session stays in memory and ends when you reload this page.",
+            )}{" "}
           </small>
         </div>
       </section>
