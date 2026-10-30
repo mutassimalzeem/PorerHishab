@@ -29,6 +29,7 @@ from app.api.coach import router as coach_router
 from app.api.intelligence import router as intelligence_router
 from app.api.scheduled_cashflow import router as scheduled_cashflow_router
 from app.api.spending_decision import router as spending_decision_router
+from app.api.account_reconcilliation import router as account_reconcilliation_router
 
 from app.services.transaction_service import save_transactions
 from app.repositories.transaction_repository import (
@@ -66,6 +67,7 @@ app.include_router(scheduled_cashflow_router)
 app.include_router(coach_router)
 
 app.include_router(intelligence_router)
+app.include_router(account_reconcilliation_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
