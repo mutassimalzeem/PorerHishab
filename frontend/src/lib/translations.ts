@@ -103,6 +103,9 @@ export const bn = {
   "Inspect the comparison": "তুলনা দেখুন",
   "No saving amount is assumed. Opportunities need observations across three complete calendar months.":
     "সঞ্চয়ের অঙ্ক ধরে নেওয়া হয়নি। তিনটি পূর্ণ মাসের পর্যবেক্ষণ প্রয়োজন।",
+  "No savings opportunities identified": "সঞ্চয়ের কোনো সুযোগ শনাক্ত হয়নি",
+  "Your recorded spending does not currently meet the criteria for a savings recommendation. Review again as new transactions are added.":
+    "আপনার রেকর্ড করা ব্যয় বর্তমানে সঞ্চয়ের পরামর্শের শর্ত পূরণ করছে না। নতুন লেনদেন যোগ হলে আবার পর্যালোচনা করুন।",
   "Transaction recorded.": "লেনদেন রেকর্ড হয়েছে।",
   "Category updated.": "বিভাগ হালনাগাদ হয়েছে।",
   "Every transaction, in context.": "প্রতিটি লেনদেনের বিস্তারিত।",
