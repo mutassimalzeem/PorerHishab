@@ -131,7 +131,9 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
       body = {
         coverage,
         recommendations: [],
-        limitations: ["Three complete months are required."],
+        limitations: [
+          "Three complete calendar months with observed records are required; missing months are unknown.",
+        ],
       };
     else if (path === "/chat/ask")
       body = {
