@@ -111,3 +111,34 @@ def test_generated_frontend_contracts_match_the_actual_openapi():
     from scripts.generate_frontend_contracts import generate
     target=Path(__file__).resolve().parents[1]/'frontend/src/generated/api.ts'
     assert target.read_text(encoding='utf-8')==generate(), 'Run scripts/generate_frontend_contracts.py'
+
+
+def test_auth_and_csv_routes_publish_explicit_response_contracts():
+    spec = app.openapi()
+    expected = {
+        "/register": "RegisterTokenResponse",
+        "/login": "LoginTokenResponse",
+        "/refresh": "RefreshTokenResponse",
+        "/upload-csv": "CSVUploadResponse",
+    }
+    for path, schema_name in expected.items():
+        response_schema = (
+            spec["paths"][path]["post"]["responses"]["200"]
+            ["content"]["application/json"]["schema"]
+        )
+        assert response_schema["$ref"].endswith(schema_name)
+
+    schemas = spec["components"]["schemas"]
+    assert set(schemas["RegisterTokenResponse"]["properties"]) == {
+        "access_token",
+        "token_type",
+    }
+    assert set(schemas["LoginTokenResponse"]["properties"]) == {
+        "access_token",
+        "refresh_token",
+        "token_type",
+    }
+    assert set(schemas["RefreshTokenResponse"]["properties"]) == {
+        "access_token",
+        "token_type",
+    }

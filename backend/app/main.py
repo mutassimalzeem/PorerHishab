@@ -17,7 +17,7 @@ from app.api.transactions import router as transactions_router
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -77,7 +77,32 @@ class LoginIn(BaseModel):
     password: str
 
 
-@app.post("/register")
+class RegisterTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class LoginTokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class CSVUploadResponse(BaseModel):
+    filename: str
+    records: int
+    total_income: float
+    total_expenses: float
+    balance: float
+    preview: List[dict[str, Any]]
+
+
+@app.post("/register", response_model=RegisterTokenResponse)
 def register(payload: RegisterIn,
     db: Session = Depends(get_db)):
 
@@ -100,7 +125,7 @@ def register(payload: RegisterIn,
         db.close()
 
 
-@app.post("/login")
+@app.post("/login", response_model=LoginTokenResponse)
 def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
     try:
         client_ip = request.client.host if request.client else "unknown"
@@ -156,7 +181,7 @@ def search(
 
 
 
-@app.post("/refresh")
+@app.post("/refresh", response_model=RefreshTokenResponse)
 def refresh_token(refresh_token: str = Form(...)):
     try:
         data = decode_refresh_token(refresh_token)
@@ -200,7 +225,7 @@ def get_summary(current: User = Depends(get_current_user), db: Session = Depends
 
 
 
-@app.post('/upload-csv')
+@app.post("/upload-csv", response_model=CSVUploadResponse)
 async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are accepted")
