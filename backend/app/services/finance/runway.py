@@ -102,7 +102,9 @@ def financial_runway(db, user_id, *, as_of=None, horizon_days=30,
             minimum = min(minimum, current)
             if first_date is None and current < ZERO:
                 first_date = item.due_date
-            checkpoints.append(dict(date=item.due_date, projected_balance=current, minimum_balance=minimum))
+            checkpoints.append(dict(date=item.due_date, projected_balance=current, minimum_balance=minimum,
+                                    period_start=item.due_date, scheduled_expense_reserve=amount.reserved_amount,
+                                    expected_expense_reserve=amount.reserved_amount))
         reserved = expenses
         confidence = "low"
     else:
@@ -123,7 +125,10 @@ def financial_runway(db, user_id, *, as_of=None, horizon_days=30,
             current = money(floor + estimate_income)
             if first_period is None and floor < ZERO:
                 first_period = Period(kind="estimated_shortfall_window", start=start, end=stop, is_complete=False, label="expenses before estimated income")
-            checkpoints.append(dict(date=stop, projected_balance=current, minimum_balance=floor))
+            checkpoints.append(dict(date=stop, projected_balance=current, minimum_balance=floor,
+                                    period_start=start, forecast_income=estimate_income,
+                                    forecast_expense=estimate_expense, scheduled_expense_reserve=scheduled,
+                                    expected_expense_reserve=reserve))
             forecast_income += estimate_income
             forecast_expense += estimate_expense
             reserved += reserve

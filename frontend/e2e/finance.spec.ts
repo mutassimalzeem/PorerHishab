@@ -1,3 +1,5 @@
+import { bn } from "../src/lib/translations";
+import { timelineFixture } from "../src/test/timeline.fixture";
 import { unknownRunway, populatedRunway } from "../src/test/runway.fixture";
 import { test, expect } from "@playwright/test";
 import {
@@ -644,4 +646,48 @@ test("account runway preserves unknown cash and renders an updated projection", 
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBeTruthy();
+});
+
+test("financial timeline separates cash scopes and supports bilingual accessible mobile reading", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.route("**/api/finance/timeline", async (route) => {
+    await route.fulfill({ json: timelineFixture });
+  });
+  await navigate(page, "Cashflow");
+  await page.getByRole("button", { name: "Load timeline" }).click();
+  const list = page.getByRole("list", {
+    name: "Financial timeline",
+    exact: true,
+  });
+  await expect(list.getByRole("listitem")).toHaveCount(7);
+  await expect(list.getByText("Groceries", { exact: true })).toBeVisible();
+  await expect(list.getByText("Uncertain", { exact: true })).toBeVisible();
+  await expect(list.getByText("Confirmed", { exact: true })).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+  await page.locator('.topbar button[lang="bn"]').click();
+  const bengaliList = page.getByRole("list", {
+    name: bn["Financial timeline"],
+    exact: true,
+  });
+  await expect(bengaliList.getByRole("listitem")).toHaveCount(7);
+  await expect(
+    bengaliList.getByText(bn.Uncertain, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    bengaliList.getByText("Groceries", { exact: true }),
+  ).toBeVisible();
+  // Audit settled colors rather than the language buttons' 140ms crossfade.
+  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
+    element.getBoundingClientRect();
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
+  await accessible(page);
+  await noOverflow(page);
 });

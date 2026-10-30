@@ -12,6 +12,11 @@ class RunwayCheckpoint(BaseModel):
     date: date
     projected_balance: Decimal
     minimum_balance: Decimal
+    period_start: date | None = None
+    forecast_income: Decimal | None = None
+    forecast_expense: Decimal | None = None
+    scheduled_expense_reserve: Decimal | None = None
+    expected_expense_reserve: Decimal | None = None
 
 
 class FinancialRunway(BaseModel):

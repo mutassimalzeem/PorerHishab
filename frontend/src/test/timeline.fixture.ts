@@ -1,0 +1,137 @@
+import type { ApiSchemas } from "../generated/api";
+type Event = ApiSchemas["TimelineEvent"];
+export function timelineEvent(
+  id: string,
+  event_type: Event["event_type"],
+  certainty: Event["certainty"],
+  title: string,
+): Event {
+  return {
+    id,
+    event_type,
+    certainty,
+    title,
+    date: "2026-11-01",
+    direction: "expense",
+    amount: "100.00",
+    currency: "BDT",
+    description: null,
+    source: "transaction",
+    source_id: id,
+    balance_impact: "0.00",
+    impact_scope: "context",
+    cash_impacting: false,
+    original_amount: null,
+    allocated_amount: null,
+    remaining_amount: null,
+    reserved_amount: null,
+    status: null,
+    evidence: {
+      transaction_id: null,
+      obligation_id: null,
+      allocation_id: null,
+      account_id: null,
+      account_name: null,
+      category: null,
+      transaction_amount: null,
+      fee: null,
+      period: null,
+      mode: null,
+      scheduled_expense_reserve: null,
+      expected_expense_reserve: null,
+      projected_balance: null,
+      minimum_balance: null,
+    },
+  };
+}
+export const timelineFixture: ApiSchemas["FinancialTimeline"] = {
+  currency: "BDT",
+  as_of_date: "2026-11-01",
+  period: {
+    kind: "timeline_window",
+    start: "2026-10-02",
+    end: "2026-12-01",
+    is_complete: false,
+    label: "inclusive financial timeline",
+  },
+  projection_period: null,
+  starting_balance: null,
+  balance_source: "unknown",
+  ending_projected_balance: null,
+  runway_status: "insufficient_data",
+  event_counts: {
+    actual: 1,
+    confirmed: 1,
+    scheduled: 1,
+    estimated: 3,
+    uncertain: 1,
+  },
+  events: [
+    {
+      ...timelineEvent("transaction:1", "transaction", "actual", "Groceries"),
+      amount: "-100.00",
+      balance_impact: "-100.00",
+      cash_impacting: true,
+      impact_scope: "actual_history",
+    },
+    {
+      ...timelineEvent(
+        "obligation_payment:1",
+        "obligation_payment",
+        "confirmed",
+        "Rent payment",
+      ),
+      evidence: { transaction_id: 1 },
+    },
+    {
+      ...timelineEvent(
+        "obligation:1",
+        "obligation",
+        "scheduled",
+        "Electricity",
+      ),
+      balance_impact: "-100.00",
+      cash_impacting: true,
+      impact_scope: "future_projection",
+      source: "scheduled_cashflow",
+    },
+    {
+      ...timelineEvent(
+        "obligation:2",
+        "obligation",
+        "uncertain",
+        "Expected salary",
+      ),
+      direction: "income",
+      source: "scheduled_cashflow",
+    },
+    timelineEvent("forecast_expense:1", "forecast_expense", "estimated", ""),
+    {
+      ...timelineEvent("forecast_income:1", "forecast_income", "estimated", ""),
+      direction: "income",
+    },
+    {
+      ...timelineEvent(
+        "runway_checkpoint:1",
+        "runway_checkpoint",
+        "estimated",
+        "",
+      ),
+      direction: "neutral",
+      amount: "500.00",
+    },
+  ],
+  assumptions: [],
+  limitations: ["Monthly forecasts cannot establish an exact depletion day."],
+};
+export const emptyTimeline = {
+  ...timelineFixture,
+  events: [],
+  event_counts: {
+    actual: 0,
+    confirmed: 0,
+    scheduled: 0,
+    estimated: 0,
+    uncertain: 0,
+  },
+};

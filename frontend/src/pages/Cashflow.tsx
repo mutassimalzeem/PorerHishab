@@ -1,3 +1,4 @@
+import { FinancialTimeline } from "../components/FinancialTimeline";
 import { RunwaySummary } from "../components/RunwaySummary";
 import { ObligationMatches } from "../components/ObligationMatches";
 import { useLanguage } from "../lib/useLanguage";
@@ -147,6 +148,7 @@ export function Cashflow() {
       )}
       {error && !adding && <ErrorNotice message={error} />}
       <RunwaySummary key={revision} />
+      <FinancialTimeline key={`timeline-${revision}`} />
       <Section title={t("Upcoming & scheduled")}>
         <label className="inline-form">
           {t("Show")}{" "}
