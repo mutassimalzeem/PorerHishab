@@ -52,18 +52,30 @@ def scoped(db: Session, user_id: int, start: date, end: date):
     )
 
 
+def without_transfers(query):
+    """Opt-in classification filter; never infer transfers from free text."""
+    return query.filter(
+        func.lower(func.trim(func.coalesce(Transaction.category, ""))).notin_(("transfer", "transfers")),
+        func.lower(func.trim(func.coalesce(Transaction.transaction_type, ""))).notin_(
+            ("transfer", "internal_transfer", "internal transfer")),
+    )
+
+
 def totals(
     db: Session,
     user_id: int,
     start: date,
     end: date,
     category: str | None = None,
+    *, exclude_transfers: bool = False,
 ) -> dict:
     """Income, expenses, net and a coverage statement for one window.
 
     ``None`` amounts mean "no records observed" — never zero.
     """
     query = scoped(db, user_id, start, end)
+    if exclude_transfers:
+        query = without_transfers(query)
     if category:
         query = query.filter(func.lower(Transaction.category) == category.lower())
     count, first, last, income, expenses = query.with_entities(
@@ -97,12 +109,16 @@ def grouped_expenses(
     end: date,
     group: str = "category",
     limit: int = 10,
+    *, exclude_transfers: bool = False,
 ) -> list[dict]:
     """Spending magnitudes grouped by category or merchant, ranked."""
     column = Transaction.category if group == "category" else Transaction.merchant
     label = func.coalesce(column, "Uncategorized" if group == "category" else "Unknown merchant")
     amount = func.sum(-Transaction.amount)
-    rows = scoped(db, user_id, start, end).filter(Transaction.amount < 0).with_entities(
+    query = scoped(db, user_id, start, end).filter(Transaction.amount < 0)
+    if exclude_transfers:
+        query = without_transfers(query)
+    rows = query.with_entities(
         label, amount, func.count(Transaction.id),
     ).group_by(label).order_by(amount.desc(), label.asc()).limit(limit).all()
 

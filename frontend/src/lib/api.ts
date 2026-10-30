@@ -149,6 +149,7 @@ export function query(values: Record<string, string | number | undefined>) {
   return `?${params}`;
 }
 export const api = {
+  coaching: () => request<ApiSchemas["FinancialCoaching"]>("/finance/coaching"),
   timeline: () => request<ApiSchemas["FinancialTimeline"]>("/finance/timeline"),
   runway: () => request<ApiSchemas["FinancialRunway"]>("/finance/runway"),
   obligationMatches: (id: number) =>

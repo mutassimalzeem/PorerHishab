@@ -71,6 +71,7 @@ def category_spending_facts(
     user_id: int,
     observed_period: Period,
     comparison_period: Period | None = None,
+    *, exclude_transfers: bool = False,
 ) -> list[CategorySpendingFact]:
     """Grouped spending facts for a window, optionally versus another.
 
@@ -82,7 +83,7 @@ def category_spending_facts(
         row["category"]: row
         for row in grouped_expenses(
             db, user_id, observed_period.start, observed_period.end,
-            limit=ALL_CATEGORIES_LIMIT)
+            limit=ALL_CATEGORIES_LIMIT, exclude_transfers=exclude_transfers)
     }
     comparison_rows: dict[str, dict] = {}
     if comparison_period is not None:
@@ -90,7 +91,7 @@ def category_spending_facts(
             row["category"]: row
             for row in grouped_expenses(
                 db, user_id, comparison_period.start, comparison_period.end,
-                limit=ALL_CATEGORIES_LIMIT)
+                limit=ALL_CATEGORIES_LIMIT, exclude_transfers=exclude_transfers)
         }
 
     facts: list[CategorySpendingFact] = []

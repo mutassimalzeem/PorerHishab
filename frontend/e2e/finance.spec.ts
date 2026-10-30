@@ -1,3 +1,4 @@
+import { coachingFixture } from "../src/test/coaching.fixture";
 import { bn } from "../src/lib/translations";
 import { timelineFixture } from "../src/test/timeline.fixture";
 import { unknownRunway, populatedRunway } from "../src/test/runway.fixture";
@@ -692,6 +693,47 @@ test("financial timeline separates cash scopes and supports bilingual accessible
         .map((animation) => animation.finished.catch(() => {})),
     );
   });
+  await accessible(page);
+  await noOverflow(page);
+});
+
+test("financial coaching shows priorities, keyboard evidence and bilingual actions", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.route("**/api/finance/coaching", async (route) => {
+    await route.fulfill({ json: coachingFixture });
+  });
+  await navigate(page, "Insights");
+  await page.getByRole("button", { name: "Review financial coaching" }).click();
+  const card = page.locator(".coaching-card").first();
+  await expect(card.getByText("Critical", { exact: true })).toBeVisible();
+  const evidence = card.getByText("Why this recommendation?", { exact: true });
+  await evidence.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    card.getByText("Known obligations only", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByText("Uncertain scheduled income", { exact: true }),
+  ).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+  await page.locator('.topbar button[lang="bn"]').click();
+  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
+    element.getBoundingClientRect();
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
+  await expect(
+    card.getByRole("heading", {
+      name: bn["Prepare for a possible cash shortfall"],
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".coaching-card")).toHaveCount(2);
   await accessible(page);
   await noOverflow(page);
 });

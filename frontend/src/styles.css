@@ -3670,3 +3670,37 @@ html[lang="bn"] .workspace-label {
 .timeline-amounts dd {
   margin: 0.2rem 0;
 }
+
+.coaching-list {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.coaching-card {
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.coaching-critical,
+.coaching-high {
+  border-inline-start-color: var(--text);
+}
+.coaching-low {
+  border-inline-start-style: dashed;
+}
+.coaching-data-note {
+  border: 1px solid var(--border);
+  padding: 0.75rem;
+}
+.coaching-obligations {
+  padding-inline-start: 1.2rem;
+}
+
+.coaching-card > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 0.25rem;
+}
