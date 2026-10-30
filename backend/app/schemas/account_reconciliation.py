@@ -32,11 +32,13 @@ class AccountBalanceReconciliation(BaseModel):
     latest_transaction_date: date | None
     latest_transaction_balance: Decimal | None
 
+    difference: Decimal | None
     derived_balance: Decimal | None
 
     status: str
     confidence: str
 
     transaction_count: int
+    
 
     message: str
