@@ -6,6 +6,7 @@ export interface ApiSchemas {
   "BudgetBaselineCategory": { "category": string; "monthly_average": string; "months_observed": number; };
   "BudgetBaselineInsight": { "months_observed": number; "monthly_total_baseline": string; "categories": (ApiSchemas["BudgetBaselineCategory"])[]; };
   "BudgetForecast": { "months_ahead": number; "forecast": string; "historical_average": string; "recent_average": string; "confidence": string; "months_observed": number; "categories": (ApiSchemas["CategoryForecast"])[]; };
+  "CSVUploadResponse": { "filename": string; "records": number; "total_income": number; "total_expenses": number; "balance": number; "preview": ({ [key: string]: unknown; })[]; };
   "CashflowForecast": { "starting_balance": string; "forecast_anchor_date": string; "history_start_month": (string | null); "history_end_month": (string | null); "historical_months_count": number; "months_with_activity": number; "average_monthly_income": string; "average_monthly_expenses": string; "average_monthly_net": string; "months_ahead": number; "forecast_start_month": string; "projected_months": (ApiSchemas["CashflowMonth"])[]; "cash_depletion_date": (string | null); "status": "healthy" | "break_even" | "at_risk" | "insufficient_data"; "assumptions": (string)[]; };
   "CashflowMonth": { "month": string; "projected_income": string; "projected_expenses": string; "projected_net": string; "projected_balance": string; };
   "CashflowPoint": { "date": string; "income": string; "expenses": string; "net": string; "running_balance": string; };
@@ -42,6 +43,7 @@ export interface ApiSchemas {
   "IntelligenceSignal": { "signal_type": "unusual_spending" | "savings_opportunity" | "upcoming_expense" | "projected_shortfall" | "goal_progress"; "severity": "info" | "warning" | "critical"; "stable_id": string; "subject": (string | null); "observed_period": ApiSchemas["IntelligencePeriod"]; "comparison_period": (ApiSchemas["IntelligencePeriod"] | null); "observed_value": (string | null); "reference_value": (string | null); "delta": (string | null); "percentage_change": (string | null); "estimate": boolean; "estimate_label": "observed" | "estimate"; "evidence": { [key: string]: unknown; }; "assumptions": (string)[]; "limitations": (string)[]; };
   "IntelligenceSnapshot": { "as_of_date": string; "period": ApiSchemas["IntelligencePeriod"]; "data_coverage": ApiSchemas["IntelligenceCoverage"]; "current_period_coverage": ApiSchemas["IntelligenceCoverage"]; "income": (string | null); "expenses": (string | null); "net_cashflow": (string | null); "value_kind": "observed"; "category_spending": (ApiSchemas["ObservedCategory"])[]; "recurring_patterns": (ApiSchemas["RecurringInsight"])[]; "scheduled_cashflow_available": boolean; "scheduled_obligations": ApiSchemas["ObligationObservation"]; "history": ApiSchemas["HistoryObservation"]; "goals": (ApiSchemas["GoalObservation"])[]; "limitations": (string)[]; };
   "LoginIn": { "email": string; "password": string; };
+  "LoginTokenResponse": { "access_token": string; "refresh_token": string; "token_type": string; };
   "MerchantInsight": { "merchant": string; "total_spent": string; "transaction_count": number; };
   "MonthOverMonthInsight": { "month": string; "previous_month": string; "income_change": string; "income_change_pct"?: (string | null); "expense_change": string; "expense_change_pct"?: (string | null); "net_change": string; "net_change_pct"?: (string | null); };
   "MonthlyInsight": { "month": string; "income": string; "expenses": string; "net": string; };
@@ -54,7 +56,9 @@ export interface ApiSchemas {
   "Recommendation": { "id": string; "category": string; "title": string; "evidence": { [key: string]: unknown; }; "estimated_monthly_saving": string; "estimated_annual_saving": string; "confidence": "low" | "medium"; "assumptions": (string)[]; };
   "RecommendationPage": { "coverage": ApiSchemas["Coverage"]; "recommendations": (ApiSchemas["Recommendation"])[]; "limitations": (string)[]; };
   "RecurringInsight": { "merchant": string; "occurrences": number; "months": number; "median_amount": string; "total_spent": string; "first_date": string; "last_date": string; };
+  "RefreshTokenResponse": { "access_token": string; "token_type": string; };
   "RegisterIn": { "email": string; "password": string; "full_name"?: (string | null); };
+  "RegisterTokenResponse": { "access_token": string; "token_type": string; };
   "SavingsAction": { "title": string; "category"?: (string | null); "action": string; "reason": string; "priority": "high" | "medium" | "low"; };
   "SavingsCoachResponse": { "plan": ApiSchemas["SavingsPlanResponse"]; "actions"?: (ApiSchemas["SavingsAction"])[]; };
   "SavingsPlanRequest": { "goal_amount": (number | string); "current_saved"?: (number | string); "target_date": string; };
@@ -106,12 +110,12 @@ export interface ApiOperations {
   "GET /insights/proactive": { query: Record<string, unknown>; body: unknown; response: ApiSchemas["NudgePage"]; };
   "GET /insights/recurring": { query: { "start_date"?: (string | null); "end_date"?: (string | null); }; body: unknown; response: (ApiSchemas["RecurringInsight"])[]; };
   "GET /insights/summary": { query: { "start_date"?: (string | null); "end_date"?: (string | null); }; body: unknown; response: ApiSchemas["SummaryInsight"]; };
-  "POST /login": { query: Record<string, unknown>; body: ApiSchemas["LoginIn"]; response: unknown; };
+  "POST /login": { query: Record<string, unknown>; body: ApiSchemas["LoginIn"]; response: ApiSchemas["LoginTokenResponse"]; };
   "GET /me": { query: Record<string, unknown>; body: unknown; response: unknown; };
   "POST /planner/savings": { query: Record<string, unknown>; body: ApiSchemas["SavingsPlanRequest"]; response: ApiSchemas["SavingsPlanResponse"]; };
   "POST /planner/savings/coach": { query: Record<string, unknown>; body: ApiSchemas["SavingsPlanRequest"]; response: ApiSchemas["SavingsCoachResponse"]; };
-  "POST /refresh": { query: Record<string, unknown>; body: unknown; response: unknown; };
-  "POST /register": { query: Record<string, unknown>; body: ApiSchemas["RegisterIn"]; response: unknown; };
+  "POST /refresh": { query: Record<string, unknown>; body: unknown; response: ApiSchemas["RefreshTokenResponse"]; };
+  "POST /register": { query: Record<string, unknown>; body: ApiSchemas["RegisterIn"]; response: ApiSchemas["RegisterTokenResponse"]; };
   "GET /search": { query: { "q"?: (string | null); "start_date"?: (string | null); "end_date"?: (string | null); "min_amount"?: (number | null); "max_amount"?: (number | null); "category"?: ((string)[] | null); "limit"?: number; "offset"?: number; "sort"?: string; }; body: unknown; response: unknown; };
   "GET /summary": { query: Record<string, unknown>; body: unknown; response: unknown; };
   "GET /transactions": { query: { "q"?: (string | null); "start_date"?: (string | null); "end_date"?: (string | null); "min_amount"?: (number | null); "max_amount"?: (number | null); "category"?: ((string)[] | null); "limit"?: number; "offset"?: number; "sort"?: string; }; body: unknown; response: ApiSchemas["TransactionPage"]; };
@@ -119,5 +123,5 @@ export interface ApiOperations {
   "POST /transactions/categorize": { query: Record<string, unknown>; body: ApiSchemas["CategorizeBatchRequest"]; response: ApiSchemas["CategorizeBatchResponse"]; };
   "GET /transactions/me": { query: { "limit"?: number; }; body: unknown; response: unknown; };
   "PATCH /transactions/{transaction_id}/category": { query: Record<string, unknown>; body: ApiSchemas["TransactionCategoryUpdate"]; response: ApiSchemas["TransactionRead"]; };
-  "POST /upload-csv": { query: Record<string, unknown>; body: unknown; response: unknown; };
+  "POST /upload-csv": { query: Record<string, unknown>; body: unknown; response: ApiSchemas["CSVUploadResponse"]; };
 }
