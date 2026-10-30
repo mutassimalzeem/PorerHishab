@@ -59,7 +59,7 @@ export interface ApiSchemas {
   "ObligationReconciliation": { "item_id": number; "original_amount": string; "allocated_amount": string; "remaining_amount": string; "status": "cancelled" | "paid" | "partial" | "review_required" | "unmatched" | "overdue" | "not_due" | "insufficient_data"; "timing": "overdue" | "due" | "not_due"; "ambiguous": boolean; "candidates": (ApiSchemas["MatchCandidate"])[]; "allocations": (ApiSchemas["AllocationRead"])[]; "date_tolerance_days": number; "amount_tolerance": string; "limitations": (string)[]; };
   "ObservedCategory": { "category": string; "expenses": string; "transaction_count": number; };
   "OpeningBalanceUpdate": { "opening_balance": (number | string); "opening_balance_date": string; };
-  "PlannedObservation": { "scheduled_item_id": number; "title": string; "kind": "expense" | "income"; "amount": string; "due_date": string; "record_type": "plan"; };
+  "PlannedObservation": { "scheduled_item_id": number; "title": string; "kind": "expense" | "income"; "amount": string; "due_date": string; "record_type": "plan"; "original_amount"?: (string | null); "allocated_amount"?: (string | null); "remaining_amount"?: (string | null); };
   "Recommendation": { "id": string; "category": string; "title": string; "evidence": { [key: string]: unknown; }; "estimated_monthly_saving": string; "estimated_annual_saving": string; "confidence": "low" | "medium"; "assumptions": (string)[]; };
   "RecommendationPage": { "coverage": ApiSchemas["Coverage"]; "recommendations": (ApiSchemas["Recommendation"])[]; "limitations": (string)[]; };
   "ReconciliationPage": { "items": (ApiSchemas["ObligationReconciliation"])[]; "total": number; "limit": number; "offset": number; };

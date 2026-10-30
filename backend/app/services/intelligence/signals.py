@@ -33,7 +33,7 @@ from app.services.intelligence.categories import (
 )
 from app.services.intelligence.facts import (
     grouped_expenses,
-    scheduled_cashflow_items,
+    scheduled_obligation_values,
     totals,
 )
 from app.services.intelligence.goals import GoalAssessment, goal_assessment
@@ -270,10 +270,10 @@ def upcoming_expense_signals(
     period = Period(kind="upcoming_horizon", start=as_of,
                     end=as_of + timedelta(days=days), is_complete=False,
                     label=f"next {days} days")
-    items = scheduled_cashflow_items(
+    items = scheduled_obligation_values(
         db, user_id, period.start, period.end, kind="expense", limit=20)
     signals: list[FinancialSignal] = []
-    for item in items:
+    for item, amounts in items:
         signals.append(_observed_signal(
             signal_type=SIGNAL_UPCOMING_EXPENSE,
             severity=SEVERITY_WARNING,
@@ -282,14 +282,17 @@ def upcoming_expense_signals(
                 kind="plan_window", start=as_of, end=item.due_date,
                 is_complete=False, label=f"plan due {item.due_date.isoformat()}"),
             comparison_period=None,
-            observed_value=item.amount,
+            observed_value=amounts.remaining_amount,
             reference_value=None,
             delta=None,
             percentage_change=None,
             evidence={
                 "scheduled_item_id": item.id,
                 "title": item.title,
-                "amount": item.amount,
+                "amount": amounts.remaining_amount,
+                "original_amount": amounts.original_amount,
+                "allocated_amount": amounts.allocated_amount,
+                "remaining_amount": amounts.remaining_amount,
                 "record_type": "plan",
             },
             subject=item.title,

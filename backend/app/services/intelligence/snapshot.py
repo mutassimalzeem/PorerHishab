@@ -36,7 +36,7 @@ from app.services.intelligence.coverage import (
 from app.services.intelligence.facts import (
     LIMITATIONS,
     grouped_expenses,
-    scheduled_cashflow_items,
+    scheduled_obligation_values,
     scoped,
     scheduled_totals,
     totals,
@@ -169,6 +169,9 @@ class ScheduledObligations:
                     "title": item["title"],
                     "kind": item["kind"],
                     "amount": str(item["amount"]),
+                    "original_amount": str(item["original_amount"]),
+                    "allocated_amount": str(item["allocated_amount"]),
+                    "remaining_amount": str(item["remaining_amount"]),
                     "due_date": item["due_date"].isoformat(),
                     "record_type": item["record_type"],
                 }
@@ -192,11 +195,14 @@ def scheduled_obligations(
             "scheduled_item_id": item.id,
             "title": item.title,
             "kind": item.kind,
-            "amount": item.amount,
+            "amount": amounts.remaining_amount,
+            "original_amount": amounts.original_amount,
+            "allocated_amount": amounts.allocated_amount,
+            "remaining_amount": amounts.remaining_amount,
             "due_date": item.due_date,
             "record_type": "plan",
         }
-        for item in scheduled_cashflow_items(db, user_id, period.start, period.end)
+        for item, amounts in scheduled_obligation_values(db, user_id, period.start, period.end)
     ]
     return ScheduledObligations(
         period=period,
