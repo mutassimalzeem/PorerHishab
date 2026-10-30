@@ -92,6 +92,7 @@ def monthly_history(
     user_id: int,
     as_of: date,
     months: int = DEFAULT_HISTORY_MONTHS,
+    *, exclude_transfers: bool = False,
 ) -> MonthlyHistory:
     """Complete prior months of observed totals (dates inclusive).
 
@@ -103,7 +104,7 @@ def monthly_history(
     months_with_records: list[str] = []
     for key in period.month_keys:
         first_day = _first_day(key)
-        values = totals(db, user_id, first_day, month_end(first_day))
+        values = totals(db, user_id, first_day, month_end(first_day), exclude_transfers=exclude_transfers)
         monthly.append(values)
         if values["coverage"]["transaction_count"] > 0:
             months_with_records.append(key)
@@ -111,7 +112,7 @@ def monthly_history(
     adequate = all(
         values["coverage"]["transaction_count"] > 0 for values in monthly)
     baseline = baseline_forecast(monthly, as_of)
-    union = totals(db, user_id, period.start, period.end)
+    union = totals(db, user_id, period.start, period.end, exclude_transfers=exclude_transfers)
 
     return MonthlyHistory(
         period=period,

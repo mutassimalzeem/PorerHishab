@@ -1,3 +1,4 @@
+import { FinancialCoaching } from "../components/FinancialCoaching";
 import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel, digits } from "../lib/locale";
 import { useCallback, useState } from "react";
@@ -31,6 +32,7 @@ export function Insights() {
           "A few grounded observations, with the evidence behind each one.",
         )}
       />
+      <FinancialCoaching />
       <Section title={t("Worth your attention")}>
         <ResourceView resource={nudges}>
           {(p) => (
