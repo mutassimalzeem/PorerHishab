@@ -13,6 +13,9 @@ from app.schemas.scheduled_cashflow import (
     ScheduledCashflowPage, ScheduledCashflowRead, ScheduledCashflowUpdate,
 )
 
+from app.repositories.obligation_reconciliation import allocations, lock_owner
+from app.services.finance.obligation_reconciliation import allocated_total
+
 router = APIRouter(prefix="/finance", tags=["finance"])
 
 
@@ -65,6 +68,7 @@ def read_item(item_id: int, current: User = Depends(get_current_user), db: Sessi
 @router.patch("/scheduled-cashflow/{item_id}", response_model=ScheduledCashflowRead)
 def update_item(item_id: int, payload: ScheduledCashflowUpdate,
                 current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    lock_owner(db, current.id)
     # Serialize concurrent transitions so a terminal status cannot be overwritten.
     item = db.query(ScheduledCashflowItem).filter(
         ScheduledCashflowItem.id == item_id, ScheduledCashflowItem.user_id == current.id,
@@ -74,6 +78,13 @@ def update_item(item_id: int, payload: ScheduledCashflowUpdate,
     changes = payload.model_dump(exclude_unset=True)
     if item.status != "scheduled" and changes.get("status", item.status) != item.status:
         raise HTTPException(status_code=409, detail="Paid or cancelled items cannot change status")
+    history = allocations(db, current.id, item_id, active=None)
+    if history and any(field in changes and changes[field] != getattr(item, field) for field in ("amount", "kind", "due_date")):
+        raise HTTPException(409, "Reconciled obligation terms are immutable")
+    if history and changes.get("status") == "cancelled":
+        raise HTTPException(409, "Reconciled obligations cannot be cancelled")
+    if history and changes.get("status") == "paid" and allocated_total(db, current.id, item_id) != item.amount:
+        raise HTTPException(409, "Allocations do not fully settle this obligation")
     for field, value in changes.items():
         setattr(item, field, value)
     db.commit()
@@ -83,7 +94,10 @@ def update_item(item_id: int, payload: ScheduledCashflowUpdate,
 
 @router.delete("/scheduled-cashflow/{item_id}", status_code=204)
 def delete_item(item_id: int, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    lock_owner(db, current.id)
     item = get_item_for_user(db, item_id, current.id)
+    if allocations(db, current.id, item_id, active=None):
+        raise HTTPException(409, "Reconciled obligation history cannot be deleted")
     db.delete(item)
     db.commit()
     return Response(status_code=204)

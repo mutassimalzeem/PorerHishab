@@ -27,6 +27,7 @@ from app.api.planner import router as planner_router
 from app.api.chat import router as chat_router
 from app.api.coach import router as coach_router
 from app.api.intelligence import router as intelligence_router
+from app.api.obligation_reconciliation import router as obligation_reconciliation_router
 from app.api.scheduled_cashflow import router as scheduled_cashflow_router
 from app.api.spending_decision import router as spending_decision_router
 from app.api.account_reconcilliation import router as account_reconcilliation_router
@@ -63,6 +64,7 @@ app.add_middleware(
 app.include_router(forecast_router)
 app.include_router(planner_router)
 app.include_router(spending_decision_router)
+app.include_router(obligation_reconciliation_router)
 app.include_router(scheduled_cashflow_router)
 app.include_router(coach_router)
 
