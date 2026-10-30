@@ -177,6 +177,7 @@ class Transaction(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("id", "user_id", name="uq_transactions_id_user"),
         UniqueConstraint(
             "user_id",
             "trx_id",

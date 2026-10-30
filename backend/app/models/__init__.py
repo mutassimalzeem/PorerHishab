@@ -5,6 +5,7 @@ from app.models.transactions import Transaction
 from app.models.user import User
 from app.models.merchant_preference import MerchantCategoryPreference
 from app.models.scheduled_cashflow_item import ScheduledCashflowItem
+from app.models.obligation_allocation import ObligationAllocation
 
 __all__ = [
     "User",
@@ -13,5 +14,6 @@ __all__ = [
     "TransactionCategoryCorrection",
     "MerchantCategoryPreference",
     "SavingsGoal",
-    "ScheduledCashflowItem"
+    "ScheduledCashflowItem",
+    "ObligationAllocation",
 ]

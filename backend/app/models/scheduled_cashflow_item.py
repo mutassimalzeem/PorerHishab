@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +26,7 @@ class ScheduledCashflowItem(Base):
     __tablename__ = "scheduled_cashflow_items"
 
     __table_args__ = (
+        UniqueConstraint("id", "user_id", name="uq_scheduled_cashflow_item_id_user"),
         CheckConstraint(
             "amount > 0",
             name="ck_scheduled_cashflow_items_amount_positive",
