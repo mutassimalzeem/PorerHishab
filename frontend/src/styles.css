@@ -3624,3 +3624,12 @@ html[lang="bn"] .workspace-label {
   order: 5;
   flex: 0 0 100%;
 }
+
+.runway-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 1rem;
+}
+.runway-summary dd {
+  margin: 0.4rem 0 0;
+}

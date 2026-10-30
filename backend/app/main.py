@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 
+from app.api.runway import router as runway_router
 from app.api.forecast import router as forecast_router
 from app.api.planner import router as planner_router
 from app.api.chat import router as chat_router
@@ -61,6 +62,7 @@ app.add_middleware(
 )
 
 
+app.include_router(runway_router)
 app.include_router(forecast_router)
 app.include_router(planner_router)
 app.include_router(spending_decision_router)

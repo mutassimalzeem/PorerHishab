@@ -1,3 +1,5 @@
+from datetime import date
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -65,17 +67,18 @@ def reconcile_account_balance(
     *,
     account: Account,
     user_id: int,
+    as_of: date | None = None,
 ) -> dict:
     """Reconcile stored balances using Decimal arithmetic and separate fee costs."""
     if account.user_id != user_id:
         raise ValueError("Account does not belong to the user")
 
+    query = db.query(Transaction).filter(
+        Transaction.account_id == account.id, Transaction.user_id == user_id)
+    if as_of is not None:
+        query = query.filter(Transaction.date <= as_of)
     transactions = (
-        db.query(Transaction)
-        .filter(
-            Transaction.account_id == account.id,
-            Transaction.user_id == user_id,
-        )
+        query
         .order_by(Transaction.date.asc(), Transaction.id.asc())
         .all()
     )
@@ -83,15 +86,26 @@ def reconcile_account_balance(
     latest_transaction_balance = (
         latest_transaction.balance if latest_transaction is not None else None
     )
+    opening = account.opening_balance
+    opening_date = account.opening_balance_date
+    reported = account.current_balance
+    if as_of is not None:
+        if opening_date is not None and opening_date > as_of:
+            opening = opening_date = None
+        stamp = account.balance_as_of
+        if stamp is not None:
+            stamp = stamp.replace(tzinfo=ZoneInfo("UTC")) if stamp.tzinfo is None else stamp
+            if stamp.astimezone(ZoneInfo("Asia/Dhaka")).date() > as_of:
+                reported = None
     derived_balance = None
-    if account.opening_balance is not None and account.opening_balance_date is not None:
+    if opening is not None and opening_date is not None:
         # Amounts are signed; fees are stored separately as positive costs.
         # CSV ingestion leaves fees at zero and preserves its supplied amount.
-        derived_balance = account.opening_balance + sum(
+        derived_balance = opening + sum(
             (
                 transaction.amount - transaction.fee
                 for transaction in transactions
-                if transaction.date >= account.opening_balance_date
+                if transaction.date >= opening_date
             ),
             Decimal("0.00"),
         )
@@ -99,13 +113,13 @@ def reconcile_account_balance(
         derived_balance = latest_transaction_balance
 
     difference = None
-    if account.current_balance is not None and derived_balance is not None:
-        difference = account.current_balance - derived_balance
+    if reported is not None and derived_balance is not None:
+        difference = reported - derived_balance
 
     status, confidence, message = _compute_status_and_confidence(
-        current_balance=account.current_balance,
-        opening_balance=account.opening_balance,
-        opening_balance_date=account.opening_balance_date,
+        current_balance=reported,
+        opening_balance=opening,
+        opening_balance_date=opening_date,
         latest_transaction_balance=latest_transaction_balance,
         derived_balance=derived_balance,
         difference=difference,
@@ -116,7 +130,7 @@ def reconcile_account_balance(
         "account_id": account.id,
         "account_name": account.name,
         "currency": account.currency,
-        "reported_balance": account.current_balance,
+        "reported_balance": reported,
         "reported_balance_as_of": account.balance_as_of,
         "balance_source": account.balance_source,
         "opening_balance": account.opening_balance,

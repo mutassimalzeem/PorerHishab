@@ -205,6 +205,12 @@ def build_financial_intelligence(
     snapshot = build_snapshot(db, user_id, as_of, history_months=history_months)
     history = snapshot.history
     signals = build_signals(db, user_id, as_of, history) if include_signals else []
+    if include_signals:
+        from app.services.finance.runway import financial_runway
+        from app.services.intelligence.signals import cash_position_signal
+        runway_signal = cash_position_signal(financial_runway(db, user_id, as_of=as_of, history=history))
+        if runway_signal is not None:
+            signals.append(runway_signal)
     cashflow = build_cashflow_intelligence(
         db, user_id, as_of, history=history)
     return FinancialIntelligence(

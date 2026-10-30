@@ -139,19 +139,29 @@ def coach_cashflow(db, user_id, request, as_of=None):
 def coach_purchase(db, user_id, request, as_of=None):
     as_of = as_of or today_dhaka()
     end = as_of + timedelta(days=request.horizon_days)
-    reserve, uncertain = scheduled_totals(db, user_id, as_of, end)
+    from app.services.finance.runway import financial_runway
+    runway = financial_runway(db, user_id, as_of=as_of, horizon_days=request.horizon_days,
+                             safety_threshold=request.safety_buffer,
+                             starting_balance=request.starting_balance)
+    reserve, uncertain = runway.scheduled_expense_reserve, runway.known_future_income
+    remaining = money(runway.known_obligations_end_balance - request.purchase_amount)
+    projected_minimum = runway.minimum_projected_balance
+    status = "not_recommended" if remaining < ZERO or (projected_minimum is not None and projected_minimum - request.purchase_amount < ZERO) else None
+    if status is None and (remaining < request.safety_buffer or (projected_minimum is not None and projected_minimum - request.purchase_amount <= request.safety_buffer)):
+        status = "caution"
     base = assess_spending_decision(SpendingDecisionRequest(
         purchase_amount=request.purchase_amount, starting_balance=request.starting_balance,
         safety_buffer=request.safety_buffer + reserve))
-    return {"status": "not_recommended" if request.starting_balance - request.purchase_amount - reserve < 0 else base.status, "purchase_amount": request.purchase_amount,
+    return {"status": status or base.status, "purchase_amount": request.purchase_amount,
             "scheduled_expense_reserve": reserve,
-            "remaining_after_purchase_and_reserve": money(request.starting_balance - request.purchase_amount - reserve),
+            "remaining_after_purchase_and_reserve": remaining,
+            "runway": runway,
             "uncertain_scheduled_income": uncertain, "horizon_end": end,
             "assumptions": ["Caller confirms the available balance and safety buffer.",
                             "Scheduled expenses in the inclusive horizon are reserved; scheduled income is excluded.",
                             "The purchase is assumed additional to scheduled expenses."],
             "warnings": ["This checks known plans only; unrecorded expenses, overdue bills, and future purchases may make it unaffordable.",
-                         "No income projection is treated as money available today."]}
+                         "No income projection is treated as money available today."] + runway.limitations}
 
 
 def goal_plan(db, user_id, goal, as_of=None, history_data=None):
