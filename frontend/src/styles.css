@@ -3633,3 +3633,40 @@ html[lang="bn"] .workspace-label {
 .runway-summary dd {
   margin: 0.4rem 0 0;
 }
+
+.financial-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.timeline-event {
+  border-inline-start: 3px solid var(--border, #d9d4c9);
+  padding: 0.75rem 1rem;
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.timeline-event-heading,
+.timeline-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.timeline-certainty {
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+}
+.timeline-event[data-certainty="estimated"] {
+  border-inline-start-style: dashed;
+}
+.timeline-event[data-certainty="uncertain"] {
+  border-inline-start-style: dotted;
+}
+.timeline-event[data-certainty="confirmed"] {
+  border-inline-start-style: double;
+}
+.timeline-amounts dd {
+  margin: 0.2rem 0;
+}
