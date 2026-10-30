@@ -142,27 +142,19 @@ def scheduled_cashflow_items(
     return query.all()
 
 
+def scheduled_obligation_values(db: Session, user_id: int, start: date, end: date,
+                                *, kind: str | None = None, limit: int | None = None):
+    """Upcoming rows plus authoritative amounts; settled rows produce no event."""
+    from app.services.finance.obligations import obligation_amounts_for_items
+    items = scheduled_cashflow_items(db, user_id, start, end, kind=kind)
+    amounts = obligation_amounts_for_items(db, user_id, items)
+    values = [(item, amounts[item.id]) for item in items if amounts[item.id].reserved_amount > 0]
+    return values if limit is None else values[:limit]
+
+
 def scheduled_totals(db: Session, user_id: int, start: date, end: date):
-    """ ``(expenses, income)`` totals of *scheduled* (unpaid, uncancelled) plans.
-
-    The pair order and money rounding are preserved from the original coach
-    implementation so regression suites keep passing.
-    """
-    from app.models.obligation_allocation import ObligationAllocation
-    allocated = db.query(
-        ObligationAllocation.item_id,
-        func.sum(ObligationAllocation.amount).label("allocated"),
-    ).filter_by(user_id=user_id, active=True).group_by(ObligationAllocation.item_id).subquery()
-    rows = db.query(
-        ScheduledCashflowItem.kind,
-        func.sum(ScheduledCashflowItem.amount - func.coalesce(allocated.c.allocated, 0)),
-    ).outerjoin(allocated, allocated.c.item_id == ScheduledCashflowItem.id).filter(
-        ScheduledCashflowItem.user_id == user_id,
-        ScheduledCashflowItem.status == "scheduled",
-        ScheduledCashflowItem.due_date >= start,
-        ScheduledCashflowItem.due_date <= end,
-    ).group_by(ScheduledCashflowItem.kind).all()
-
-    default = Decimal("0.00")
-    values = {kind_name: money(amount) for kind_name, amount in rows}
-    return values.get("expense", default), values.get("income", default)
+    """(Expenses, uncertain income) remaining inside the inclusive due window."""
+    values = {"expense": Decimal("0.00"), "income": Decimal("0.00")}
+    for item, amounts in scheduled_obligation_values(db, user_id, start, end):
+        values[item.kind] += amounts.reserved_amount
+    return money(values["expense"]), money(values["income"])

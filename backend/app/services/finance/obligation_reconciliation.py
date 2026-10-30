@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from app.models.obligation_allocation import ObligationAllocation
 from app.repositories.obligation_reconciliation import allocations, item_for_user, lock_owner, transaction_for_user, eligible_transactions, is_bdt_transaction
 
+from app.services.finance.obligations import obligation_amounts
+
 ZERO = Decimal("0.00")
 LIMITATIONS = ["Suggestions are not proof of payment; review the original transaction.",
                "Transaction principal is used; separately recorded fees are excluded.",
@@ -28,7 +30,7 @@ def reconcile(db, user_id, item_id, *, as_of=None, date_tolerance_days=7, amount
     all_allocations, transactions = snapshot or (allocations(db, user_id, active=None), eligible_transactions(db, user_id))
     history = [a for a in all_allocations if a.item_id == item_id]
     total = sum((a.amount for a in history if a.active), ZERO)
-    remaining = item.amount - total
+    remaining = obligation_amounts(item, total).remaining_amount
     used = {a.transaction_id for a in all_allocations if a.active}
     candidates = []
     if item.status == "scheduled" and remaining > ZERO:
@@ -81,7 +83,7 @@ def confirm(db, user_id, item_id, transaction_id, full=False):
         raise HTTPException(422, "Only BDT transactions can settle obligations")
     if not direction_matches(item, tx) or tx.amount == ZERO:
         raise HTTPException(422, "Transaction direction does not match obligation")
-    remaining = item.amount - allocated_total(db, user_id, item_id)
+    remaining = obligation_amounts(item, allocated_total(db, user_id, item_id)).remaining_amount
     amount = abs(tx.amount)
     if amount > remaining:
         raise HTTPException(422, "Transaction exceeds remaining amount")

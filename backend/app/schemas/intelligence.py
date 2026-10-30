@@ -36,6 +36,9 @@ class PlannedObservation(BaseModel):
     amount: Decimal
     due_date: date
     record_type: Literal['plan']
+    original_amount: Decimal | None = None
+    allocated_amount: Decimal | None = None
+    remaining_amount: Decimal | None = None
 
 class ObligationObservation(BaseModel):
     period: IntelligencePeriod
