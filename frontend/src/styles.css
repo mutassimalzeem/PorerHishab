@@ -3597,3 +3597,30 @@ html[lang="bn"] .workspace-label {
     order: 3;
   }
 }
+
+.obligation-matches {
+  flex-basis: 100%;
+  min-width: 0;
+}
+.reconciliation-detail {
+  padding: 1rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 0.75rem;
+  margin-top: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.reconciliation-entry {
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border, #ddd);
+}
+.reconciliation-entry button {
+  margin: 0.25rem;
+}
+
+.schedule-row {
+  flex-wrap: wrap;
+}
+.schedule-row > .obligation-matches {
+  order: 5;
+  flex: 0 0 100%;
+}

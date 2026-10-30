@@ -1,3 +1,4 @@
+import { ObligationMatches } from "../components/ObligationMatches";
 import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel, digits } from "../lib/locale";
 import { useCallback, useState } from "react";
@@ -241,6 +242,15 @@ export function Cashflow() {
                         )}
                       </div>
                       <Amount value={item.amount} />
+                      <ObligationMatches
+                        itemId={item.id}
+                        onChange={() => {
+                          setRevision((v) => v + 1);
+                          setNotice("Allocation updated.");
+                          setScenario(null);
+                          setDecision(null);
+                        }}
+                      />
                       {item.status === "scheduled" && (
                         <div className="actions">
                           <button
