@@ -6,10 +6,13 @@ export interface User {
   email: string;
   full_name: string | null;
 }
-export interface Tokens {
-  access_token: string;
-  refresh_token?: string;
-}
+
+export type Tokens = ApiSchemas["RegisterTokenResponse"] & {
+  refresh_token?: ApiSchemas["LoginTokenResponse"]["refresh_token"];
+};
+
+export type CSVUpload = ApiSchemas["CSVUploadResponse"];
+
 export interface Page<T> {
   items: T[];
   total: number;

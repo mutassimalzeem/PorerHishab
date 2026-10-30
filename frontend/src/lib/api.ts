@@ -20,6 +20,7 @@ import type {
   Transaction,
   TransactionCreate,
   User,
+  CSVUpload,
 } from "../domain";
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 let tokens: Tokens | null = null;
@@ -177,7 +178,7 @@ export const api = {
   upload: (file: File) => {
     const body = new FormData();
     body.append("file", file);
-    return request<unknown>("/upload-csv", { method: "POST", body });
+    return request<CSVUpload>("/upload-csv", { method: "POST", body });
   },
   scheduled: (filters: Record<string, string | number | undefined> = {}) =>
     request<Page<Scheduled>>(`/finance/scheduled-cashflow${query(filters)}`),
