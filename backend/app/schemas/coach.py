@@ -157,12 +157,16 @@ class CoachPurchaseRequest(StrictModel):
     horizon_days: int = Field(default=30, ge=1, le=366)
 
 
+from app.schemas.runway import FinancialRunway
+
+
 class CoachPurchaseResponse(BaseModel):
     status: Literal["safe", "caution", "not_recommended", "insufficient_data"]
     currency: str = "BDT"
     purchase_amount: Decimal
     scheduled_expense_reserve: Decimal
     remaining_after_purchase_and_reserve: Decimal
+    runway: FinancialRunway | None = None
     uncertain_scheduled_income: Decimal
     horizon_end: date
     assumptions: list[str]

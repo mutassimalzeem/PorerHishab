@@ -1,3 +1,4 @@
+import { RunwaySummary } from "../components/RunwaySummary";
 import { ObligationMatches } from "../components/ObligationMatches";
 import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel, digits } from "../lib/locale";
@@ -145,6 +146,7 @@ export function Cashflow() {
         </p>
       )}
       {error && !adding && <ErrorNotice message={error} />}
+      <RunwaySummary key={revision} />
       <Section title={t("Upcoming & scheduled")}>
         <label className="inline-form">
           {t("Show")}{" "}

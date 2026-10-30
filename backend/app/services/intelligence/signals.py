@@ -434,3 +434,20 @@ def build_signals(
         "baseline": baseline,
     }))
     return signals
+
+
+def cash_position_signal(runway):
+    """Present the authoritative runway without recalculating any cash values."""
+    if runway.runway_status == "insufficient_data":
+        return None
+    return _estimated_signal(
+        signal_type="cash_position", severity="critical" if runway.runway_status == "cash_shortfall" else "warning" if runway.runway_status == "at_risk" else "info",
+        stable_id=f"cash-position:{runway.period.start}:{runway.period.end}",
+        observed_period=Period(**runway.period.model_dump()), comparison_period=None,
+        observed_value=runway.minimum_projected_balance, reference_value=runway.safety_threshold,
+        delta=runway.minimum_projected_balance - runway.safety_threshold, percentage_change=None,
+        evidence={"runway_status": runway.runway_status, "starting_balance": str(runway.starting_balance),
+                  "scheduled_expense_reserve": str(runway.scheduled_expense_reserve),
+                  "projected_end_balance": str(runway.projected_end_balance),
+                  "confidence": runway.confidence, "resolution": "monthly"},
+        limitations=runway.limitations, assumptions=runway.assumptions)

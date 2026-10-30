@@ -126,6 +126,13 @@ def goal_assessment(
             capacity -= (shared / other_months).quantize(
                 Decimal("0.01"), rounding=ROUND_UP)
 
+    if capacity is not None:
+        from app.services.finance.runway import financial_runway
+        runway = financial_runway(db, user_id, as_of=as_of, mode="known_obligations")
+        if runway.known_obligations_end_balance is not None:
+            capacity = min(capacity, max(ZERO, runway.known_obligations_end_balance))
+            limitations.append("Goal capacity is capped by account cash after the runway horizon's known obligations; saved goal money is not assumed additional cash.")
+
     status = AFFORDABILITY_UNKNOWN
     if goal.status == "cancelled":
         status = AFFORDABILITY_CANCELLED

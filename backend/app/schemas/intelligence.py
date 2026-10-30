@@ -95,7 +95,7 @@ class IntelligenceCashflow(BaseModel):
     limitations: list[str]
 
 class IntelligenceSignal(BaseModel):
-    signal_type: Literal['unusual_spending', 'savings_opportunity', 'upcoming_expense', 'projected_shortfall', 'goal_progress']
+    signal_type: Literal['unusual_spending', 'savings_opportunity', 'upcoming_expense', 'projected_shortfall', 'goal_progress', 'cash_position']
     severity: Literal['info', 'warning', 'critical']
     stable_id: str
     subject: str | None

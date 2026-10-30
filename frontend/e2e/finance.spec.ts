@@ -1,3 +1,4 @@
+import { unknownRunway, populatedRunway } from "../src/test/runway.fixture";
 import { test, expect } from "@playwright/test";
 import {
   emptyIntelligence,
@@ -611,4 +612,36 @@ test("review and explicitly confirm or remove obligation allocations", async ({
   await page.getByRole("button", { name: "Remove allocation" }).click();
   await expect(page.getByRole("status")).toContainText("Allocation updated.");
   expect(allocated).toBe(false);
+});
+
+test("account runway preserves unknown cash and renders an updated projection", async ({
+  page,
+}) => {
+  await connect(page);
+  let populated = false;
+  await page.route("**/api/finance/runway", async (route) => {
+    await route.fulfill({ json: populated ? populatedRunway : unknownRunway });
+  });
+  await navigate(page, "Cashflow");
+  await page.getByRole("button", { name: "Check account runway" }).click();
+  await expect(
+    page.getByText("insufficient data", { exact: true }),
+  ).toBeVisible();
+  const summary = page.locator(".runway-summary");
+  await expect(summary.getByText("Not available")).toHaveCount(3);
+  populated = true;
+  await page.getByRole("button", { name: "Refresh account runway" }).click();
+  await expect(page.getByText("positive", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Not available")).toHaveCount(0);
+  await accessible(page);
+  await expect(
+    page.getByText(
+      "Monthly estimates cannot establish an exact depletion day.",
+    ),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
 });
