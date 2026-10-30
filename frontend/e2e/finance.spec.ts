@@ -603,7 +603,9 @@ test("review and explicitly confirm or remove obligation allocations", async ({
   await page
     .getByRole("button", { name: "Confirm allocation", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Allocation updated.");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Allocation updated." }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Review transaction matches" })
     .first()
@@ -612,7 +614,9 @@ test("review and explicitly confirm or remove obligation allocations", async ({
     page.getByRole("button", { name: "Remove allocation" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Remove allocation" }).click();
-  await expect(page.getByRole("status")).toContainText("Allocation updated.");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Allocation updated." }),
+  ).toBeVisible();
   expect(allocated).toBe(false);
 });
 
