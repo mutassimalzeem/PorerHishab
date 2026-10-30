@@ -129,10 +129,20 @@ export function Insights() {
                     <Notes assumptions={r.assumptions} />
                   </article>
                 ))
-              ) : (
+              ) : p.limitations.some((limitation) =>
+                  limitation.includes(
+                    "Three complete calendar months with observed records are required",
+                  ),
+                ) ? (
                 <Empty title={t("A little more history first")}>
                   {t(
                     "Recommendations need observations across three complete calendar months. No saving amount is assumed when history is insufficient.",
+                  )}{" "}
+                </Empty>
+              ) : (
+                <Empty title={t("No savings opportunities identified")}>
+                  {t(
+                    "Your recorded spending does not currently meet the criteria for a savings recommendation. Review again as new transactions are added.",
                   )}{" "}
                 </Empty>
               )}
