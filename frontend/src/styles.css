@@ -3704,3 +3704,23 @@ html[lang="bn"] .workspace-label {
   min-height: 44px;
   padding-block: 0.25rem;
 }
+
+.coaching-feedback-actions,
+.coaching-feedback form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  align-items: center;
+}
+.coaching-feedback button,
+.coaching-feedback input {
+  min-height: 44px;
+}
+.coaching-feedback input {
+  max-width: 100%;
+}
+.coaching-history li {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}

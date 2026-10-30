@@ -149,6 +149,15 @@ export function query(values: Record<string, string | number | undefined>) {
   return `?${params}`;
 }
 export const api = {
+  coachingFeedback: (id: string, body: ApiSchemas["CoachingFeedbackInput"]) =>
+    request<ApiSchemas["CoachingFeedbackRecord"]>(
+      `/finance/coaching/${encodeURIComponent(id)}/feedback`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  restoreCoaching: (id: string) =>
+    request<void>(`/finance/coaching/${encodeURIComponent(id)}/feedback`, {
+      method: "DELETE",
+    }),
   coaching: () => request<ApiSchemas["FinancialCoaching"]>("/finance/coaching"),
   timeline: () => request<ApiSchemas["FinancialTimeline"]>("/finance/timeline"),
   runway: () => request<ApiSchemas["FinancialRunway"]>("/finance/runway"),

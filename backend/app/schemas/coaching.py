@@ -1,8 +1,8 @@
-"""Read-only evidence-backed coaching, separate from financial facts."""
-from datetime import date
+"""Deterministic coaching and explicit user feedback, separate from financial facts."""
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.schemas.intelligence import IntelligencePeriod
 
 CoachingType = Literal["cash_risk", "upcoming_obligations", "spending_spike", "repeated_spending", "savings_opportunity", "goal_risk"]
@@ -76,7 +76,39 @@ class CoachingRecommendation(BaseModel):
     limitations: list[str]
 
 
+FeedbackStatus = Literal["dismissed", "acted_on", "not_relevant", "snoozed"]
+
+
+class CoachingFeedbackInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: FeedbackStatus
+    snoozed_until: date | None = None
+
+    @model_validator(mode="after")
+    def valid_snooze(self):
+        from app.services.intelligence.periods import today_dhaka
+        today = today_dhaka()
+        if self.status == "snoozed":
+            if self.snoozed_until is None or not today < self.snoozed_until <= today + timedelta(days=90):
+                raise ValueError("Snooze date must be tomorrow through 90 days from today")
+        elif self.snoozed_until is not None:
+            raise ValueError("Snooze date is only supported for snoozed feedback")
+        return self
+
+
+class CoachingFeedbackRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    recommendation_id: str
+    status: FeedbackStatus
+    snoozed_until: date | None
+    created_at: datetime
+    updated_at: datetime
+    is_current: bool
+    is_hidden: bool
+
+
 class FinancialCoaching(BaseModel):
+    feedback: list[CoachingFeedbackRecord] = Field(default_factory=list)
     as_of_date: date
     period: IntelligencePeriod
     data_status: Literal["sufficient", "partial", "insufficient_data"]
