@@ -19,7 +19,9 @@ describe("API boundary", () => {
     expect(p.has("category")).toBe(false);
   });
   it("sends JSON authentication and preserves decimal strings", async () => {
-    const fetcher = vi.fn().mockResolvedValue(json({ access_token: "test" }));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(json({ access_token: "test", token_type: "bearer" }));
     vi.stubGlobal("fetch", fetcher);
     await api.login("user@example.com", "pass");
     expect(fetcher.mock.calls[0][0]).toBe("/api/login");
@@ -29,14 +31,18 @@ describe("API boundary", () => {
     });
   });
   it("refreshes concurrent expired requests once using form encoding", async () => {
-    setSession({ access_token: "expired", refresh_token: "refresh" });
+    setSession({
+      access_token: "expired",
+      token_type: "bearer",
+      refresh_token: "refresh",
+    });
     let refreshed = false;
     const fetcher = vi.fn(async (url: string, init: RequestInit) => {
       if (url.endsWith("/refresh")) {
         await Promise.resolve();
         refreshed = true;
         expect(init.body).toBeInstanceOf(URLSearchParams);
-        return json({ access_token: "new" });
+        return json({ access_token: "new", token_type: "bearer" });
       }
       if (!refreshed) return json({ detail: "Expired" }, 401);
       expect(new Headers(init.headers).get("Authorization")).toBe("Bearer new");
@@ -49,7 +55,7 @@ describe("API boundary", () => {
     ).toHaveLength(1);
   });
   it("ends a session when refresh is unavailable", async () => {
-    setSession({ access_token: "expired" });
+    setSession({ access_token: "expired", token_type: "bearer" });
     const expired = vi.fn();
     window.addEventListener("session-expired", expired, { once: true });
     vi.stubGlobal(
@@ -119,7 +125,11 @@ describe("API boundary", () => {
     expect(await request("/example", { method: "DELETE" })).toBeUndefined();
   });
   it("does not resurrect a signed-out session when a refresh finishes late", async () => {
-    setSession({ access_token: "old", refresh_token: "refresh" });
+    setSession({
+      access_token: "old",
+      token_type: "bearer",
+      refresh_token: "refresh",
+    });
     let finish: (value: Response) => void = () => {};
     const pending = new Promise<Response>((resolve) => {
       finish = resolve;
@@ -133,7 +143,7 @@ describe("API boundary", () => {
     const request = api.me();
     await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     setSession(null);
-    finish(json({ access_token: "late" }));
+    finish(json({ access_token: "late", token_type: "bearer" }));
     await expect(request).rejects.toThrow("Expired");
     await api.me();
     expect(
