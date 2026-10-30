@@ -25,7 +25,7 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: python -m pip install -r backend/requirements.txt pytest httpx
       - run: python scripts/generate_frontend_contracts.py --check
-      - run: python -m pytest backend/test_intelligence_api.py backend/test_intelligence_snapshot.py backend/test_intelligence_categories.py backend/test_intelligence_signals.py backend/test_intelligence_coverage.py backend/test_intelligence_periods.py backend/test_financial_runway.py backend/test_financial_timeline.py backend/test_financial_coaching.py backend/test_obligation_cashflow.py backend/test_account_reconciliation.py -q
+      - run: python -m pytest backend/test_intelligence_api.py backend/test_intelligence_snapshot.py backend/test_intelligence_categories.py backend/test_intelligence_signals.py backend/test_intelligence_coverage.py backend/test_intelligence_periods.py backend/test_financial_runway.py backend/test_financial_timeline.py backend/test_financial_coaching.py backend/test_coaching_feedback.py backend/test_obligation_cashflow.py backend/test_account_reconciliation.py -q
       - run: npm ci
         working-directory: frontend
       - run: npm run typecheck && npm run lint && npm test && npm run build

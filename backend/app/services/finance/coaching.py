@@ -1,5 +1,6 @@
 """Read-only recommendation rules over existing deterministic financial engines."""
 from datetime import date, timedelta
+from hashlib import sha256
 from decimal import Decimal
 
 from app.models.savings_goal import SavingsGoal
@@ -44,8 +45,12 @@ CAVEATS = {
 def recommendation(kind, key, as_of, valid_until, *, priority, source, evidence,
                    quality="estimated", amount=None, subject=None, assumptions=(), limitations=()):
     title, description, action = COPY[kind]
+    identity = f"{kind}:{key}"
+    # Large obligation sets must remain valid persistence keys without truncation.
+    if len(identity) > 300:
+        identity = f"{kind}:sha256:{sha256(str(key).encode()).hexdigest()}"
     return CoachingRecommendation(
-        id=f"{kind}:{key}", type=kind, priority=priority, title=title, description=description,
+        id=identity, type=kind, priority=priority, title=title, description=description,
         recommended_action=action, amount=amount, as_of_date=as_of, valid_until=valid_until,
         subject=subject, evidence_quality=quality, source=source, source_id=str(key),
         evidence=evidence, assumptions=list(assumptions), limitations=list(limitations))

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ApiSchemas } from "../generated/api";
 import { api } from "../lib/api";
@@ -135,7 +135,144 @@ function CoachingEvidence({ evidence }: { evidence: Evidence }) {
     </details>
   );
 }
-function Advice({ item }: { item: Recommendation }) {
+type FeedbackStatus = ApiSchemas["CoachingFeedbackInput"]["status"];
+const feedbackLabels = {
+  acted_on: "Mark as done",
+  dismissed: "Dismiss",
+  not_relevant: "Not relevant",
+  snoozed: "Snooze",
+} as const;
+const recordedLabels = {
+  acted_on: "Reported done",
+  dismissed: "Dismissed",
+  not_relevant: "Not relevant",
+  snoozed: "Snoozed",
+} as const;
+function FeedbackControls({
+  id,
+  refresh,
+  restore = false,
+}: {
+  id: string;
+  refresh: () => Promise<void>;
+  restore?: boolean;
+}) {
+  const dateId = useId();
+  const [busy, setBusy] = useState(false);
+  const [snooze, setSnooze] = useState(false);
+  const [until, setUntil] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState<FeedbackStatus | "restore" | null>(null);
+  async function update(status: FeedbackStatus | "restore") {
+    setBusy(true);
+    setError(null);
+    setRetry(status);
+    try {
+      if (status === "restore") await api.restoreCoaching(id);
+      else
+        await api.coachingFeedback(id, {
+          status,
+          snoozed_until: status === "snoozed" ? until : null,
+        });
+      await refresh();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const limit = (days: number) =>
+    new Date(Date.parse(today + "T00:00:00Z") + days * 86400000)
+      .toISOString()
+      .slice(0, 10);
+  return (
+    <div className="coaching-feedback" aria-busy={busy}>
+      <div className="coaching-feedback-actions">
+        {restore ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => update("restore")}
+          >
+            {t("Restore recommendation")}
+          </button>
+        ) : (
+          <>
+            {(["acted_on", "dismissed", "not_relevant"] as const).map(
+              (status) => (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => update(status)}
+                >
+                  {t(feedbackLabels[status])}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              disabled={busy}
+              aria-expanded={snooze}
+              onClick={() => setSnooze(!snooze)}
+            >
+              {t("Snooze")}
+            </button>
+          </>
+        )}
+      </div>
+      {snooze && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void update("snoozed");
+          }}
+        >
+          <label htmlFor={dateId}>{t("Snooze until")}</label>
+          <input
+            id={dateId}
+            type="date"
+            required
+            min={limit(1)}
+            max={limit(90)}
+            value={until}
+            disabled={busy}
+            onChange={(event) => setUntil(event.target.value)}
+          />
+          <button type="submit" disabled={busy}>
+            {t("Save snooze")}
+          </button>
+        </form>
+      )}
+      {busy && <p role="status">{t("Saving feedback...")}</p>}
+      {error && (
+        <>
+          <ErrorNotice message={error} />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => retry && update(retry)}
+          >
+            {t("Retry feedback")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+function Advice({
+  item,
+  refresh,
+}: {
+  item: Recommendation;
+  refresh: () => Promise<void>;
+}) {
   const to =
     item.type === "goal_risk" || item.type === "savings_opportunity"
       ? "/plans"
@@ -178,6 +315,7 @@ function Advice({ item }: { item: Recommendation }) {
         limitations={item.limitations.map(uiLabel)}
       />
       <Link to={to}>{t("Review related records")}</Link>
+      <FeedbackControls id={item.id} refresh={refresh} />
     </article>
   );
 }
@@ -187,9 +325,16 @@ export function FinancialCoaching() {
     null,
   );
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  async function refresh() {
+    setNotice(false);
+    setResult(await api.coaching());
+    setNotice(true);
+  }
   async function load() {
     setResult(null);
+    setNotice(false);
     setError(null);
     setBusy(true);
     try {
@@ -210,6 +355,11 @@ export function FinancialCoaching() {
       </button>
       {busy && <p role="status">{t("Reading financial coaching...")}</p>}
       {error && <ErrorNotice message={error} />}
+      {notice && (
+        <p role="status">
+          {t("Feedback saved. Financial records are unchanged.")}
+        </p>
+      )}
       {result && (
         <>
           <p className="source">
@@ -226,7 +376,7 @@ export function FinancialCoaching() {
           {result.recommendations.length ? (
             <div className="coaching-list">
               {result.recommendations.map((item) => (
-                <Advice key={item.id} item={item} />
+                <Advice key={item.id} item={item} refresh={refresh} />
               ))}
             </div>
           ) : (
@@ -242,6 +392,67 @@ export function FinancialCoaching() {
               )}
             </Empty>
           )}
+          <details className="notes coaching-history">
+            <summary>{t("Coaching feedback history")}</summary>
+            <p>
+              {t(
+                "Feedback records your report and does not verify a financial action.",
+              )}
+            </p>
+            {(result.feedback ?? []).length ? (
+              <ul>
+                {result.feedback!.map((record) => (
+                  <li key={record.recommendation_id}>
+                    <p>
+                      <strong>{t(recordedLabels[record.status])}</strong>{" "}
+                      &middot; {date(record.updated_at.slice(0, 10))}
+                    </p>
+                    <p>
+                      {uiLabel(
+                        (
+                          {
+                            cash_risk: "Prepare for a possible cash shortfall",
+                            upcoming_obligations:
+                              "Prepare for remaining commitments",
+                            spending_spike:
+                              "Review a category spending increase",
+                            repeated_spending:
+                              "Review a repeated category increase",
+                            savings_opportunity:
+                              "Consider an unassigned savings reserve",
+                            goal_risk: "Review a savings goal at risk",
+                          } as Record<string, string>
+                        )[record.recommendation_id.split(":")[0]] ??
+                          "Recommended action",
+                      )}
+                    </p>
+                    {record.snoozed_until && (
+                      <p>
+                        {t("Snooze until")}: {date(record.snoozed_until)}
+                      </p>
+                    )}
+                    {!record.is_current && (
+                      <p>
+                        {t(
+                          "This recommendation has changed or is no longer current.",
+                        )}
+                      </p>
+                    )}
+                    {record.status === "snoozed" &&
+                      record.is_current &&
+                      !record.is_hidden && <p>{t("Snooze expired")}</p>}
+                    <FeedbackControls
+                      id={record.recommendation_id}
+                      refresh={refresh}
+                      restore
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{t("No coaching feedback yet.")}</p>
+            )}
+          </details>
           <Notes limitations={result.limitations.map(uiLabel)} />
         </>
       )}

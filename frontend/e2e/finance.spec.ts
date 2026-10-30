@@ -737,3 +737,91 @@ test("financial coaching shows priorities, keyboard evidence and bilingual actio
   await accessible(page);
   await noOverflow(page);
 });
+
+test("coaching feedback supports keyboard dismissal, snooze, restore and bilingual mobile layout", async ({
+  page,
+}) => {
+  await connect(page);
+  const item = coachingFixture.recommendations[0];
+  let feedback: {
+    recommendation_id: string;
+    status: "dismissed" | "snoozed";
+    snoozed_until: string | null;
+    created_at: string;
+    updated_at: string;
+    is_current: boolean;
+    is_hidden: boolean;
+  }[] = [];
+  await page.route("**/api/finance/coaching", async (route) => {
+    await route.fulfill({
+      json: {
+        ...coachingFixture,
+        recommendations: coachingFixture.recommendations.filter(
+          (row) =>
+            !feedback.some((record) => record.recommendation_id === row.id),
+        ),
+        feedback,
+      },
+    });
+  });
+  await page.route("**/api/finance/coaching/*/feedback", async (route) => {
+    if (route.request().method() === "DELETE") {
+      feedback = [];
+      await route.fulfill({ status: 204 });
+    } else {
+      const input = route.request().postDataJSON();
+      feedback = [
+        {
+          recommendation_id: item.id,
+          status: input.status,
+          snoozed_until: input.snoozed_until,
+          created_at: "2026-10-30T00:00:00Z",
+          updated_at: "2026-10-30T00:00:00Z",
+          is_current: true,
+          is_hidden: true,
+        },
+      ];
+      await route.fulfill({ json: feedback[0] });
+    }
+  });
+  await navigate(page, "Insights");
+  await page.getByRole("button", { name: "Review financial coaching" }).click();
+  const dismiss = page
+    .locator(".coaching-card")
+    .first()
+    .getByRole("button", { name: "Dismiss", exact: true });
+  await dismiss.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".coaching-card")).toHaveCount(1);
+  await expect(
+    page.getByText("Feedback saved. Financial records are unchanged."),
+  ).toBeVisible();
+  await page.getByText("Coaching feedback history", { exact: true }).click();
+  await accessible(page);
+  await noOverflow(page);
+  await page.getByRole("button", { name: "Restore recommendation" }).click();
+  await expect(page.locator(".coaching-card")).toHaveCount(2);
+  const card = page.locator(".coaching-card").first();
+  await card.getByRole("button", { name: "Snooze", exact: true }).click();
+  const input = card.getByLabel("Snooze until");
+  await input.fill((await input.getAttribute("min"))!);
+  await accessible(page);
+  await noOverflow(page);
+  await card.getByRole("button", { name: "Save snooze" }).click();
+  await expect(page.locator(".coaching-card")).toHaveCount(1);
+  await page.locator('.topbar button[lang="bn"]').click();
+  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
+    element.getBoundingClientRect();
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
+  await expect(page.getByText(bn["Snoozed"], { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: bn["Restore recommendation"] }),
+  ).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+});
