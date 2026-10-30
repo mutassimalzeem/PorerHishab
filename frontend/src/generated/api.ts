@@ -3,6 +3,7 @@
 export interface ApiSchemas {
   "AccountBalanceReconciliation": { "account_id": number; "account_name": string; "currency": string; "reported_balance": (string | null); "reported_balance_as_of": (string | null); "balance_source": (string | null); "opening_balance": (string | null); "opening_balance_date": (string | null); "latest_transaction_date": (string | null); "latest_transaction_balance": (string | null); "difference": (string | null); "derived_balance": (string | null); "status": string; "confidence": string; "transaction_count": number; "message": string; };
   "AccountBalanceUpdate": { "current_balance": (number | string); "balance_source": string; "balance_as_of": string; };
+  "AllocationRead": { "id": number; "transaction_id": number; "amount": string; "active": boolean; "confirmed_at": string; "revoked_at": (string | null); };
   "Body_refresh_token_refresh_post": { "refresh_token": string; };
   "Body_upload_csv_upload_csv_post": { "file": string; };
   "BudgetBaselineCategory": { "category": string; "monthly_average": string; "months_observed": number; };
@@ -23,6 +24,7 @@ export interface ApiSchemas {
   "CoachMonth": { "month": string; "historical_income_estimate": (string | null); "historical_expense_estimate": (string | null); "scheduled_expenses": string; "uncertain_scheduled_income": string; "reserved_expenses": string; "projected_balance": (string | null); "balance_without_future_income": string; };
   "CoachPurchaseRequest": { "purchase_amount": (number | string); "starting_balance": (number | string); "safety_buffer": (number | string); "horizon_days"?: number; };
   "CoachPurchaseResponse": { "status": "safe" | "caution" | "not_recommended" | "insufficient_data"; "currency"?: string; "purchase_amount": string; "scheduled_expense_reserve": string; "remaining_after_purchase_and_reserve": string; "uncertain_scheduled_income": string; "horizon_end": string; "assumptions": (string)[]; "warnings": (string)[]; };
+  "ConfirmAllocation": { "confirm_full_settlement"?: boolean; };
   "Coverage": { "start_date": string; "end_date": string; "transaction_count": number; "first_transaction_date": (string | null); "last_transaction_date": (string | null); "limitations": (string)[]; };
   "FinanceQuestionRequest": { "start_date"?: (string | null); "end_date"?: (string | null); "category"?: (string | null); "purchase_amount"?: (number | string | null); "starting_balance"?: (number | string | null); "safety_buffer"?: (number | string | null); "question": string; "k"?: number; };
   "FinanceQuestionResponse": { "answer": string; "intent": string; "sources": ({ [key: string]: unknown; })[]; "calculation"?: { [key: string]: unknown; }; "date_range"?: ({ [key: string]: string; } | null); "coverage"?: ({ [key: string]: unknown; } | null); "assumptions"?: (string)[]; "limitations"?: (string)[]; "status"?: string; };
@@ -46,6 +48,7 @@ export interface ApiSchemas {
   "IntelligenceSnapshot": { "as_of_date": string; "period": ApiSchemas["IntelligencePeriod"]; "data_coverage": ApiSchemas["IntelligenceCoverage"]; "current_period_coverage": ApiSchemas["IntelligenceCoverage"]; "income": (string | null); "expenses": (string | null); "net_cashflow": (string | null); "value_kind": "observed"; "category_spending": (ApiSchemas["ObservedCategory"])[]; "recurring_patterns": (ApiSchemas["RecurringInsight"])[]; "scheduled_cashflow_available": boolean; "scheduled_obligations": ApiSchemas["ObligationObservation"]; "history": ApiSchemas["HistoryObservation"]; "goals": (ApiSchemas["GoalObservation"])[]; "limitations": (string)[]; };
   "LoginIn": { "email": string; "password": string; };
   "LoginTokenResponse": { "access_token": string; "refresh_token": string; "token_type": string; };
+  "MatchCandidate": { "transaction_id": number; "date": string; "amount": string; "description": (string | null); "merchant": (string | null); "category": (string | null); "amount_difference": string; "date_distance_days": number; "amount_signal": "exact" | "within_tolerance" | "partial"; "category_match": boolean; "text_overlap": boolean; "confidence": "medium" | "low"; "limitations": (string)[]; };
   "MerchantInsight": { "merchant": string; "total_spent": string; "transaction_count": number; };
   "MonthOverMonthInsight": { "month": string; "previous_month": string; "income_change": string; "income_change_pct"?: (string | null); "expense_change": string; "expense_change_pct"?: (string | null); "net_change": string; "net_change_pct"?: (string | null); };
   "MonthlyInsight": { "month": string; "income": string; "expenses": string; "net": string; };
@@ -53,11 +56,13 @@ export interface ApiSchemas {
   "Nudge": { "key": string; "type": string; "severity": "info" | "warning" | "critical"; "title": string; "evidence": { [key: string]: unknown; }; "period_start": string; "period_end": string; "expires_on": string; "next_action": string; "status"?: "active"; };
   "NudgePage": { "as_of_date": string; "insights": (ApiSchemas["Nudge"])[]; "limitations": (string)[]; };
   "ObligationObservation": { "period": ApiSchemas["IntelligencePeriod"]; "scheduled_expenses": string; "uncertain_scheduled_income": string; "items": (ApiSchemas["PlannedObservation"])[]; "limitations": (string)[]; };
+  "ObligationReconciliation": { "item_id": number; "original_amount": string; "allocated_amount": string; "remaining_amount": string; "status": "cancelled" | "paid" | "partial" | "review_required" | "unmatched" | "overdue" | "not_due" | "insufficient_data"; "timing": "overdue" | "due" | "not_due"; "ambiguous": boolean; "candidates": (ApiSchemas["MatchCandidate"])[]; "allocations": (ApiSchemas["AllocationRead"])[]; "date_tolerance_days": number; "amount_tolerance": string; "limitations": (string)[]; };
   "ObservedCategory": { "category": string; "expenses": string; "transaction_count": number; };
   "OpeningBalanceUpdate": { "opening_balance": (number | string); "opening_balance_date": string; };
   "PlannedObservation": { "scheduled_item_id": number; "title": string; "kind": "expense" | "income"; "amount": string; "due_date": string; "record_type": "plan"; };
   "Recommendation": { "id": string; "category": string; "title": string; "evidence": { [key: string]: unknown; }; "estimated_monthly_saving": string; "estimated_annual_saving": string; "confidence": "low" | "medium"; "assumptions": (string)[]; };
   "RecommendationPage": { "coverage": ApiSchemas["Coverage"]; "recommendations": (ApiSchemas["Recommendation"])[]; "limitations": (string)[]; };
+  "ReconciliationPage": { "items": (ApiSchemas["ObligationReconciliation"])[]; "total": number; "limit": number; "offset": number; };
   "RecurringInsight": { "merchant": string; "occurrences": number; "months": number; "median_amount": string; "total_spent": string; "first_date": string; "last_date": string; };
   "RefreshTokenResponse": { "access_token": string; "token_type": string; };
   "RegisterIn": { "email": string; "password": string; "full_name"?: (string | null); };
@@ -99,9 +104,13 @@ export interface ApiOperations {
   "GET /finance/savings/recommendations": { query: Record<string, unknown>; body: unknown; response: ApiSchemas["RecommendationPage"]; };
   "GET /finance/scheduled-cashflow": { query: { "kind"?: ("income" | "expense" | null); "status"?: ("scheduled" | "paid" | "cancelled" | null); "due_date_from"?: (string | null); "due_date_to"?: (string | null); "limit"?: number; "offset"?: number; }; body: unknown; response: ApiSchemas["ScheduledCashflowPage"]; };
   "POST /finance/scheduled-cashflow": { query: Record<string, unknown>; body: ApiSchemas["ScheduledCashflowCreate"]; response: ApiSchemas["ScheduledCashflowRead"]; };
+  "GET /finance/scheduled-cashflow/reconciliation": { query: { "as_of"?: (string | null); "date_tolerance_days"?: number; "amount_tolerance"?: (number | string); "limit"?: number; "offset"?: number; }; body: unknown; response: ApiSchemas["ReconciliationPage"]; };
   "DELETE /finance/scheduled-cashflow/{item_id}": { query: Record<string, unknown>; body: unknown; response: unknown; };
   "GET /finance/scheduled-cashflow/{item_id}": { query: Record<string, unknown>; body: unknown; response: ApiSchemas["ScheduledCashflowRead"]; };
   "PATCH /finance/scheduled-cashflow/{item_id}": { query: Record<string, unknown>; body: ApiSchemas["ScheduledCashflowUpdate"]; response: ApiSchemas["ScheduledCashflowRead"]; };
+  "GET /finance/scheduled-cashflow/{item_id}/matches": { query: { "as_of"?: (string | null); "date_tolerance_days"?: number; "amount_tolerance"?: (number | string); }; body: unknown; response: ApiSchemas["ObligationReconciliation"]; };
+  "DELETE /finance/scheduled-cashflow/{item_id}/matches/{transaction_id}": { query: Record<string, unknown>; body: unknown; response: ApiSchemas["ObligationReconciliation"]; };
+  "POST /finance/scheduled-cashflow/{item_id}/matches/{transaction_id}/confirm": { query: Record<string, unknown>; body: ApiSchemas["ConfirmAllocation"]; response: ApiSchemas["ObligationReconciliation"]; };
   "POST /finance/spending-decision": { query: Record<string, unknown>; body: ApiSchemas["SpendingDecisionRequest"]; response: ApiSchemas["SpendingDecisionResponse"]; };
   "GET /forecast/budget": { query: { "months_ahead"?: number; }; body: unknown; response: ApiSchemas["BudgetForecast"]; };
   "GET /forecast/cashflow": { query: { "starting_balance": (number | string); "months_ahead"?: number; }; body: unknown; response: ApiSchemas["CashflowForecast"]; };

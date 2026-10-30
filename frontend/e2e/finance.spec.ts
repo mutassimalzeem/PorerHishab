@@ -518,3 +518,97 @@ test("authentication language switching preserves input and localizes validation
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "bn");
 });
+
+test("review and explicitly confirm or remove obligation allocations", async ({
+  page,
+}, info) => {
+  await connect(page, true);
+  let allocated = false;
+  await page.route(
+    "**/api/finance/scheduled-cashflow/1/matches**",
+    async (route) => {
+      const request = route.request();
+      if (request.method() === "POST") {
+        expect(request.postDataJSON()).toEqual({
+          confirm_full_settlement: false,
+        });
+        allocated = true;
+      }
+      if (request.method() === "DELETE") allocated = false;
+      await route.fulfill({
+        json: {
+          item_id: 1,
+          original_amount: "12000.00",
+          allocated_amount: allocated ? "4000.00" : "0.00",
+          remaining_amount: allocated ? "8000.00" : "12000.00",
+          status: allocated ? "partial" : "review_required",
+          timing: "not_due",
+          ambiguous: false,
+          date_tolerance_days: 7,
+          amount_tolerance: "0.00",
+          limitations: [],
+          allocations: allocated
+            ? [
+                {
+                  id: 1,
+                  transaction_id: 9,
+                  amount: "4000.00",
+                  active: true,
+                  confirmed_at: "2026-10-30T00:00:00Z",
+                  revoked_at: null,
+                },
+              ]
+            : [],
+          candidates: allocated
+            ? []
+            : [
+                {
+                  transaction_id: 9,
+                  date: "2026-11-01",
+                  amount: "4000.00",
+                  description: "Rent installment",
+                  merchant: null,
+                  category: "Housing",
+                  amount_difference: "8000.00",
+                  date_distance_days: 0,
+                  amount_signal: "partial",
+                  category_match: true,
+                  text_overlap: true,
+                  confidence: "low",
+                  limitations: [],
+                },
+              ],
+        },
+      });
+    },
+  );
+  await navigate(page, "Cashflow");
+  await page
+    .getByRole("button", { name: "Review transaction matches" })
+    .first()
+    .click();
+  await expect(
+    page.getByText("Rent installment", { exact: false }),
+  ).toBeVisible();
+  expect(allocated).toBe(false);
+  await noOverflow(page);
+  await accessible(page);
+  await page.screenshot({
+    path: info.outputPath("obligation-matches.png"),
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Confirm allocation", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Allocation updated.");
+  await page
+    .getByRole("button", { name: "Review transaction matches" })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Remove allocation" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Remove allocation" }).click();
+  await expect(page.getByRole("status")).toContainText("Allocation updated.");
+  expect(allocated).toBe(false);
+});

@@ -1,3 +1,4 @@
+import type { ApiSchemas } from "../generated/api";
 import { getLanguage, t, uiLabel } from "./locale";
 import type {
   Answer,
@@ -148,6 +149,20 @@ export function query(values: Record<string, string | number | undefined>) {
   return `?${params}`;
 }
 export const api = {
+  obligationMatches: (id: number) =>
+    request<ApiSchemas["ObligationReconciliation"]>(
+      `/finance/scheduled-cashflow/${id}/matches`,
+    ),
+  confirmAllocation: (id: number, transactionId: number, full: boolean) =>
+    post<ApiSchemas["ObligationReconciliation"]>(
+      `/finance/scheduled-cashflow/${id}/matches/${transactionId}/confirm`,
+      { confirm_full_settlement: full },
+    ),
+  removeAllocation: (id: number, transactionId: number) =>
+    request<ApiSchemas["ObligationReconciliation"]>(
+      `/finance/scheduled-cashflow/${id}/matches/${transactionId}`,
+      { method: "DELETE" },
+    ),
   login: (email: string, password: string) =>
     post<Tokens>("/login", { email, password }),
   register: (email: string, password: string, full_name: string) =>

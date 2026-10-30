@@ -1,5 +1,40 @@
 // Frontend-owned copy only. Backend prose and user records retain their original language.
 export const bn = {
+  "Principal only; separate fees are excluded.":
+    "\u09b6\u09c1\u09a7\u09c1 \u09ae\u09c2\u09b2 \u09aa\u09b0\u09bf\u09ae\u09be\u09a3; \u0986\u09b2\u09be\u09a6\u09be \u09ab\u09bf \u09ac\u09be\u09a6\u0964",
+  "This transaction exceeds the remaining amount and cannot be allocated.":
+    "\u098f\u0987 \u09b2\u09c7\u09a8\u09a6\u09c7\u09a8 \u09ac\u09be\u0995\u09bf \u09aa\u09b0\u09bf\u09ae\u09be\u09a3\u09c7\u09b0 \u099a\u09c7\u09af\u09bc\u09c7 \u09ac\u09c7\u09b6\u09bf; \u09ac\u09b0\u09be\u09a6\u09cd\u09a6 \u0995\u09b0\u09be \u09af\u09be\u09ac\u09c7 \u09a8\u09be\u0964",
+  Confidence: "\u0986\u09b8\u09cd\u09a5\u09be",
+  no: "না",
+  yes: "হ্যাঁ",
+  within_tolerance: "সহনসীমার মধ্যে",
+  exact: "হুবহু পরিমাণ",
+  not_due: "এখনও নির্ধারিত তারিখ আসেনি",
+  unmatched: "মিল নেই",
+  review_required: "পর্যালোচনা প্রয়োজন",
+  partial: "আংশিক বরাদ্দ",
+  "Confirm allocation and mark paid": "বরাদ্দ ও সম্পূর্ণ পরিশোধ নিশ্চিত করুন",
+  "Confirm allocation": "বরাদ্দ নিশ্চিত করুন",
+  "Description evidence": "বিবরণের মিল",
+  "Category evidence": "বিভাগের মিল",
+  "Amount difference": "পরিমাণের পার্থক্য",
+  "Days from due date": "নির্ধারিত তারিখ থেকে দিন",
+  "No candidate transactions in this window.":
+    "এই সময়সীমায় সম্ভাব্য লেনদেন নেই।",
+  "Confirm fully paid": "সম্পূর্ণ পরিশোধ নিশ্চিত করুন",
+  "Remove allocation": "বরাদ্দ সরান",
+  "Confirmed transaction": "নিশ্চিত লেনদেন",
+  "Several transactions may match. Review each before confirming.":
+    "একাধিক লেনদেন মিলতে পারে। নিশ্চিত করার আগে প্রতিটি পর্যালোচনা করুন।",
+  "Amount tolerance": "পরিমাণের সহনসীমা",
+  "Date tolerance (days)": "তারিখের সহনসীমা (দিন)",
+  "Suggestions require review. Amount and date alone do not prove payment.":
+    "প্রস্তাব পর্যালোচনা করুন। শুধু পরিমাণ ও তারিখ পরিশোধের প্রমাণ নয়।",
+  Remaining: "বাকি",
+  Allocated: "বরাদ্দকৃত",
+  "Reading transaction matches...": "লেনদেনের মিল পড়া হচ্ছে...",
+  "Allocation updated.": "বরাদ্দ হালনাগাদ হয়েছে।",
+  "Review transaction matches": "লেনদেনের মিল পর্যালোচনা করুন",
   Overview: "সারসংক্ষেপ",
   Cashflow: "নগদ প্রবাহ",
   Transactions: "লেনদেন",
