@@ -160,6 +160,8 @@ export const api = {
     }),
   actionPlan: () =>
     request<ApiSchemas["CoachingActionPlan"]>("/finance/action-plan"),
+  actionOutcomes: () =>
+    request<ApiSchemas["ActionOutcomeReport"]>("/finance/action-outcomes"),
   coaching: () => request<ApiSchemas["FinancialCoaching"]>("/finance/coaching"),
   timeline: () => request<ApiSchemas["FinancialTimeline"]>("/finance/timeline"),
   runway: () => request<ApiSchemas["FinancialRunway"]>("/finance/runway"),

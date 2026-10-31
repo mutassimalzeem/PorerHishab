@@ -2,6 +2,10 @@ import {
   actionPlanFixture,
   emptyActionPlan,
 } from "../src/test/action-plan.fixture";
+import {
+  actionOutcomesFixture,
+  emptyActionOutcomes,
+} from "../src/test/action-outcome.fixture";
 import { coachingFixture } from "../src/test/coaching.fixture";
 import { bn } from "../src/lib/translations";
 import { timelineFixture } from "../src/test/timeline.fixture";
@@ -66,6 +70,7 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
     else if (path === "/me")
       body = { id: 1, email: "test@example.com", full_name: "Test User" };
     else if (path === "/finance/action-plan") body = emptyActionPlan;
+    else if (path === "/finance/action-outcomes") body = emptyActionOutcomes;
     else if (path === "/finance/intelligence") body = intelligence;
     else if (path === "/insights/summary")
       body = {
@@ -831,7 +836,69 @@ test("coaching feedback supports keyboard dismissal, snooze, restore and bilingu
   await noOverflow(page);
 });
 
-test("action plan supports bilingual keyboard navigation, retry and responsive accessibility", async ({
+test("action outcomes render observed changes, links and bilingual empty state", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.route("**/api/finance/action-outcomes", async (route) => {
+    await route.fulfill({ json: actionOutcomesFixture });
+  });
+  await navigate(page, "Insights");
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: new RegExp(
+        `What changed after reported actions|${bn["What changed after reported actions"]}`,
+      ),
+    }),
+  });
+  await expect(
+    section.getByText("What changed after reported actions", { exact: true }),
+  ).toBeVisible();
+  await expect(section.locator(".outcome-summary")).toBeVisible();
+  const cards = section.locator(".outcome-card");
+  await expect(cards).toHaveCount(4);
+  await expect(cards.nth(0)).toHaveClass(/outcome-improved/);
+  await expect(cards.nth(2)).toHaveClass(/outcome-pending/);
+  const firstLink = cards.nth(0).getByRole("link", { exact: true });
+  await firstLink.focus();
+  await expect(firstLink).toBeFocused();
+  await expect(firstLink).toHaveAttribute("href", "/transactions");
+  await accessible(page);
+  await noOverflow(page);
+  await page.locator('.topbar button[lang="bn"]').click();
+  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
+    element.getBoundingClientRect();
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
+  await expect(
+    page.getByRole("heading", {
+      name: bn["What changed after reported actions"],
+    }),
+  ).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+});
+
+test("action outcomes shows the empty state when no outcomes are reported", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.route("**/api/finance/action-outcomes", async (route) => {
+    await route.fulfill({ json: emptyActionOutcomes });
+  });
+  await navigate(page, "Insights");
+  await expect(
+    page.getByText("No reported action outcomes yet.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".outcome-summary").locator("dt")).toHaveCount(6);
+  await accessible(page);
+  await noOverflow(page);
+});
+test("action plan supports retry, keyboard navigation and Bengali", async ({
   page,
 }) => {
   await connect(page);
@@ -882,6 +949,100 @@ test("action plan supports bilingual keyboard navigation, retry and responsive a
   await expect(cards.first().getByRole("heading", { level: 3 })).toContainText(
     bn["Prepare for a possible cash shortfall"],
   );
+  await accessible(page);
+  await noOverflow(page);
+});
+
+test("outcomes support keyboard retry and refresh with action-plan feedback", async ({
+  page,
+}) => {
+  await connect(page);
+  let failed = true;
+  let reported = false;
+  const recommendation = coachingFixture.recommendations[0];
+  const feedback = {
+    recommendation_id: recommendation.id,
+    status: "acted_on",
+    snoozed_until: null,
+    created_at: "2026-10-30T00:00:00Z",
+    updated_at: "2026-10-30T00:00:00Z",
+    is_current: true,
+    is_hidden: true,
+  };
+  await page.route("**/api/finance/coaching", async (route) => {
+    await route.fulfill({
+      json: {
+        ...coachingFixture,
+        recommendations: reported
+          ? coachingFixture.recommendations.slice(1)
+          : coachingFixture.recommendations,
+        feedback: reported ? [feedback] : [],
+      },
+    });
+  });
+  await page.route("**/api/finance/coaching/*/feedback", async (route) => {
+    reported = route.request().method() !== "DELETE";
+    await route.fulfill(reported ? { json: feedback } : { status: 204 });
+  });
+  await page.route("**/api/finance/action-plan", async (route) => {
+    await route.fulfill({
+      json: { ...emptyActionPlan, completed_count: reported ? 1 : 0 },
+    });
+  });
+  await page.route("**/api/finance/action-outcomes", async (route) => {
+    if (failed) {
+      await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
+      return;
+    }
+    const pending = {
+      ...actionOutcomesFixture.items[2],
+      recommendation_id: recommendation.id,
+    };
+    await route.fulfill({
+      json: reported
+        ? {
+            ...emptyActionOutcomes,
+            items: [pending],
+            summary: { ...emptyActionOutcomes.summary, tracked: 1, pending: 1 },
+          }
+        : emptyActionOutcomes,
+    });
+  });
+  await navigate(page, "Insights");
+  const outcomes = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "What changed after reported actions",
+      }),
+    });
+  const retry = outcomes.getByRole("button", { name: "Try again" });
+  await expect(retry).toBeVisible();
+  failed = false;
+  await retry.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    outcomes.getByText("No reported action outcomes yet.", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Review financial coaching" }).click();
+  await page
+    .locator(".coaching-card")
+    .first()
+    .getByRole("button", { name: "Mark as done", exact: true })
+    .click();
+  await expect(outcomes.locator(".outcome-card")).toHaveCount(1);
+  await expect(outcomes.locator(".outcome-card")).toContainText(
+    "Pending observation",
+  );
+  await expect(
+    page.getByText("Reported done: 1", { exact: true }),
+  ).toBeVisible();
+  await page.getByText("Coaching feedback history", { exact: true }).click();
+  await page.getByRole("button", { name: "Restore recommendation" }).click();
+  await expect(outcomes.locator(".outcome-card")).toHaveCount(0);
+  await expect(
+    outcomes.getByText("No reported action outcomes yet.", { exact: true }),
+  ).toBeVisible();
   await accessible(page);
   await noOverflow(page);
 });

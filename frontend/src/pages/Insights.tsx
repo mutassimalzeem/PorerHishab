@@ -1,3 +1,4 @@
+import { ActionOutcomes } from "../components/ActionOutcomes";
 import { ActionPlan } from "../components/ActionPlan";
 import { FinancialCoaching } from "../components/FinancialCoaching";
 import { useLanguage } from "../lib/useLanguage";
@@ -35,6 +36,7 @@ export function Insights() {
         )}
       />
       <ActionPlan revision={planRevision} />
+      <ActionOutcomes revision={planRevision} />
       <FinancialCoaching
         onFeedback={() => setPlanRevision((value) => value + 1)}
       />

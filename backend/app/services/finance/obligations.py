@@ -1,5 +1,6 @@
 """Authoritative Decimal obligation values; allocations are metadata, not cashflow."""
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.repositories.obligation_reconciliation import allocations, item_for_user
@@ -28,11 +29,29 @@ def remaining_obligation(db, user_id, item_id):
     return obligation_amounts(item, allocated_total(db, user_id, item_id))
 
 
-def obligation_amounts_for_items(db, user_id, items):
-    """Batch the same scoped, active rows used by AI-15B allocated_total()."""
+def obligation_amounts_for_items(db, user_id, items, *, as_of: datetime | None = None):
+    """Batch authoritative amounts, optionally replaying allocation timestamps.
+
+    Without ``as_of``, preserve AI-15B current active-allocation semantics.
+    Historical reads use current principal; principal edits are not versioned.
+    """
     if any(item.user_id != user_id for item in items):
         raise ValueError("Obligation does not belong to the user")
     totals = {}
-    for row in allocations(db, user_id):
+    # Historical reads include revoked allocations while they were still active.
+    # Keep all settlement arithmetic in this authoritative service.
+    def utc(value):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+    cutoff = utc(as_of) if as_of is not None else None
+    rows = allocations(db, user_id, active=None if as_of is not None else True)
+    for row in rows:
+        if cutoff is not None:
+            if utc(row.confirmed_at) > cutoff:
+                continue
+            if row.revoked_at is not None and utc(row.revoked_at) <= cutoff:
+                continue
+            if not row.active and row.revoked_at is None:
+                continue
         totals[row.item_id] = totals.get(row.item_id, ZERO) + row.amount
     return {item.id: obligation_amounts(item, totals.get(item.id, ZERO)) for item in items}

@@ -896,5 +896,136 @@ export const bn = {
   "historical income estimate": "অতীতভিত্তিক আয়ের অনুমান",
   "historical expense estimate": "অতীতভিত্তিক ব্যয়ের অনুমান",
   "net cashflow": "নিট নগদ প্রবাহ",
+  "What changed after reported actions": "রিপোর্ট করা কাজের পর কী বদলেছে",
+  "Outcome observations compare recorded evidence before and after you reported acting. They do not prove that an action caused a change.":
+    "ফলাফলের পর্যবেক্ষণে আপনি কাজ করার কথা জানানোর আগে ও পরে রেকর্ডকৃত প্রমাণ তুলনা করা হয়। এটি প্রমাণ করে না যে কোনো কাজ পরিবর্তনটির কারণ।",
+  "Reading reported action outcomes...":
+    "রিপোর্ট করা কাজের ফলাফল পড়া হচ্ছে...",
+  "Reported action outcomes": "রিপোর্ট করা কাজের ফলাফল",
+  "Tracked outcomes": "পর্যবেক্ষিত ফলাফল",
+  Improved: "উন্নত",
+  Unchanged: "অপরিবর্তিত",
+  Worsened: "অবনত",
+  "Pending observation": "পর্যবেক্ষণ অপেক্ষমাণ",
+  "Insufficient evidence": "যথেষ্ট প্রমাণ নেই",
+  "No reported action outcomes yet.": "এখনো রিপোর্ট করা কাজের ফলাফল নেই।",
+  "Mark a coaching recommendation as done, then return after at least seven days for a comparable observation.":
+    "একটি পরামর্শ সম্পন্ন হিসেবে চিহ্নিত করুন, তারপর তুলনাযোগ্য পর্যবেক্ষণের জন্য অন্তত সাত দিন পর ফিরে আসুন।",
+  "No outcome is not a failed action; insufficient evidence means no comparison is possible.":
+    "ফলাফল না থাকা ব্যর্থতা নয়; যথেষ্ট প্রমাণ না থাকার অর্থ তুলনা সম্ভব নয়।",
+  "Reported acted on": "কাজ করার কথা জানানো হয়েছে",
+  "Baseline window": "ভিত্তি সময়কাল",
+  "Follow-up window": "পরবর্তী সময়কাল",
+  "Not enough elapsed time": "যথেষ্ট সময় পার হয়নি",
+  days: "দিন",
+  "still open": "চলমান",
+  Baseline: "ভিত্তি",
+  "Follow-up": "পরবর্তী",
+  Change: "পরিবর্তন",
+  "Settlement status": "নিষ্পত্তির অবস্থা",
+  "Not settled": "নিষ্পত্তি হয়নি",
+  "Partially settled": "আংশিক নিষ্পত্তি",
+  "Fully settled": "সম্পূর্ণ নিষ্পত্তি",
+  Metric: "মাপকাঠি",
+  "Evidence quality": "প্রমাণের মান",
+  "Causal claim": "কারণ-সম্পর্কের দাবি",
+  "Baseline transaction count": "ভিত্তি সময়ের লেনদেন সংখ্যা",
+  "Follow-up transaction count": "পরবর্তী সময়ের লেনদেন সংখ্যা",
+  "Baseline runway status": "ভিত্তি সময়ের নগদ প্রবাহের অবস্থা",
+  "Follow-up runway status": "পরবর্তী সময়ের নগদ প্রবাহের অবস্থা",
+  "Outcome evidence": "ফলাফলের প্রমাণ",
+  "Category spending": "ক্যাটাগরি ভিত্তিক খরচ",
+  "Recorded net cashflow": "রেকর্ডকৃত নিট নগদ প্রবাহ",
+  "Remaining obligation": "অবশিষ্ট দায়",
+  "Goal savings": "লক্ষ্য সঞ্চয়",
+  "Unsupported comparison": "অসমর্থিত তুলনা",
+  "The user reported acting on this recommendation; the system cannot verify the action itself.":
+    "ব্যবহারকারী এই পরামর্শে কাজ করার কথা জানিয়েছেন; সিস্টেম নিজে কাজটি যাচাই করতে পারে না।",
+  "Observed change does not establish that the recommendation caused the change.":
+    "পরিলক্ষিত পরিবর্তন প্রমাণ করে না যে পরামর্শটি পরিবর্তনটির কারণ।",
+  "Only recorded BDT evidence is compared; foreign-currency accounts are excluded without conversion.":
+    "শুধু রেকর্ডকৃত টাকার প্রমাণ তুলনা করা হয়; বিদেশি মুদ্রার হিসাব রূপান্তর ছাড়াই বাদ দেওয়া হয়।",
+  "Only acted-on recommendations are normally tracked; dismissed, not-relevant, snoozed and unrated recommendations are excluded.":
+    "সাধারণত শুধু কাজ করা হয়েছে এমন পরামর্শ পর্যবেক্ষণ করা হয়; বাতিল, অপ্রাসঙ্গিক, বিরতিতে রাখা এবং রেট না করা পরামর্শ বাদ দেওয়া হয়।",
+  "The follow-up window is capped at 30 days after the action date; fewer than 7 elapsed days is reported as pending.":
+    "কাজের তারিখের পরের পর্যবেক্ষণ সময়কাল সর্বোচ্চ ৩০ দিন; ৭ দিনের কম পার হলে তা অপেক্ষমাণ হিসেবে দেখানো হয়।",
+  "A missing outcome is not a failed action. Insufficient data means the system cannot make a comparable observation.":
+    "ফলাফল না পাওয়া মানে কাজ ব্যর্থ নয়। যথেষ্ট তথ্য না থাকার অর্থ সিস্টেম তুলনাযোগ্য পর্যবেক্ষণ করতে পারছে না।",
+  "Outcomes are derived from current financial state each time; they are not a stored historical audit of the action.":
+    "প্রতিবার বর্তমান আর্থিক অবস্থা থেকে ফলাফল তৈরি হয়; এটি কাজের সংরক্ষিত ঐতিহাসিক নিরীক্ষা নয়।",
+  "This layer is observation-only and makes no causal claim.":
+    "এই স্তরটি শুধু পর্যবেক্ষণ করে এবং কোনো কারণ-সম্পর্কের দাবি করে না।",
+  "Recorded value decreased compared with the baseline.":
+    "ভিত্তি সময়ের তুলনায় রেকর্ডকৃত মান কমেছে।",
+  "Recorded value increased compared with the baseline.":
+    "ভিত্তি সময়ের তুলনায় রেকর্ডকৃত মান বেড়েছে।",
+  "Recorded value is unchanged compared with the baseline.":
+    "ভিত্তি সময়ের তুলনায় রেকর্ডকৃত মান অপরিবর্তিত।",
+  "More follow-up time is needed before comparing evidence.":
+    "প্রমাণ তুলনা করার আগে আরও সময় পর্যবেক্ষণ প্রয়োজন।",
+  "There is not enough comparable evidence yet.":
+    "এখনো যথেষ্ট তুলনাযোগ্য প্রমাণ নেই।",
+  "The obligation is fully reconciled at the observation date.":
+    "পর্যবেক্ষণের তারিখে দায়টি সম্পূর্ণ সমন্বয় করা হয়েছে।",
+  "The obligation is partially reconciled at the observation date.":
+    "পর্যবেক্ষণের তারিখে দায়টি আংশিক সমন্বয় করা হয়েছে।",
+  "No confirmed settlement is recorded at the observation date.":
+    "পর্যবেক্ষণের তারিখে নিশ্চিত নিষ্পত্তি রেকর্ড করা নেই।",
+  "Historical goal contributions are unavailable for comparison.":
+    "তুলনা করার জন্য লক্ষ্যে আগের অবদানের ইতিহাস নেই।",
+  "A minimum 7-day follow-up and any full evidence-month comparison must complete before observation.":
+    "ফলাফল দেখার আগে অন্তত ৭ দিনের পর্যবেক্ষণ এবং প্রযোজ্য ক্ষেত্রে পুরো মাসের তুলনা সম্পূর্ণ হতে হবে।",
+  "Both windows cover the same number of days and exclude explicit transfers.":
+    "উভয় সময়কালে সমানসংখ্যক দিন রয়েছে এবং চিহ্নিত স্থানান্তর বাদ দেওয়া হয়েছে।",
+  "Category spending is recorded expense magnitude, not proof that every purchase was optional.":
+    "বিভাগের খরচ রেকর্ডকৃত ব্যয়ের পরিমাণ; প্রতিটি কেনাকাটা ঐচ্ছিক ছিল এমন প্রমাণ নয়।",
+  "A category absent from a non-empty window is treated as zero observed spending.":
+    "লেনদেন থাকা সময়কালে কোনো বিভাগ অনুপস্থিত হলে তার পরিলক্ষিত ব্যয় শূন্য ধরা হয়।",
+  "Recorded net cashflow is income minus expenses; it is not proof that money was transferred to savings.":
+    "রেকর্ডকৃত নিট নগদ প্রবাহ হলো আয় থেকে ব্যয় বাদ দেওয়া; এটি সঞ্চয়ে টাকা স্থানান্তরের প্রমাণ নয়।",
+  "Explicitly classified transfers are excluded; unclassified transfers may still distort the comparison.":
+    "চিহ্নিত স্থানান্তর বাদ দেওয়া হয়েছে; অচিহ্নিত স্থানান্তর তুলনাকে প্রভাবিত করতে পারে।",
+  "Cash values are forward-looking runway projections anchored on the action date and the observation date.":
+    "নগদ মানগুলো কাজ জানানোর তারিখ এবং পর্যবেক্ষণের তারিখভিত্তিক ভবিষ্যৎ প্রক্ষেপণ।",
+  "Projections use current allocation state and monthly historical resolution, not stored historical forecasts.":
+    "প্রক্ষেপণে বর্তমান বরাদ্দ ও মাসভিত্তিক অতীত তথ্য ব্যবহৃত হয়; সংরক্ষিত পুরোনো পূর্বাভাস ব্যবহৃত হয় না।",
+  "A higher projected minimum does not prove that the reported action produced it.":
+    "প্রক্ষেপিত সর্বনিম্ন মান বেশি হলেই তা জানানো কাজটির ফল বলে প্রমাণিত হয় না।",
+  "Obligation values come from the existing AI-15B/AI-15C reconciliation; this layer performs no settlement arithmetic.":
+    "দায়ের মান বিদ্যমান সমন্বয় সেবা থেকে আসে; এই স্তরে নিষ্পত্তির নতুন হিসাব করা হয় না।",
+  "Allocation history is evaluated at the action timestamp and follow-up end; principal uses the current recorded obligation amount.":
+    "কাজ জানানোর সময় এবং পরবর্তী পর্যবেক্ষণের শেষে বরাদ্দের ইতিহাস মূল্যায়ন করা হয়; মূল অঙ্ক বর্তমান রেকর্ড থেকে নেওয়া হয়।",
+  "A confirmed allocation is user payment metadata, not an additional transaction.":
+    "নিশ্চিত বরাদ্দ ব্যবহারকারীর পরিশোধসংক্রান্ত তথ্য; অতিরিক্ত লেনদেন নয়।",
+  "Goal savings are user-reported and historical contribution amounts are not stored.":
+    "লক্ষ্যের সঞ্চয় ব্যবহারকারীর জানানো এবং আগের অবদানের পরিমাণ সংরক্ষিত নেই।",
+  "A before/after goal change cannot be established from the existing authoritative data.":
+    "বিদ্যমান নির্ভরযোগ্য তথ্য থেকে লক্ষ্যের আগে ও পরের পরিবর্তন নির্ধারণ করা যায় না।",
+  "No contribution or goal value is invented for this outcome.":
+    "এই ফলাফলের জন্য কোনো অবদান বা লক্ষ্যের মান বানিয়ে নেওয়া হয় না।",
+  "The recommendation's category could not be recovered from the user's own records.":
+    "ব্যবহারকারীর নিজস্ব রেকর্ড থেকে পরামর্শের বিভাগটি পাওয়া যায়নি।",
+  "No comparison is made across unrelated categories.":
+    "সম্পর্কহীন বিভাগের মধ্যে তুলনা করা হয় না।",
+  "One or both observation windows contain no recorded transactions.":
+    "একটি বা উভয় পর্যবেক্ষণ সময়কালে কোনো লেনদেন রেকর্ড নেই।",
+  "A missing category total is not treated as zero when the whole window is empty.":
+    "পুরো সময়কালে তথ্য না থাকলে অনুপস্থিত বিভাগের মোট ব্যয় শূন্য ধরা হয় না।",
+  "One or both observation windows contain no recorded net cashflow.":
+    "একটি বা উভয় পর্যবেক্ষণ সময়কালে নিট নগদ প্রবাহ রেকর্ড নেই।",
+  "Savings behaviour cannot be identified reliably from unclassified transfers.":
+    "অচিহ্নিত স্থানান্তর থেকে নির্ভরযোগ্যভাবে সঞ্চয়ের আচরণ চিহ্নিত করা যায় না।",
+  "The authoritative runway is not available at one or both observation points.":
+    "একটি বা উভয় পর্যবেক্ষণের সময় নির্ভরযোগ্য নগদ টিকে থাকার হিসাব নেই।",
+  "No partial account sum or invented cash position is substituted.":
+    "কোনো আংশিক হিসাবের যোগফল বা বানানো নগদ অবস্থান ব্যবহার করা হয় না।",
+  "The obligation identifier in this recommendation cannot be resolved safely.":
+    "এই পরামর্শের দায়ের পরিচয় নিরাপদে নির্ধারণ করা যায়নি।",
+  "Aggregated or hashed obligation sets are not reconstructed.":
+    "সমষ্টিগত বা হ্যাশ করা দায়ের তালিকা পুনর্গঠন করা হয় না।",
+  "One or more obligations from this recommendation no longer exist for this user.":
+    "এই পরামর্শের এক বা একাধিক দায় ব্যবহারকারীর জন্য আর নেই।",
+  "Rolling follow-ups are capped at 30 days; spending evidence months require an equal full follow-up of up to 31 days. The minimum observation is 7 days.":
+    "চলমান পর্যবেক্ষণ সর্বোচ্চ ৩০ দিন; মাসভিত্তিক ব্যয়ের তুলনায় সমান পূর্ণ সময়কাল লাগে, যা সর্বোচ্চ ৩১ দিন। ন্যূনতম পর্যবেক্ষণ ৭ দিন।",
 } as const;
 export type TranslationKey = keyof typeof bn;
