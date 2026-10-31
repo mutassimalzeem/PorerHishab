@@ -3739,3 +3739,63 @@ html[lang="bn"] .workspace-label {
   align-items: center;
   min-height: 44px;
 }
+
+.outcome-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.75rem 1rem;
+  margin-block: 1rem;
+}
+.outcome-summary div {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.75rem;
+}
+.outcome-summary dt {
+  font-size: 0.85rem;
+}
+.outcome-summary dd {
+  margin: 0.25rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.outcome-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.outcome-list li {
+  min-width: 0;
+}
+.outcome-card {
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.outcome-improved {
+  border-inline-start-style: solid;
+}
+.outcome-unchanged {
+  border-inline-start-style: double;
+}
+.outcome-worsened {
+  border-inline-start-style: solid;
+  border-inline-start-color: var(--text);
+}
+.outcome-pending,
+.outcome-insufficient_data {
+  border-inline-start-style: dashed;
+}
+.outcome-card .goal-numbers {
+  margin-block: 0.75rem;
+}
+.outcome-obligations {
+  padding-inline-start: 1.2rem;
+}
+.outcome-card > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 0.25rem;
+}
