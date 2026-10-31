@@ -1,3 +1,4 @@
+import { CoachingEffectiveness } from "../components/CoachingEffectiveness";
 import { ActionOutcomes } from "../components/ActionOutcomes";
 import { ActionPlan } from "../components/ActionPlan";
 import { FinancialCoaching } from "../components/FinancialCoaching";
@@ -37,6 +38,7 @@ export function Insights() {
       />
       <ActionPlan revision={planRevision} />
       <ActionOutcomes revision={planRevision} />
+      <CoachingEffectiveness revision={planRevision} />
       <FinancialCoaching
         onFeedback={() => setPlanRevision((value) => value + 1)}
       />

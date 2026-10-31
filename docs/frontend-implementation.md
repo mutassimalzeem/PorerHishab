@@ -96,3 +96,31 @@ Backend source and contracts were not changed, so the database-backed backend su
 3. Add backend-backed preferences, password recovery and persistent insight acknowledgements.
 4. Add full Bangla UI translation and supported Bangla financial-question intents.
 5. Complete real-browser responsive, keyboard and screen-reader acceptance review against a development API before release.
+
+
+## AI-15J coaching effectiveness
+
+Insights includes `CoachingEffectiveness` after Action Outcomes. It uses the existing
+bearer-authenticated client to GET `/finance/coaching/effectiveness`, typed through
+`ApiSchemas["CoachingEffectivenessResponse"]`. The existing feedback revision refreshes
+this read-only resource alongside the action plan and outcomes. Locale changes rerender
+without requesting the data again.
+
+The view groups feedback counts, backend-provided percentage strings, and a responsive
+list of recommendation types. Percentages are not recalculated. Null or omitted rates
+show a localized "Not enough data" label; genuine zero rates retain `0.00%`. Empty
+feedback has explanatory copy rather than sample metrics. Loading uses the shared
+skeleton; errors show localized recovery copy and a keyboard-accessible retry.
+
+The response's `causal_claim=false` displays a visible observational disclaimer.
+Backend limitations remain available in the shared disclosure. Known limitation text
+uses the existing translation dictionary; unknown backend prose retains its original
+language, following the project convention. English keys and Bengali values use the
+existing locale switch, including localized digits and recommendation-type labels.
+Totals represent stored feedback, not a historical count of all generated advice.
+Pending outcomes are not reclassified or invented by the UI. Adaptive ML or
+personalization is outside AI-15J.
+
+Unit coverage includes counts, type breakdown, zero versus unknown rates, empty,
+loading, error/retry, both locales, limitations, authentication, and revision refresh.
+The browser scenario runs in desktop and mobile projects with axe and overflow checks.

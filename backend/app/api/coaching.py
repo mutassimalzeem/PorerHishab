@@ -13,6 +13,9 @@ from app.schemas.coaching import CoachingPriority, FinancialCoaching
 from app.services.finance.coaching_feedback import visible_coaching, submit, restore
 from app.schemas.coaching import CoachingFeedbackInput, CoachingFeedbackRecord
 
+from app.schemas.coaching_effectiveness import CoachingEffectivenessResponse
+from app.services.finance.coaching_effectiveness import get_coaching_effectiveness
+
 router = APIRouter(prefix="/finance", tags=["coach"])
 
 
@@ -47,3 +50,8 @@ def get_action_plan(priority: CoachingPriority | None = None,
                     safety_threshold: Annotated[Money, Query()] = Decimal("0.00"),
                     current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return action_plan(db, current.id, priority=priority, safety_threshold=safety_threshold)
+
+
+@router.get("/coaching/effectiveness", response_model=CoachingEffectivenessResponse)
+def get_effectiveness(current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_coaching_effectiveness(db, current.id)
