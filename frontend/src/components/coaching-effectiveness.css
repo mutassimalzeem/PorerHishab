@@ -1,0 +1,48 @@
+.coaching-effectiveness {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.effectiveness-counts,
+.effectiveness-rates {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem 1.5rem;
+}
+.effectiveness-counts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+}
+.effectiveness-rates {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+.effectiveness-counts > div,
+.effectiveness-rates > div {
+  min-width: 0;
+}
+.effectiveness-counts dt,
+.effectiveness-rates dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.effectiveness-counts dd,
+.effectiveness-rates dd {
+  margin: 0.35rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.effectiveness-counts dd {
+  font-size: 1.25rem;
+}
+.effectiveness-rates dd:not(.source) {
+  font-size: 1.4rem;
+}
+.effectiveness-types {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.effectiveness-types > li {
+  border-top: 1px solid var(--border);
+  padding-block: 1rem;
+}
+.effectiveness-types h4 {
+  margin-block: 0 0.75rem;
+}

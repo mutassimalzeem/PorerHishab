@@ -1,4 +1,8 @@
 import {
+  effectivenessFixture,
+  emptyEffectiveness,
+} from "../src/test/coaching-effectiveness.fixture";
+import {
   actionPlanFixture,
   emptyActionPlan,
 } from "../src/test/action-plan.fixture";
@@ -71,6 +75,8 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
       body = { id: 1, email: "test@example.com", full_name: "Test User" };
     else if (path === "/finance/action-plan") body = emptyActionPlan;
     else if (path === "/finance/action-outcomes") body = emptyActionOutcomes;
+    else if (path === "/finance/coaching/effectiveness")
+      body = emptyEffectiveness;
     else if (path === "/finance/intelligence") body = intelligence;
     else if (path === "/insights/summary")
       body = {
@@ -1009,13 +1015,11 @@ test("outcomes support keyboard retry and refresh with action-plan feedback", as
     });
   });
   await navigate(page, "Insights");
-  const outcomes = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "What changed after reported actions",
-      }),
-    });
+  const outcomes = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "What changed after reported actions",
+    }),
+  });
   const retry = outcomes.getByRole("button", { name: "Try again" });
   await expect(retry).toBeVisible();
   failed = false;
@@ -1043,6 +1047,113 @@ test("outcomes support keyboard retry and refresh with action-plan feedback", as
   await expect(
     outcomes.getByText("No reported action outcomes yet.", { exact: true }),
   ).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+});
+
+test("coaching effectiveness supports retry, rates, Bengali and accessible responsive layouts", async ({
+  page,
+}, info) => {
+  await connect(page);
+  let attempts = 0;
+  let failed = true;
+  await page.route("**/api/finance/coaching/effectiveness", async (route) => {
+    attempts += 1;
+    await route.fulfill(
+      failed
+        ? { status: 503, json: { detail: "Unavailable" } }
+        : {
+            json: {
+              ...effectivenessFixture,
+              rates: {
+                ...effectivenessFixture.rates,
+                improvement_rate_among_observed: null,
+              },
+            },
+          },
+    );
+  });
+  await navigate(page, "Insights");
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "Coaching effectiveness",
+      exact: true,
+    }),
+  });
+  await expect(section.getByRole("alert")).toContainText(
+    "Could not load coaching effectiveness.",
+  );
+  const retry = section.getByRole("button", { name: "Try again" });
+  failed = false;
+  const initialAttempts = attempts;
+  await retry.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    section.getByText("Recommendations with feedback", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    section.getByText("Not enough data", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    section.getByText("0.00%", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    section.getByRole("list", { name: "By recommendation type" }),
+  ).toBeVisible();
+  await section
+    .getByText("Assumptions & data limitations", { exact: true })
+    .click();
+  await expect(
+    section.getByText(effectivenessFixture.limitations[0], { exact: true }),
+  ).toBeVisible();
+  expect(attempts).toBe(initialAttempts + 1);
+  await accessible(page);
+  await noOverflow(page);
+  await section.screenshot({
+    path: info.outputPath("coaching-effectiveness-en.png"),
+  });
+  if (info.project.name === "desktop") {
+    for (const width of [360, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await noOverflow(page);
+    }
+  }
+  await page.locator('.topbar button[lang="bn"]').click();
+  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
+    element.getBoundingClientRect();
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
+  await expect(
+    page.getByRole("heading", { name: bn["Coaching effectiveness"] }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(bn["Not enough data"], { exact: true }),
+  ).toBeVisible();
+  expect(attempts).toBe(initialAttempts + 1);
+  await accessible(page);
+  await noOverflow(page);
+  await page
+    .locator(".coaching-effectiveness")
+    .screenshot({ path: info.outputPath("coaching-effectiveness-bn.png") });
+  await page.route("**/api/finance/coaching/effectiveness", (route) =>
+    route.fulfill({ json: emptyEffectiveness }),
+  );
+  for (const name of [bn["Overview"], bn["Insights"]]) {
+    const toggle = page.getByRole("button", { name: bn["Open navigation"] });
+    if (await toggle.isVisible()) await toggle.click();
+    await page
+      .getByRole("navigation", { name: bn["Main navigation"] })
+      .getByRole("link", { name, exact: true })
+      .click();
+  }
+  await expect(
+    page.getByText(bn["No coaching feedback yet."], { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".effectiveness-counts")).toHaveCount(0);
   await accessible(page);
   await noOverflow(page);
 });

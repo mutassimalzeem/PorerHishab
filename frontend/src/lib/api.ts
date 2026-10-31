@@ -160,6 +160,10 @@ export const api = {
     }),
   actionPlan: () =>
     request<ApiSchemas["CoachingActionPlan"]>("/finance/action-plan"),
+  coachingEffectiveness: () =>
+    request<ApiSchemas["CoachingEffectivenessResponse"]>(
+      "/finance/coaching/effectiveness",
+    ),
   actionOutcomes: () =>
     request<ApiSchemas["ActionOutcomeReport"]>("/finance/action-outcomes"),
   coaching: () => request<ApiSchemas["FinancialCoaching"]>("/finance/coaching"),
