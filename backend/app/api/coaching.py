@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
+from app.schemas.action_plan import CoachingActionPlan
+from app.services.finance.action_plan import action_plan
 from app.schemas.coach import Money
 from app.schemas.coaching import CoachingPriority, FinancialCoaching
 from app.services.finance.coaching_feedback import visible_coaching, submit, restore
@@ -38,3 +40,10 @@ def put_feedback(recommendation_id: str, payload: CoachingFeedbackInput,
 def delete_feedback(recommendation_id: str, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     restore(db, current.id, recommendation_id)
     return Response(status_code=204)
+
+
+@router.get("/action-plan", response_model=CoachingActionPlan)
+def get_action_plan(priority: CoachingPriority | None = None,
+                    safety_threshold: Annotated[Money, Query()] = Decimal("0.00"),
+                    current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return action_plan(db, current.id, priority=priority, safety_threshold=safety_threshold)

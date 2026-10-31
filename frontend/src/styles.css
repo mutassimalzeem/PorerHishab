@@ -3724,3 +3724,18 @@ html[lang="bn"] .workspace-label {
   margin-block: 1rem;
   overflow-wrap: anywhere;
 }
+
+.action-plan-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.action-plan-list li {
+  min-width: 0;
+}
+.action-plan-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

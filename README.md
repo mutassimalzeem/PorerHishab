@@ -9,7 +9,7 @@ This README covers the work completed so far, partial capabilities and remaining
 
 ## Project status
 
-Status as of **30 October 2026**:
+Status as of **31 October 2026**:
 
 | Area | Status | Delivered capability |
 | --- | --- | --- |
@@ -22,7 +22,8 @@ Status as of **30 October 2026**:
 | Account balance reconciliation (AI-15A) | Implemented and merged | Reported/opening balances, derived evidence, differences, status and confidence |
 | Obligation reconciliation (AI-15B) | Implemented and merged | Reviewed candidates, confirmed allocations, partial payments and revocation history |
 | Financial alerts and coaching (AI-15F) | Implemented; merged in PR #42 | Deterministic prioritized cash, obligation, spending and goal reviews with bilingual evidence; [implementation notes](docs/ai-15f-financial-alerts-and-coaching.md) |
-| Coaching feedback (AI-15G) | Implemented; PR review pending | Owner-scoped dismissal, reported actions, relevance feedback, expiring snoozes and bilingual restoration; [implementation notes](docs/ai-15g-coaching-feedback.md) |
+| Coaching feedback (AI-15G) | Implemented; merged in PR #43 | Owner-scoped dismissal, reported actions, relevance feedback, expiring snoozes and bilingual restoration; [implementation notes](docs/ai-15g-coaching-feedback.md) |
+| Personalized action plan (AI-15H) | Implemented; PR review pending | Deterministic user-scoped action planning built from financial coaching and explicit feedback; [implementation notes](docs/ai-15h-personalized-action-plan.md) |
 | Bangla/Roman Bangla coaching | Partial / future work | Bengali interface and some categorization rules exist; Ask currently uses supported English questions |
 | Financial integrations and delivery | Planned | SMS/PDF/email ingestion, bank/MFS synchronization, WhatsApp/Messenger and notifications |
 | Production rollout | Pending | Hosting, operational controls, security hardening and production data validation |

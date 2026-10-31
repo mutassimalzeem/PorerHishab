@@ -1,3 +1,4 @@
+import { ActionPlan } from "../components/ActionPlan";
 import { FinancialCoaching } from "../components/FinancialCoaching";
 import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel, digits } from "../lib/locale";
@@ -23,6 +24,7 @@ export function Insights() {
   const recommendations = useResource(
     useCallback(() => api.recommendations(), []),
   );
+  const [planRevision, setPlanRevision] = useState(0);
   const [hidden, setHidden] = useState<string[]>([]);
   return (
     <>
@@ -32,7 +34,10 @@ export function Insights() {
           "A few grounded observations, with the evidence behind each one.",
         )}
       />
-      <FinancialCoaching />
+      <ActionPlan revision={planRevision} />
+      <FinancialCoaching
+        onFeedback={() => setPlanRevision((value) => value + 1)}
+      />
       <Section title={t("Worth your attention")}>
         <ResourceView resource={nudges}>
           {(p) => (
