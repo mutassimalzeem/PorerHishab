@@ -1,5 +1,12 @@
 // Frontend-owned copy only. Backend prose and user records retain their original language.
 export const bn = {
+  "Your next actions": "আপনার পরবর্তী করণীয়",
+  "Reading your action plan...": "আপনার কর্মপরিকল্পনা পড়া হচ্ছে...",
+  "No active actions right now.": "এখন কোনো সক্রিয় করণীয় নেই।",
+  "The plan shows the first five active actions, or all critical actions if there are more than five; review coaching for other recommendations.":
+    "পরিকল্পনায় প্রথম পাঁচটি সক্রিয় করণীয় অথবা পাঁচটির বেশি হলে সব সংকটপূর্ণ করণীয় দেখানো হয়; অন্যান্য পরামর্শের জন্য কোচিং দেখুন।",
+  "Reported done means the user reported completion; no financial action has been verified.":
+    "সম্পন্ন বলেছেন মানে ব্যবহারকারী কাজটি শেষ করার কথা জানিয়েছেন; কোনো আর্থিক কাজ যাচাই করা হয়নি।",
   "Mark as done":
     "\u09b8\u09ae\u09cd\u09aa\u09a8\u09cd\u09a8 \u09b9\u09bf\u09b8\u09c7\u09ac\u09c7 \u099a\u09bf\u09b9\u09cd\u09a8\u09bf\u09a4 \u0995\u09b0\u09c1\u09a8",
   Dismiss:

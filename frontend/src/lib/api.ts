@@ -158,6 +158,8 @@ export const api = {
     request<void>(`/finance/coaching/${encodeURIComponent(id)}/feedback`, {
       method: "DELETE",
     }),
+  actionPlan: () =>
+    request<ApiSchemas["CoachingActionPlan"]>("/finance/action-plan"),
   coaching: () => request<ApiSchemas["FinancialCoaching"]>("/finance/coaching"),
   timeline: () => request<ApiSchemas["FinancialTimeline"]>("/finance/timeline"),
   runway: () => request<ApiSchemas["FinancialRunway"]>("/finance/runway"),

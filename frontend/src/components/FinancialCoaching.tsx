@@ -319,7 +319,9 @@ function Advice({
     </article>
   );
 }
-export function FinancialCoaching() {
+export function FinancialCoaching({
+  onFeedback,
+}: { onFeedback?: () => void } = {}) {
   useLanguage();
   const [result, setResult] = useState<ApiSchemas["FinancialCoaching"] | null>(
     null,
@@ -331,6 +333,7 @@ export function FinancialCoaching() {
     setNotice(false);
     setResult(await api.coaching());
     setNotice(true);
+    onFeedback?.();
   }
   async function load() {
     setResult(null);

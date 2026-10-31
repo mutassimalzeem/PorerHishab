@@ -1,3 +1,7 @@
+import {
+  actionPlanFixture,
+  emptyActionPlan,
+} from "../src/test/action-plan.fixture";
 import { coachingFixture } from "../src/test/coaching.fixture";
 import { bn } from "../src/lib/translations";
 import { timelineFixture } from "../src/test/timeline.fixture";
@@ -61,6 +65,7 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
     if (path === "/login") body = { access_token: "test-only-token" };
     else if (path === "/me")
       body = { id: 1, email: "test@example.com", full_name: "Test User" };
+    else if (path === "/finance/action-plan") body = emptyActionPlan;
     else if (path === "/finance/intelligence") body = intelligence;
     else if (path === "/insights/summary")
       body = {
@@ -822,6 +827,61 @@ test("coaching feedback supports keyboard dismissal, snooze, restore and bilingu
   await expect(
     page.getByRole("button", { name: bn["Restore recommendation"] }),
   ).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+});
+
+test("action plan supports bilingual keyboard navigation, retry and responsive accessibility", async ({
+  page,
+}) => {
+  await connect(page);
+  let failed = true;
+  await page.route("**/api/finance/action-plan", async (route) => {
+    if (failed) {
+      await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
+    } else
+      await route.fulfill({
+        json: { ...actionPlanFixture, completed_count: 1 },
+      });
+  });
+  await navigate(page, "Insights");
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: new RegExp(`Your next actions|${bn["Your next actions"]}`),
+    }),
+  });
+  const retry = section.getByRole("button", { name: "Try again" });
+  await expect(retry).toBeVisible();
+  failed = false;
+  await retry.focus();
+  await page.keyboard.press("Enter");
+  const cards = section.getByRole("article");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().getByRole("heading", { level: 3 })).toContainText(
+    "1. Prepare for a possible cash shortfall",
+  );
+  const link = cards.first().getByRole("link");
+  await link.focus();
+  await expect(link).toBeFocused();
+  await expect(link).toHaveAttribute("href", "/cashflow");
+  await expect(section.getByText("Reported done: 1")).toBeVisible();
+  await accessible(page);
+  await noOverflow(page);
+  await page.locator('.topbar button[lang="bn"]').click();
+  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
+    element.getBoundingClientRect();
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
+  await expect(
+    page.getByRole("heading", { name: bn["Your next actions"] }),
+  ).toBeVisible();
+  await expect(cards.first().getByRole("heading", { level: 3 })).toContainText(
+    bn["Prepare for a possible cash shortfall"],
+  );
   await accessible(page);
   await noOverflow(page);
 });
