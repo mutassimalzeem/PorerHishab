@@ -1268,5 +1268,111 @@ export const bn = {
     "হিসাব বাদ দেওয়া হয়েছে",
   "Total trusted BDT position:":
     "মোট নির্ভরযোগ্য বিডিটি অবস্থান:",
+  "Severity":
+    "তীব্রতা",
+  "Status":
+    "অবস্থা",
+  "Alerts":
+    "সতর্কবার্তা",
+  "Financial Alerts":
+    "আর্থিক সতর্কবার্তা",
+  "Proactive notifications highlighting important financial conditions and changes.":
+    "গুরুত্বপূর্ণ আর্থিক অবস্থা এবং পরিবর্তন তুলে ধরা সক্রিয় বিজ্ঞপ্তি।",
+  "Evaluate alerts":
+    "সতর্কবার্তা যাচাই করুন",
+  "Evaluating...":
+    "যাচাই করা হচ্ছে...",
+  "All":
+    "সব",
+  "Unread":
+    "অপঠিত",
+  "Resolved":
+    "সমাধানকৃত",
+  "Info":
+    "তথ্য",
+  "Mark as read":
+    "পঠিত হিসেবে চিহ্নিত করুন",
+  "Mark read":
+    "পঠিত চিহ্নিত করুন",
+  "Read":
+    "পঠিত",
+  "Restore":
+    "পুনরুদ্ধার করুন",
+  "I took this action":
+    "আমি এই পদক্ষেপ নিয়েছি",
+  "Action reported":
+    "পদক্ষেপ জানানো হয়েছে",
+  "Action reported on":
+    "পদক্ষেপ জানানো হয়েছে",
+  "Underlying condition is not automatically verified as resolved.":
+    "মূল আর্থিক অবস্থা স্বয়ংক্রিয়ভাবে সমাধান হিসেবে যাচাই করা হয় না।",
+  "Historical evidence":
+    "ঐতিহাসিক প্রমাণ",
+  "Evidence snapshot":
+    "প্রমাণের তথ্যচিত্র",
+  "Show evidence":
+    "প্রমাণ দেখুন",
+  "Hide evidence":
+    "প্রমাণ লুকান",
+  "Evidence recorded on":
+    "প্রমাণ রেকর্ড করা হয়েছিল",
+  "This reflects historical conditions at detection time, not a live bank balance.":
+    "এটি শনাক্তকরণের সময়ের অবস্থা নির্দেশ করে, সরাসরি ব্যাংকের বর্তমান ব্যালেন্স নয়।",
+  "This snapshot reflects conditions observed during the latest evaluation, not a live bank balance.":
+    "এটি সর্বশেষ মূল্যায়নে পর্যবেক্ষিত অবস্থা নির্দেশ করে, সরাসরি ব্যাংকের বর্তমান ব্যালেন্স নয়।",
+  "First detected":
+    "প্রথম শনাক্ত",
+  "Last detected":
+    "সর্বশেষ শনাক্ত",
+  "Resolved on":
+    "সমাধানের তারিখ",
+  "Detected":
+    "শনাক্ত",
+  "times":
+    "বার",
+  "time":
+    "বার",
+  "No alerts found":
+    "কোনো সতর্কবার্তা পাওয়া যায়নি",
+  "No active alerts. Your financial position has no critical warnings.":
+    "কোনো সক্রিয় সতর্কবার্তা নেই। আপনার আর্থিক অবস্থানে কোনো জরুরি সতর্কতা নেই।",
+  "You're all caught up! No unread financial alerts.":
+    "সব দেখা শেষ! কোনো অপঠিত আর্থিক সতর্কবার্তা নেই।",
+  "No alerts match the selected filter.":
+    "নির্বাচিত ফিল্টারের সাথে কোনো সতর্কবার্তা মিলছে না।",
+  "Could not load alerts. Please try again.":
+    "সতর্কবার্তা লোড করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।",
+  "Could not update alert. Please try again.":
+    "সতর্কবার্তা আপডেট করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।",
+  "Reading alerts...":
+    "সতর্কবার্তা পড়া হচ্ছে...",
+  "Projected Cash Shortfall":
+    "সম্ভাব্য নগদ ঘাটতি",
+  "Cash Position at Risk":
+    "নগদ অবস্থান ঝুঁকিতে",
+  "Overdue Obligation":
+    "বকেয়া দায়",
+  "Upcoming Obligation":
+    "আসন্ন দায়",
+  "Account Balance Mismatch":
+    "অ্যাকাউন্ট ব্যালেন্সের অমিল",
+  "Review upcoming obligations and postpone non-essential spending.":
+    "আসন্ন দায়সমূহ পর্যালোচনা করুন এবং অপ্রয়োজনীয় খরচ স্থগিত রাখুন।",
+  "Review planned cashflow to maintain your safety reserve.":
+    "আপনার নিরাপত্তা সঞ্চয় বজায় রাখতে পরিকল্পিত নগদ প্রবাহ পর্যালোচনা করুন।",
+  "Confirm payment or allocate an existing transaction.":
+    "পেমেন্ট নিশ্চিত করুন অথবা বিদ্যমান লেনদেনের সাথে সমন্বয় করুন।",
+  "Reserve funds and confirm settlement when paid.":
+    "তহবিল সংরক্ষণ করুন এবং পরিশোধের পর নিষ্পত্তি নিশ্চিত করুন।",
+  "Review transactions or update the reported balance.":
+    "লেনদেন পর্যালোচনা করুন অথবা রিপোর্টকৃত ব্যালেন্স আপডেট করুন।",
+  "Open Cashflow":
+    "নগদ প্রবাহ খুলুন",
+  "Open Accounts":
+    "হিসাবসমূহ খুলুন",
+  "Open Plans":
+    "পরিকল্পনা খুলুন",
+  "Open Transactions":
+    "লেনদেন খুলুন",
 } as const;
 export type TranslationKey = keyof typeof bn;
