@@ -33,6 +33,9 @@ import type {
   TransactionCreate,
   TrustedBdtPosition,
   User,
+  NotificationPreference,
+  NotificationPreferenceUpdate,
+  NotificationDeliveryList,
 } from "../domain";
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 let tokens: Tokens | null = null;
@@ -317,4 +320,17 @@ export const api = {
     }),
   restoreAlert: (id: number) =>
     post<FinancialAlert>(`/finance/alerts/${id}/restore`, {}),
+  notificationPreferences: () =>
+    request<NotificationPreference>("/finance/notification-preferences"),
+  updateNotificationPreferences: (body: NotificationPreferenceUpdate) =>
+    request<NotificationPreference>("/finance/notification-preferences", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  notificationDeliveries: (
+    filters: Record<string, string | number | boolean | undefined> = {},
+  ) =>
+    request<NotificationDeliveryList>(
+      `/finance/notification-deliveries${query(filters)}`,
+    ),
 };

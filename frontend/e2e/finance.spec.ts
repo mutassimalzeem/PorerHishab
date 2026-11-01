@@ -11,6 +11,7 @@ import {
   emptyActionOutcomes,
 } from "../src/test/action-outcome.fixture";
 import { coachingFixture } from "../src/test/coaching.fixture";
+import { mockDefaultPreferences } from "../src/test/notification-preferences.fixture";
 import { bn } from "../src/lib/translations";
 import { timelineFixture } from "../src/test/timeline.fixture";
 import { unknownRunway, populatedRunway } from "../src/test/runway.fixture";
@@ -43,6 +44,7 @@ const coverage = {
   limitations: ["History is incomplete."],
 };
 async function connect(page: import("@playwright/test").Page, rich = false) {
+  let notifPrefs = { ...mockDefaultPreferences };
   const intelligence = rich ? richIntelligence : emptyIntelligence;
   let goals = intelligence.snapshot.goals.map((g) => ({
     id: g.goal_id,
@@ -77,6 +79,15 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
     else if (path === "/finance/action-outcomes") body = emptyActionOutcomes;
     else if (path === "/finance/coaching/effectiveness")
       body = emptyEffectiveness;
+    else if (path === "/finance/notification-preferences") {
+      if (route.request().method() === "PUT") {
+        const update = route.request().postDataJSON();
+        notifPrefs = { ...notifPrefs, ...update };
+        body = notifPrefs;
+      } else {
+        body = notifPrefs;
+      }
+    }
     else if (path === "/finance/intelligence") body = intelligence;
     else if (path === "/insights/summary")
       body = {
@@ -1266,4 +1277,83 @@ test("proactive financial alerts center navigation, interaction, and localizatio
 
   await accessible(page);
   await noOverflow(page);
+});
+
+test("notification settings persistence, bilingual layout, and alert center functionality", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("porerhishab.language", "en");
+  });
+  await connect(page);
+
+  // Helper to open settings on both desktop and mobile
+  const openSettings = async () => {
+    const toggle = page.getByRole("button", { name: "Open navigation" });
+    if (await toggle.isVisible()) await toggle.click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+  };
+
+  // 1. Authenticated user opens settings
+  await openSettings();
+  await expect(
+    page.getByRole("heading", { name: "Notification preferences" }),
+  ).toBeVisible();
+
+  // 2. Changes preferences: enable email and consent
+  const emailToggle = page.getByLabel("Email notifications");
+  await emailToggle.click();
+
+  const consentBox = page.getByLabel(
+    /I consent to receiving security and financial alert notifications/i,
+  );
+  await consentBox.click();
+
+  // 3. Save preferences
+  await page.getByRole("button", { name: "Save preferences" }).click();
+  await expect(
+    page.getByText("Preferences saved successfully."),
+  ).toBeVisible();
+
+  // 4. Navigate to Alerts and return to Settings to verify server-backed persistence
+  await navigate(page, "Alerts");
+  await expect(
+    page.getByRole("heading", { name: "Financial Alerts" }),
+  ).toBeVisible();
+
+  // 5. Re-open Settings and see persisted values
+  await openSettings();
+  await expect(
+    page.getByRole("heading", { name: "Notification preferences" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Email notifications")).toBeChecked();
+  await expect(
+    page.getByLabel(
+      /I consent to receiving security and financial alert notifications/i,
+    ),
+  ).toBeChecked();
+
+  // 6. Changes language to Bengali via banner language switcher
+  await page.getByRole("banner").getByRole("button", { name: "বাংলা" }).click();
+
+  // 7. Verifies Bengali variant
+  await expect(
+    page.getByRole("heading", { name: "বিজ্ঞপ্তির পছন্দসমূহ" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("ইমেইল বিজ্ঞপ্তি")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "পছন্দসমূহ সংরক্ষণ করুন" }),
+  ).toBeVisible();
+
+  // Switch back to English via banner language switcher
+  await page.getByRole("banner").getByRole("button", { name: "EN" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Notification preferences" }),
+  ).toBeVisible();
+
+  // 8. Alert center remains functional
+  await navigate(page, "Alerts");
+  await expect(
+    page.getByRole("heading", { name: "Financial Alerts" }),
+  ).toBeVisible();
 });

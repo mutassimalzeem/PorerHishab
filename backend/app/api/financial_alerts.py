@@ -1,6 +1,7 @@
 """Authenticated API endpoints for proactive financial alerts."""
 from typing import Literal
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from app.services.notifications.dispatcher import dispatch_pending_user_deliveries
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -30,11 +31,14 @@ router = APIRouter(
 
 @router.post("/evaluate", response_model=AlertEvaluationSummary)
 def evaluate_user_alerts(
+    background_tasks: BackgroundTasks,
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AlertEvaluationSummary:
     """Evaluate financial conditions for the authenticated user and sync alerts."""
-    return evaluate_alerts(db, current.id)
+    summary = evaluate_alerts(db, current.id)
+    background_tasks.add_task(dispatch_pending_user_deliveries, current.id)
+    return summary
 
 
 @router.get("", response_model=AlertListResponse)

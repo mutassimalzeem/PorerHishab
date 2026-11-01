@@ -221,3 +221,8 @@ export type FinancialAlert = ApiSchemas["FinancialAlertResponse"];
 export type AlertEvaluationSummary = ApiSchemas["AlertEvaluationSummary"];
 export type AlertUnreadCount = ApiSchemas["AlertUnreadCountResponse"];
 export type AlertList = ApiSchemas["AlertListResponse"];
+
+export type NotificationPreference = ApiSchemas["NotificationPreferenceResponse"];
+export type NotificationPreferenceUpdate = ApiSchemas["NotificationPreferenceUpdate"];
+export type NotificationDelivery = ApiSchemas["NotificationDeliveryResponse"];
+export type NotificationDeliveryList = ApiSchemas["NotificationDeliveryListResponse"];

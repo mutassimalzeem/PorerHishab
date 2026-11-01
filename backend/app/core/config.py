@@ -31,10 +31,23 @@ class Settings(BaseSettings):
     VECTOR_STORE_PATH: str = "./data/chroma"
     VECTOR_COLLECTION_NAME: str = "zyra_transactions"
 
+    # Notification delivery infrastructure (AI-15M)
+    NOTIFICATION_DELIVERY_ENABLED: bool = True
+    EMAIL_BACKEND: str = "test"  # "test" or "smtp"
+    SMTP_HOST: str = "localhost"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = True
+    EMAIL_SENDER_ADDRESS: str = "notifications@porerhishab.com"
+    EMAIL_SENDER_NAME: str = "PorerHishab"
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+    NOTIFICATION_MAX_RETRIES: int = 3
+    NOTIFICATION_RETRY_BACKOFF_SECONDS: list[int] = [60, 300, 900]
+
     model_config = SettingsConfigDict(env_file=str(ENV_FILE),
                                       env_file_encoding="utf-8",
                                       extra="ignore")
 
 
 settings = Settings()
-
