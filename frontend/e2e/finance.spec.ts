@@ -167,6 +167,37 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
         limitations: ["Three complete months are required."],
         status: "insufficient_data",
       };
+    else if (path === "/finance/alerts/unread-count")
+      body = { unread_count: 0 };
+    else if (path === "/finance/alerts")
+      body = { items: [], total: 0, limit: 20, offset: 0 };
+    else if (path === "/finance/alerts/evaluate")
+      body = {
+        created: 0,
+        updated: 0,
+        resolved: 0,
+        unchanged: 0,
+        evaluated_at: "2026-11-01T00:00:00Z",
+      };
+    else if (path.startsWith("/finance/alerts/"))
+      body = {
+        id: 1,
+        user_id: 1,
+        alert_key: "k",
+        alert_type: "t",
+        severity: "critical",
+        title: "Test Alert",
+        title_key: "k",
+        message: "m",
+        message_key: "m",
+        evidence: {},
+        recommended_action: "act",
+        status: "active",
+        first_detected_at: "2026-11-01T00:00:00Z",
+        last_detected_at: "2026-11-01T00:00:00Z",
+        created_at: "2026-11-01T00:00:00Z",
+        updated_at: "2026-11-01T00:00:00Z",
+      };
     else if (path === "/finance/coach/cashflow")
       body = {
         as_of_date: "2026-10-25",
@@ -1154,6 +1185,85 @@ test("coaching effectiveness supports retry, rates, Bengali and accessible respo
     page.getByText(bn["No coaching feedback yet."], { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".effectiveness-counts")).toHaveCount(0);
+  await accessible(page);
+  await noOverflow(page);
+});
+
+
+test("proactive financial alerts center navigation, interaction, and localization", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("porerhishab.language", "en");
+  });
+  await connect(page);
+  const alertsData = {
+    items: [
+      {
+        id: 1,
+        user_id: 1,
+        alert_key: "cash_position:runway_risk",
+        alert_type: "cash_shortfall",
+        severity: "critical",
+        title: "Projected Cash Shortfall",
+        title_key: "alert_title_cash_shortfall",
+        message:
+          "Projected cash position falls below zero BDT within the 30-day horizon.",
+        message_key: "alert_msg_cash_shortfall",
+        evidence: {
+          starting_balance: "1000.00",
+          minimum_projected_balance: "-1500.00",
+        },
+        recommended_action:
+          "Review upcoming obligations and postpone non-essential spending.",
+        action_url: "/cashflow",
+        status: "active",
+        is_read: false,
+        first_detected_at: "2026-11-01T08:00:00Z",
+        last_detected_at: "2026-11-01T10:00:00Z",
+        resolved_at: null,
+        read_at: null,
+        dismissed_at: null,
+        actioned_at: null,
+        occurrence_count: 2,
+        created_at: "2026-11-01T08:00:00Z",
+        updated_at: "2026-11-01T10:00:00Z",
+      },
+    ],
+    total: 1,
+    limit: 20,
+    offset: 0,
+  };
+  await page.route("**/api/finance/alerts/unread-count", (route) =>
+    route.fulfill({ json: { unread_count: 1 } }),
+  );
+  await page.route("**/api/finance/alerts*", (route) =>
+    route.fulfill({ json: alertsData }),
+  );
+
+  await navigate(page, "Alerts");
+  await expect(
+    page.getByRole("heading", { name: "Financial Alerts" }),
+  ).toBeVisible();
+  await expect(page.getByText("Projected Cash Shortfall")).toBeVisible();
+  await expect(page.getByLabel("Critical")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Review upcoming obligations and postpone non-essential spending.",
+    ),
+  ).toBeVisible();
+
+  await accessible(page);
+  await noOverflow(page);
+
+  // Toggle evidence drawer
+  await page.getByRole("button", { name: "Evidence snapshot" }).click();
+  await expect(
+    page.getByText(
+      "This snapshot reflects conditions observed during the latest evaluation, not a live bank balance.",
+    ),
+  ).toBeVisible();
+
   await accessible(page);
   await noOverflow(page);
 });

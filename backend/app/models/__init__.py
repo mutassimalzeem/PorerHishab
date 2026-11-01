@@ -7,6 +7,7 @@ from app.models.user import User
 from app.models.merchant_preference import MerchantCategoryPreference
 from app.models.scheduled_cashflow_item import ScheduledCashflowItem
 from app.models.obligation_allocation import ObligationAllocation
+from app.models.financial_alert import FinancialAlert
 
 __all__ = [
     "CoachingFeedback",
@@ -18,4 +19,5 @@ __all__ = [
     "SavingsGoal",
     "ScheduledCashflowItem",
     "ObligationAllocation",
+    "FinancialAlert",
 ]

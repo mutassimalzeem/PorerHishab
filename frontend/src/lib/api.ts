@@ -6,10 +6,14 @@ import type {
   AccountCreate,
   AccountOverviewResponse,
   AccountPositionItem,
+  AlertEvaluationSummary,
+  AlertList,
+  AlertUnreadCount,
   Answer,
   CSVUpload,
   Cashflow,
   Decision,
+  FinancialAlert,
   Goal,
   GoalCreate,
   GoalPlan,
@@ -148,7 +152,9 @@ export async function request<T>(
 function post<T>(path: string, body: unknown) {
   return request<T>(path, { method: "POST", body: JSON.stringify(body) });
 }
-export function query(values: Record<string, string | number | undefined>) {
+export function query(
+  values: Record<string, string | number | boolean | undefined>,
+) {
   const params = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => {
     if (value !== undefined && value !== "") params.set(key, String(value));
@@ -290,4 +296,25 @@ export const api = {
   }) => post<Answer>("/chat/ask", body),
   monthly: (period: Record<string, string>) =>
     request<Monthly[]>(`/insights/monthly${query(period)}`),
+  alerts: (
+    filters: Record<string, string | number | boolean | undefined> = {},
+  ) => request<AlertList>(`/finance/alerts${query(filters)}`),
+  unreadAlertsCount: () =>
+    request<AlertUnreadCount>("/finance/alerts/unread-count"),
+  evaluateAlerts: () =>
+    post<AlertEvaluationSummary>("/finance/alerts/evaluate", {}),
+  readAlert: (id: number) =>
+    request<FinancialAlert>(`/finance/alerts/${id}/read`, {
+      method: "PATCH",
+    }),
+  dismissAlert: (id: number) =>
+    request<FinancialAlert>(`/finance/alerts/${id}/dismiss`, {
+      method: "PATCH",
+    }),
+  actionAlert: (id: number) =>
+    request<FinancialAlert>(`/finance/alerts/${id}/actioned`, {
+      method: "PATCH",
+    }),
+  restoreAlert: (id: number) =>
+    post<FinancialAlert>(`/finance/alerts/${id}/restore`, {}),
 };

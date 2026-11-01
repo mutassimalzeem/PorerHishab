@@ -216,3 +216,8 @@ export type AccountCreate = ApiSchemas["AccountCreate"];
 export type AccountBalanceUpdate = ApiSchemas["AccountBalanceUpdate"];
 export type OpeningBalanceUpdate = ApiSchemas["OpeningBalanceUpdate"];
 export type AccountBalanceReconciliation = ApiSchemas["AccountBalanceReconciliation"];
+
+export type FinancialAlert = ApiSchemas["FinancialAlertResponse"];
+export type AlertEvaluationSummary = ApiSchemas["AlertEvaluationSummary"];
+export type AlertUnreadCount = ApiSchemas["AlertUnreadCountResponse"];
+export type AlertList = ApiSchemas["AlertListResponse"];

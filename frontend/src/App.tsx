@@ -1,7 +1,7 @@
 import { LanguageSwitcher } from "./lib/Language";
 import { useLanguage } from "./lib/useLanguage";
-import { t, uiLabel } from "./lib/locale";
-import { useEffect, useState } from "react";
+import { digits, t, uiLabel } from "./lib/locale";
+import { useCallback, useEffect, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -13,6 +13,7 @@ import {
 } from "react-router-dom";
 import {
   ArrowUpRight,
+  Bell,
   ChartNoAxesCombined,
   ChartNoAxesColumn,
   House,
@@ -31,6 +32,7 @@ import { api, setSession } from "./lib/api";
 import { date, errorMessage, today } from "./lib/format";
 import { Auth } from "./pages/Auth";
 import { Dashboard } from "./pages/Dashboard";
+import { Alerts } from "./pages/Alerts";
 import { Accounts } from "./pages/Accounts";
 import { Cashflow } from "./pages/Cashflow";
 import { Transactions } from "./pages/Transactions";
@@ -42,6 +44,7 @@ import { Empty, ErrorNotice } from "./components/ui";
 
 const navigation = [
   { to: "/", label: "Overview", icon: House },
+  { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/accounts", label: "Accounts", icon: Wallet },
   { to: "/cashflow", label: "Cashflow", icon: ChartNoAxesCombined },
   { to: "/transactions", label: "Transactions", icon: List },
@@ -53,8 +56,21 @@ const navigation = [
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const { language } = useLanguage();
   const [open, setOpen] = useState(false);
+  const [unreadAlerts, setUnreadAlerts] = useState<number>(0);
   const mobile = useMediaQuery("(max-width:760px)");
   const location = useLocation();
+
+  const refreshUnread = useCallback(() => {
+    api
+      .unreadAlertsCount()
+      .then((res) => setUnreadAlerts(res.unread_count))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshUnread();
+  }, [refreshUnread, location.pathname]);
+
   useEffect(() => {
     document.title = `${uiLabel(navigation.find((n) => n.to === location.pathname)?.label || t("Settings"))} | PorerHishab`;
   }, [location.pathname, language]);
@@ -93,7 +109,12 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
                   onClick={() => setOpen(false)}
                 >
                   <n.icon size={19} strokeWidth={1.7} />
-                  {uiLabel(n.label)}
+                  <span>{uiLabel(n.label)}</span>
+                  {n.to === "/alerts" && unreadAlerts > 0 && (
+                    <span className="unread-count-pill" aria-hidden="true">
+                      {digits(unreadAlerts)}
+                    </span>
+                  )}
                   {n.to === "/ask" && (
                     <ArrowUpRight size={14} className="nav-arrow" />
                   )}
@@ -149,7 +170,12 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
                 onClick={() => setOpen(false)}
               >
                 <n.icon size={19} strokeWidth={1.7} />
-                {uiLabel(n.label)}
+                <span>{uiLabel(n.label)}</span>
+                {n.to === "/alerts" && unreadAlerts > 0 && (
+                  <span className="unread-count-pill" aria-hidden="true">
+                    {digits(unreadAlerts)}
+                  </span>
+                )}
                 {n.to === "/ask" && (
                   <ArrowUpRight size={14} className="nav-arrow" />
                 )}
@@ -205,12 +231,25 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             </strong>
           </span>
           <time dateTime={today()}>{date(today())}</time>
+          <Link
+            to="/alerts"
+            className="topbar-alerts-button"
+            aria-label={`${t("Alerts")}${unreadAlerts > 0 ? ` (${unreadAlerts} ${t("Unread")})` : ""}`}
+          >
+            <Bell size={18} aria-hidden="true" />
+            {unreadAlerts > 0 && (
+              <span className="topbar-badge" aria-hidden="true">
+                {digits(unreadAlerts)}
+              </span>
+            )}
+          </Link>
           <LanguageSwitcher />
           <span className="currency-label">{t("BDT")}</span>
         </header>
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Dashboard user={user} />} />
+            <Route path="/alerts" element={<Alerts onAlertChange={refreshUnread} />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/cashflow" element={<Cashflow />} />
             <Route path="/transactions" element={<Transactions />} />
