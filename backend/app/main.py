@@ -28,6 +28,7 @@ from app.api.timeline import router as timeline_router
 from app.api.runway import router as runway_router
 from app.api.financial_health import router as financial_health_router
 from app.api.goal_planning import router as goal_planning_router
+from app.api.scenarios import router as scenarios_router
 from app.api.forecast import router as forecast_router
 from app.api.planner import router as planner_router
 from app.api.chat import router as chat_router
@@ -81,6 +82,7 @@ app.include_router(spending_decision_router)
 app.include_router(obligation_reconciliation_router)
 app.include_router(scheduled_cashflow_router)
 app.include_router(goal_planning_router)
+app.include_router(scenarios_router)
 app.include_router(coach_router)
 
 app.include_router(intelligence_router)

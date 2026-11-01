@@ -32,3 +32,5 @@ __all__ = [
 from app.models.financial_health import FinancialHealthSnapshot
 
 from app.models.goal_planning import GoalPlanRecord, GoalMilestone, GoalProgressEvent
+
+from app.models.scenarios import Scenario, ScenarioChangeRecord, ScenarioRun, ScenarioComparison

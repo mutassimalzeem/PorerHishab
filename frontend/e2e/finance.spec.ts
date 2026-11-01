@@ -87,8 +87,7 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
       } else {
         body = notifPrefs;
       }
-    }
-    else if (path === "/finance/intelligence") body = intelligence;
+    } else if (path === "/finance/intelligence") body = intelligence;
     else if (path === "/insights/summary")
       body = {
         transaction_count: 1,
@@ -436,6 +435,13 @@ test("mobile navigation contains focus and returns it on Escape", async ({
   expect(
     await dialog.evaluate((el) => el.contains(document.activeElement)),
   ).toBe(true);
+  const first = dialog.getByRole("button", { name: "EN", exact: true });
+  const last = dialog.getByRole("button", { name: "Sign out", exact: true });
+  await last.focus();
+  await page.keyboard.press("Tab");
+  await expect(first).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(last).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await expect(toggle).toBeFocused();
@@ -1201,7 +1207,6 @@ test("coaching effectiveness supports retry, rates, Bengali and accessible respo
   await noOverflow(page);
 });
 
-
 test("proactive financial alerts center navigation, interaction, and localization", async ({
   page,
 }) => {
@@ -1312,9 +1317,7 @@ test("notification settings persistence, bilingual layout, and alert center func
 
   // 3. Save preferences
   await page.getByRole("button", { name: "Save preferences" }).click();
-  await expect(
-    page.getByText("Preferences saved successfully."),
-  ).toBeVisible();
+  await expect(page.getByText("Preferences saved successfully.")).toBeVisible();
 
   // 4. Navigate to Alerts and return to Settings to verify server-backed persistence
   await navigate(page, "Alerts");

@@ -41,7 +41,7 @@ def cash_position(db, user_id, as_of):
 
 def financial_runway(db, user_id, *, as_of=None, horizon_days=30,
                      safety_threshold=DEFAULT_SAFETY_THRESHOLD, mode: RunwayMode = "historical",
-                     starting_balance=None, history=None, account_overview=None):
+                     starting_balance=None, history=None, account_overview=None, scenario_adjustments=None):
     """Monthly historical estimate, or explicitly limited dated-obligations scenario.
 
     Caller balance is for existing coach APIs only; known account cash caps it.
@@ -128,10 +128,15 @@ def financial_runway(db, user_id, *, as_of=None, horizon_days=30,
             estimate_income = money(history.baseline["average_monthly_income"] * fraction)
             estimate_expense = money(history.baseline["average_monthly_expenses"] * fraction)
             scheduled = sum((v.reserved_amount for item, v in values if item.kind == "expense" and start <= item.due_date <= stop), ZERO)
-            reserve = max(estimate_expense, scheduled)
+            extra_income = extra_expense = ZERO
+            if scenario_adjustments is not None:
+                income_delta, expense_delta, extra_income, extra_expense = scenario_adjustments(start, stop)
+                estimate_income = money(max(ZERO, estimate_income + income_delta))
+                estimate_expense = money(max(ZERO, estimate_expense + expense_delta))
+            reserve = max(estimate_expense, scheduled) + extra_expense
             floor = money(current - reserve)
             minimum = min(minimum, floor)
-            current = money(floor + estimate_income)
+            current = money(floor + estimate_income + extra_income)
             if first_period is None and floor < ZERO:
                 first_period = Period(kind="estimated_shortfall_window", start=start, end=stop, is_complete=False, label="expenses before estimated income")
             checkpoints.append(dict(date=stop, projected_balance=current, minimum_balance=floor,

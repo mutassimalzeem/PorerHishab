@@ -61,6 +61,12 @@ def answer_question(db, user_id, payload, as_of=None):
         result.update(answer=text, status="insufficient_data")
         return result
 
+    if question.startswith("what if"):
+        from app.services.finance.scenario_intent import parse_scenario_intent
+        intent=parse_scenario_intent(payload.question)
+        result.update(intent="scenario",status=intent["status"],calculation=intent,answer=intent["clarification"],assumptions=[],limitations=["No financial data was changed. Confirm structured assumptions in /scenarios."])
+        return result
+
     if any(word in question for word in ("afford", "purchase", "buy ")):
         if payload.purchase_amount is None or payload.starting_balance is None or payload.safety_buffer is None:
             return insufficient("Please supply purchase_amount, a confirmed starting_balance, and safety_buffer. I cannot infer your available balance.")

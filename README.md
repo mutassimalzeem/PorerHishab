@@ -491,6 +491,7 @@ Live embedding smoke requires `RUN_LIVE_AI_TESTS=1`. The deterministic quality g
 | [AI-15O financial health](docs/ai-15o-financial-health.md) | Deterministic scores, coverage, evidence, versioned history and descriptive trends |
 
 | [AI-15P goal planning](docs/ai-15p-goal-planning.md) | Conservative capacity, accepted plans, milestones, progress and revisions |
+| [AI-15Q decision simulator](docs/ai-15q-decision-simulator.md) | Isolated what-if assumptions, reproducible baseline comparisons, goal and purchase scenarios |
 
 ## Author
 
