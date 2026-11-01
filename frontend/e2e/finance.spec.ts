@@ -1194,9 +1194,7 @@ test("proactive financial alerts center navigation, interaction, and localizatio
   page,
 }) => {
   await page.addInitScript(() => {
-    try {
-      localStorage.setItem("porerhishab.language", "en");
-    } catch {}
+    window.localStorage.setItem("porerhishab.language", "en");
   });
   await connect(page);
   const alertsData = {
