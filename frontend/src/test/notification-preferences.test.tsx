@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NotificationPreferences } from "../components/NotificationPreferences";
 import { api } from "../lib/api";
@@ -139,3 +139,4 @@ it("renders properly in Bengali when language is changed", async () => {
   expect(screen.getByLabelText("ইমেইল বিজ্ঞপ্তি")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "পছন্দসমূহ সংরক্ষণ করুন" })).toBeInTheDocument();
 });
+
