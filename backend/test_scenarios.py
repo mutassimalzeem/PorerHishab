@@ -104,7 +104,7 @@ def test_api_owner_scope_and_archive(data):
             app.dependency_overrides[get_current_user]=lambda:users[1]
             for suffix in ["","/result","/comparison"]:assert client.get(f"/finance/scenarios/{row.id}{suffix}").status_code==404
             for suffix,body in [("/changes",{"changes":[]}),("/simulate",{"idempotency_key":"foreign-run"}),("/archive",{}),("/save",{})]:assert client.post(f"/finance/scenarios/{row.id}{suffix}",json=body).status_code==404
-            assert client.get("/finance/scenarios").json()==[]
+            assert client.get("/finance/scenarios").json()["items"]==[]
             app.dependency_overrides[get_current_user]=lambda:users[0]
             c=change("goal_target_amount_adjustment","1",target_id=foreign.id)
             assert client.post(f"/finance/scenarios/{row.id}/changes",json={"changes":[c.model_dump(mode="json")]}).status_code==404

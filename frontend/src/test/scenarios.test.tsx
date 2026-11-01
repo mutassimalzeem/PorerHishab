@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { Scenarios } from "../pages/Scenarios";
 import { setLanguage } from "../lib/locale";
 import { scenarioFixture, scenarioResultFixture } from "./scenarios.fixture";
@@ -19,7 +20,7 @@ beforeEach(() => {
         path.endsWith("/simulate")
           ? scenarioResultFixture
           : path.endsWith("/scenarios") && !init?.method
-            ? [scenarioFixture]
+            ? { items: [scenarioFixture], total: 1, limit: 12, offset: 0 }
             : path.endsWith("/archive")
               ? { ...scenarioFixture, status: "archived" }
               : scenarioFixture;
@@ -36,7 +37,11 @@ afterEach(() => {
 });
 it("creates, edits, runs, saves, and archives without client arithmetic", async () => {
   const user = userEvent.setup();
-  render(<Scenarios />);
+  render(
+    <MemoryRouter>
+      <Scenarios />
+    </MemoryRouter>,
+  );
   await screen.findByRole("table");
   await user.type(screen.getByLabelText("Name"), "Rent test");
   await user.click(screen.getByRole("button", { name: "Create scenario" }));
@@ -55,7 +60,11 @@ it("creates, edits, runs, saves, and archives without client arithmetic", async 
 });
 it("renders Bengali labels and unknown data", async () => {
   setLanguage("bn");
-  render(<Scenarios />);
+  render(
+    <MemoryRouter>
+      <Scenarios />
+    </MemoryRouter>,
+  );
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
     "\u09af\u09a6\u09bf",
   );
@@ -63,7 +72,11 @@ it("renders Bengali labels and unknown data", async () => {
 });
 it("shows failures and retry", async () => {
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
-  render(<Scenarios />);
+  render(
+    <MemoryRouter>
+      <Scenarios />
+    </MemoryRouter>,
+  );
   expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
   expect(
     screen.getAllByRole("button", { name: "Try again" }).length,

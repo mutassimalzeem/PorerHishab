@@ -4410,3 +4410,14 @@ html[lang="bn"] .workspace-label {
   align-items: center;
   gap: 0.5rem;
 }
+
+/* Scenario alternatives stay separate from the real-finance baseline. */
+.scenario-library-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; margin: 1rem 0; }
+.scenario-card { display: flex; flex-direction: column; gap: .65rem; padding: 1.1rem; border: 1px solid var(--line, #d9ded8); border-radius: 14px; background: var(--surface, #fff); overflow-wrap: anywhere; min-width: 0; }
+.scenario-card h3, .scenario-card p { margin: 0; }
+.scenario-card .form-actions { flex-wrap: wrap; }
+.scenario-cell-label { display: block; font-size: .78rem; margin: .5rem 0 .25rem; }
+.scenario-comparison-table td { min-width: 190px; vertical-align: top; }
+.scenario-comparison-table td > span { display: block; white-space: normal; }
+.scenario-comparison-table caption { text-align: left; padding: .7rem 0; }
+.scenario-notice { border-left: 3px solid #b27b38; padding: .6rem .8rem; }

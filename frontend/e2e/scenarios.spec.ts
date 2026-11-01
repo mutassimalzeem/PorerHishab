@@ -24,7 +24,15 @@ test("scenario workspace isolates hypothetical changes and supports save/archive
       body = { ...scenarioResultFixture, assumptions: scenario.changes };
     else if (path === "/finance/scenarios") {
       if (method === "POST") created = true;
-      body = method === "POST" ? scenario : created ? [scenario] : [];
+      body =
+        method === "POST"
+          ? scenario
+          : {
+              items: created ? [scenario] : [],
+              total: created ? 1 : 0,
+              limit: 12,
+              offset: 0,
+            };
     } else if (path.endsWith("/changes")) {
       scenario = {
         ...scenario,

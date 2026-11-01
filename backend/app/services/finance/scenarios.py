@@ -5,7 +5,7 @@ No provider is involved in interpreting or calculating scenario results.
 """
 from calendar import monthrange
 from copy import deepcopy
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from decimal import Decimal as D, ROUND_HALF_UP
 from hashlib import sha256
 import json
@@ -18,6 +18,7 @@ from app.services.finance.account_position import get_account_overview
 from app.services.finance.runway import financial_runway
 from app.services.intelligence.snapshot import monthly_history
 from app.services.intelligence.periods import today_dhaka
+from app.repositories import scenarios as repository
 
 VERSION="ai-15q-v1"
 ZERO=D("0.00")
@@ -34,20 +35,29 @@ LIMITATIONS=[
 ]
 
 def owned(db,uid,sid):
-    row=db.query(Scenario).filter_by(user_id=uid,id=sid).one_or_none()
+    row=repository.owned(db,uid,sid)
     if row is None: raise HTTPException(404,"Scenario not found")
     return row
 
 def changes_for(db,row):
-    return [ScenarioChange.model_validate(c) for c in db.query(ScenarioChangeRecord).filter_by(scenario_id=row.id).order_by(ScenarioChangeRecord.id)]
+    return [ScenarioChange.model_validate(c) for c in repository.changes(db,row.user_id,[row.id])]
 
-def read(db,row):
-    return ScenarioRead.model_validate({**{k:getattr(row,k) for k in ScenarioRead.model_fields if k!="changes"},"changes":changes_for(db,row)})
+_UNSET=object()
+def read(db,row,*,latest=_UNSET,changes=None):
+    if latest is _UNSET:latest=repository.latest_runs(db,row.user_id,[row.id]).get(row.id)
+    extra={"latest_run_id":latest.id if latest else None,"latest_run_at":latest.created_at if latest else None,
+        "result_revision":latest.request.get("revision") if latest else None,
+        "result_calculation_version":latest.calculation_version if latest else None,
+        "result_state":"missing" if latest is None else "current" if latest.request.get("revision")==row.revision and latest.calculation_version==row.calculation_version else "stale"}
+    fields={k:getattr(row,k) for k in ScenarioRead.model_fields if k not in {"changes",*extra}}
+    return ScenarioRead.model_validate({**fields,**extra,"changes":changes if changes is not None else changes_for(db,row)})
+
 
 def editable(row):
     if row.status=="archived": raise HTTPException(409,"Archived scenarios are read-only")
 
 def create(db,uid,payload):
+    planning.lock_user(db,uid)
     row=Scenario(user_id=uid,**payload.model_dump());db.add(row);db.commit();return read(db,row)
 
 def replace_changes(db,uid,sid,payload):
@@ -65,11 +75,17 @@ def replace_changes(db,uid,sid,payload):
         if change.target_date and change.target_date<change.effective_date: raise HTTPException(422,"Goal deadline precedes its effective date")
     db.query(ScenarioChangeRecord).filter_by(scenario_id=row.id).delete()
     for change in payload.changes: db.add(ScenarioChangeRecord(scenario_id=row.id,**change.model_dump()))
-    row.revision+=1;row.status="draft";db.commit();return read(db,row)
+    row.revision+=1;row.status="draft";row.updated_at=datetime.now(timezone.utc);db.commit();return read(db,row)
 
 def set_status(db,uid,sid,status):
-    planning.lock_user(db,uid);row=owned(db,uid,sid);editable(row)
-    row.status=status;db.commit();return read(db,row)
+    planning.lock_user(db,uid);row=owned(db,uid,sid)
+    if row.status==status:return read(db,row)
+    editable(row)
+    now=datetime.now(timezone.utc);row.status=status;row.updated_at=now
+    if status=="saved":row.saved_at=now
+    if status=="archived":row.archived_at=now
+    db.commit();return read(db,row)
+
 
 def compare(metric,before,after,reason=None,*,unavailable=False,percentage=True):
     status="not_available_for_scenario" if unavailable else "insufficient_data" if before is None or after is None else "available"
@@ -216,10 +232,9 @@ def calculate(db,uid,sid,changes,request,*,as_of=None):
 
 def result_for(db,uid,sid,run_id=None):
     owned(db,uid,sid)
-    query=db.query(ScenarioRun).filter_by(user_id=uid,scenario_id=sid)
-    row=query.filter_by(id=run_id).one_or_none() if run_id else query.order_by(ScenarioRun.id.desc()).first()
+    row=repository.run(db,uid,sid,run_id)
     if row is None:raise HTTPException(404,"No scenario result yet")
-    metrics=db.query(ScenarioComparison).filter_by(run_id=row.id).order_by(ScenarioComparison.id).all()
+    metrics=repository.comparisons(db,uid,row.id)
     return ScenarioResult.model_validate({**row.evidence["result"],"run_id":row.id,"comparisons":[{k:getattr(m,k) for k in MetricComparison.model_fields} for m in metrics]})
 
 def simulate(db,uid,sid,payload,*,as_of=None):
@@ -236,5 +251,5 @@ def simulate(db,uid,sid,payload,*,as_of=None):
         evidence=json.loads(json.dumps({**evidence,"result":result.model_dump(mode="json",exclude={"comparisons","run_id"})},default=str)))
     db.add(run);db.flush()
     for metric in result.comparisons:db.add(ScenarioComparison(run_id=run.id,**metric.model_dump()))
-    row.base_snapshot_reference=result.baseline_snapshot_reference;row.calculation_version=VERSION
+    row.base_snapshot_reference=result.baseline_snapshot_reference;row.calculation_version=VERSION;row.updated_at=datetime.now(timezone.utc)
     db.commit();return result_for(db,uid,sid,run.id)

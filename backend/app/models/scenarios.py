@@ -1,18 +1,22 @@
 """Typed scenario assumptions and immutable, versioned comparison rows."""
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 class Scenario(Base):
     __tablename__="financial_scenarios"
-    __table_args__=(CheckConstraint("status IN ('draft','saved','archived')",name="ck_scenario_status"),)
+    __table_args__=(CheckConstraint("status IN ('draft','saved','archived')",name="ck_scenario_status"), Index("ix_scenario_library_owner_status_updated", "user_id", "status", "updated_at", "id"))
     id: Mapped[int]=mapped_column(primary_key=True)
     user_id: Mapped[int]=mapped_column(ForeignKey("users.id",ondelete="CASCADE"),index=True)
     name: Mapped[str]=mapped_column(String(120))
     description: Mapped[str]=mapped_column(String(1000),default="")
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc))
+    updated_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc))
+    saved_at: Mapped[datetime | None]=mapped_column(DateTime(timezone=True))
+    archived_at: Mapped[datetime | None]=mapped_column(DateTime(timezone=True))
+    source_scenario_id: Mapped[int | None]=mapped_column(ForeignKey("financial_scenarios.id",ondelete="SET NULL"))
     base_snapshot_reference: Mapped[str | None]=mapped_column(String(64))
     status: Mapped[str]=mapped_column(String(16),default="draft")
     calculation_version: Mapped[str]=mapped_column(String(32),default="ai-15q-v1")
