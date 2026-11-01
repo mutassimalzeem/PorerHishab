@@ -1,18 +1,24 @@
 """Authenticated, owner-scoped scenario workspace endpoints."""
-from fastapi import APIRouter, Depends
+from typing import Literal
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.models.scenarios import Scenario
 from app.schemas.scenarios import ScenarioCreate, ChangesRequest, SimulationRequest, ScenarioRead, ScenarioResult, MetricComparison
+from app.schemas.scenarios import ScenarioLibraryPage, ScenarioMetadataUpdate, ScenarioCompareRequest, ScenarioLibraryComparison
+from app.services.finance import scenario_library as library
 from app.api.goal_planning import mutate
 from app.services.finance import scenarios as service
 router=APIRouter(prefix="/finance/scenarios",tags=["scenarios"])
 
-@router.get("",response_model=list[ScenarioRead])
-def listing(current:User=Depends(get_current_user),db:Session=Depends(get_db)):
-    return [service.read(db,r) for r in db.query(Scenario).filter_by(user_id=current.id).order_by(Scenario.id.desc()).limit(100)]
+@router.get("",response_model=ScenarioLibraryPage)
+def listing(status:Literal["draft","saved","archived","active","all"]="saved",search:str=Query("",max_length=120),limit:int=Query(20,ge=1,le=50),offset:int=Query(0,ge=0),current:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    return library.listing(db,current.id,status=status,search=search,limit=limit,offset=offset)
+
+@router.post("/compare",response_model=ScenarioLibraryComparison)
+def compare(payload:ScenarioCompareRequest,current:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    return mutate(db,lambda:library.compare(db,current.id,payload))
 
 @router.post("",response_model=ScenarioRead)
 def create(payload:ScenarioCreate,current:User=Depends(get_current_user),db:Session=Depends(get_db)):
@@ -50,3 +56,16 @@ def save(scenario_id:int,current:User=Depends(get_current_user),db:Session=Depen
 @router.post("/{scenario_id}/archive",response_model=ScenarioRead)
 def archive(scenario_id:int,current:User=Depends(get_current_user),db:Session=Depends(get_db)):
     return mutate(db,lambda:service.set_status(db,current.id,scenario_id,"archived"))
+
+
+@router.patch("/{scenario_id}",response_model=ScenarioRead)
+def rename(scenario_id:int,payload:ScenarioMetadataUpdate,current:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    return mutate(db,lambda:library.update_metadata(db,current.id,scenario_id,payload))
+
+@router.post("/{scenario_id}/duplicate",response_model=ScenarioRead)
+def duplicate(scenario_id:int,current:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    return mutate(db,lambda:library.duplicate(db,current.id,scenario_id))
+
+@router.post("/{scenario_id}/restore",response_model=ScenarioRead)
+def restore(scenario_id:int,current:User=Depends(get_current_user),db:Session=Depends(get_db)):
+    return mutate(db,lambda:library.restore(db,current.id,scenario_id))

@@ -1,8 +1,8 @@
 """Strict what-if inputs. Amount adjustments are signed deltas; goal amounts are replacements."""
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from app.schemas.goal_planning import Key
 
 ChangeType = Literal["income_adjustment", "recurring_expense_adjustment", "one_time_expense", "one_time_income", "savings_contribution_adjustment", "goal_target_date_adjustment", "goal_target_amount_adjustment", "goal_commitment_adjustment"]
@@ -40,6 +40,12 @@ class ScenarioChange(BaseModel):
 class ScenarioCreate(BaseModel):
     model_config=ConfigDict(extra="forbid")
     name: str = Field(min_length=1,max_length=120)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def normalize_name(cls, value):
+        return " ".join(value.split()) if isinstance(value,str) else value
+
     description: str = Field("",max_length=1000)
 
 class ChangesRequest(BaseModel):
@@ -59,11 +65,25 @@ class ScenarioRead(BaseModel):
     name: str
     description: str
     created_at: datetime
+    updated_at: datetime
+    saved_at: datetime | None = None
+    archived_at: datetime | None = None
+    source_scenario_id: int | None = None
+    latest_run_id: int | None = None
+    latest_run_at: datetime | None = None
+    result_revision: int | None = None
+    result_calculation_version: str | None = None
+    result_state: Literal["missing", "current", "stale"] = "missing"
     base_snapshot_reference: str | None
     status: Literal["draft","saved","archived"]
     calculation_version: str
     revision: int
     changes: list[ScenarioChange]
+
+    @field_validator("created_at","updated_at","saved_at","archived_at","latest_run_at")
+    @classmethod
+    def utc_timestamps(cls,value):
+        return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
 
 class MetricComparison(BaseModel):
     metric: str
@@ -89,4 +109,63 @@ class ScenarioResult(BaseModel):
     assumptions: list[ScenarioChange]
     limitations: list[str]
     affordability: Literal["affordable","affordable_with_adjustments","not_affordable","insufficient_data"] | None=None
+    explanation: str="This is a scenario based on the assumptions you selected, not a guaranteed future outcome."
+
+
+class ScenarioMetadataUpdate(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    name: str | None=Field(None,min_length=1,max_length=120)
+    description: str | None=Field(None,max_length=1000)
+
+    @field_validator("name",mode="before")
+    @classmethod
+    def normalize_name(cls,value):
+        return " ".join(value.split()) if isinstance(value,str) else value
+
+    @model_validator(mode="after")
+    def nonempty(self):
+        if not self.model_fields_set or any(getattr(self,k) is None for k in self.model_fields_set):
+            raise ValueError("Supply a non-null name or description; use an empty description to clear it")
+        return self
+
+class ScenarioLibraryPage(BaseModel):
+    items: list[ScenarioRead]
+    total: int
+    limit: int
+    offset: int
+
+class ScenarioCompareRequest(BaseModel):
+    model_config=ConfigDict(extra="forbid")
+    scenario_ids: list[int]=Field(min_length=2,max_length=5)
+
+    @field_validator("scenario_ids")
+    @classmethod
+    def distinct_positive(cls,values):
+        if len(set(values))!=len(values) or any(v<=0 for v in values):raise ValueError("Select two to five distinct positive scenario IDs")
+        return values
+
+class AssumptionComparison(BaseModel):
+    change: ScenarioChange
+    shared: bool
+
+class ScenarioCompareColumn(BaseModel):
+    scenario: ScenarioRead
+    result: ScenarioResult | None
+    assumptions: list[AssumptionComparison]
+
+class ScenarioMetricCell(BaseModel):
+    scenario_id: int
+    comparison: MetricComparison | None
+    status: Literal["available","insufficient_data","not_available_for_scenario"]
+    reason: str | None=None
+
+class ScenarioMetricRow(BaseModel):
+    metric: str
+    cells: list[ScenarioMetricCell]
+
+class ScenarioLibraryComparison(BaseModel):
+    columns: list[ScenarioCompareColumn]
+    metrics: list[ScenarioMetricRow]
+    calculation_version: str | None
+    warnings: list[Literal["different_baselines","different_snapshot_dates","different_horizons","different_schedule_confirmations","missing_results","stale_results"]]
     explanation: str="This is a scenario based on the assumptions you selected, not a guaranteed future outcome."

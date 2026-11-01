@@ -492,6 +492,7 @@ Live embedding smoke requires `RUN_LIVE_AI_TESTS=1`. The deterministic quality g
 
 | [AI-15P goal planning](docs/ai-15p-goal-planning.md) | Conservative capacity, accepted plans, milestones, progress and revisions |
 | [AI-15Q decision simulator](docs/ai-15q-decision-simulator.md) | Isolated what-if assumptions, reproducible baseline comparisons, goal and purchase scenarios |
+| [AI-15R scenario library](docs/ai-15r-scenario-library.md) | Searchable saved alternatives, duplication, lifecycle metadata, and version-aware stored-result comparisons |
 
 ## Author
 

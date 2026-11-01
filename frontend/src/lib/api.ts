@@ -168,6 +168,26 @@ export function query(
   return `?${params}`;
 }
 export const api = {
+  scenarioLibrary: (status = "saved", search = "", offset = 0) =>
+    request<ApiSchemas["ScenarioLibraryPage"]>(
+      `/finance/scenarios${query({ status, search, limit: 12, offset })}`,
+    ),
+  renameScenario: (id: number, body: ApiSchemas["ScenarioMetadataUpdate"]) =>
+    request<ApiSchemas["ScenarioRead"]>(`/finance/scenarios/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  duplicateScenario: (id: number) =>
+    post<ApiSchemas["ScenarioRead"]>(`/finance/scenarios/${id}/duplicate`, {}),
+  restoreScenario: (id: number) =>
+    post<ApiSchemas["ScenarioRead"]>(`/finance/scenarios/${id}/restore`, {}),
+  archiveScenario: (id: number) =>
+    post<ApiSchemas["ScenarioRead"]>(`/finance/scenarios/${id}/archive`, {}),
+  compareScenarios: (ids: number[]) =>
+    post<ApiSchemas["ScenarioLibraryComparison"]>(
+      "/finance/scenarios/compare",
+      { scenario_ids: ids },
+    ),
   planningGoal: (id: number) =>
     request<ApiSchemas["GoalRead"]>(`/finance/goals/${id}`),
   planningOverview: (confirmed = false) =>

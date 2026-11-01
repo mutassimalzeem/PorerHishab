@@ -37,6 +37,7 @@ import { Accounts } from "./pages/Accounts";
 import { Cashflow } from "./pages/Cashflow";
 import { Transactions } from "./pages/Transactions";
 import { Plans } from "./pages/Plans";
+import { ScenarioComparison } from "./pages/ScenarioComparison";
 import { Scenarios } from "./pages/Scenarios";
 import { FinancialHealth } from "./pages/FinancialHealth";
 import { Insights } from "./pages/Insights";
@@ -76,7 +77,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   }, [refreshUnread, location.pathname]);
 
   useEffect(() => {
-    document.title = `${uiLabel(navigation.find((n) => n.to === location.pathname)?.label || t("Settings"))} | PorerHishab`;
+    document.title = `${uiLabel((location.pathname === "/scenarios/compare" ? "Compare scenarios" : navigation.find((n) => n.to === location.pathname)?.label) || t("Settings"))} | PorerHishab`;
   }, [location.pathname, language]);
   useEffect(() => {
     document.getElementById("main")?.focus();
@@ -261,6 +262,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             <Route path="/cashflow" element={<Cashflow />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/plans" element={<Plans />} />
+            <Route path="/scenarios/compare" element={<ScenarioComparison />} />
             <Route path="/scenarios" element={<Scenarios />} />
             <Route path="/health" element={<FinancialHealth />} />
             <Route path="/insights" element={<Insights />} />
