@@ -61,8 +61,11 @@ class NotificationPreference(Base):
     quiet_hours_end: Mapped[str | None] = mapped_column(String(5), default="07:00", nullable=True)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Dhaka", nullable=False)
 
-    # Frequency mode
+    # Frequency mode and digest controls
     frequency_mode: Mapped[str] = mapped_column(String(20), default="immediate", nullable=False)
+    immediate_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    daily_digest_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    daily_digest_time: Mapped[str | None] = mapped_column(String(5), default="20:00", nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -89,4 +92,7 @@ class NotificationPreference(Base):
         kwargs.setdefault("quiet_hours_end", "07:00")
         kwargs.setdefault("timezone", "Asia/Dhaka")
         kwargs.setdefault("frequency_mode", "immediate")
+        kwargs.setdefault("immediate_enabled", True)
+        kwargs.setdefault("daily_digest_enabled", False)
+        kwargs.setdefault("daily_digest_time", "20:00")
         super().__init__(**kwargs)

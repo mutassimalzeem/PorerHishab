@@ -22,13 +22,6 @@ class NotificationDelivery(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "user_id",
-            "alert_id",
-            "channel",
-            "notification_event",
-            name="uq_notification_deliveries_logical_identity",
-        ),
-        UniqueConstraint(
             "idempotency_key",
             name="uq_notification_deliveries_idempotency_key",
         ),
@@ -41,11 +34,12 @@ class NotificationDelivery(Base):
             name="ck_notification_deliveries_status",
         ),
         CheckConstraint(
-            "notification_event IN ('ALERT_CREATED', 'ALERT_ESCALATED', 'ALERT_RECURRED')",
+            "notification_event IN ('ALERT_CREATED', 'ALERT_ESCALATED', 'ALERT_RECURRED', 'DAILY_DIGEST')",
             name="ck_notification_deliveries_event",
         ),
         Index("ix_notification_deliveries_user_id", "user_id"),
         Index("ix_notification_deliveries_alert_id", "alert_id"),
+        Index("ix_notification_deliveries_digest_id", "digest_id"),
         Index("ix_notification_deliveries_user_status", "user_id", "status"),
         Index("ix_notification_deliveries_claim", "status", "next_attempt_at"),
     )
@@ -55,12 +49,17 @@ class NotificationDelivery(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    alert_id: Mapped[int] = mapped_column(
+    alert_id: Mapped[int | None] = mapped_column(
         ForeignKey("financial_alerts.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+    )
+    digest_id: Mapped[int | None] = mapped_column(
+        ForeignKey("notification_digests.id", ondelete="CASCADE"),
+        nullable=True,
     )
     channel: Mapped[str] = mapped_column(String(20), nullable=False)
     notification_event: Mapped[str] = mapped_column(String(30), nullable=False)
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(160), nullable=False)
 
     status: Mapped[str] = mapped_column(String(20), default="PENDING", nullable=False)

@@ -22,8 +22,11 @@ class NotificationPreferenceBase(BaseModel):
     quiet_hours_end: str | None = Field(default="07:00")
     timezone: str = "Asia/Dhaka"
     frequency_mode: FrequencyMode = "immediate"
+    immediate_enabled: bool = True
+    daily_digest_enabled: bool = False
+    daily_digest_time: str | None = Field(default="20:00")
 
-    @field_validator("quiet_hours_start", "quiet_hours_end")
+    @field_validator("quiet_hours_start", "quiet_hours_end", "daily_digest_time")
     @classmethod
     def validate_time_format(cls, v: str | None) -> str | None:
         if v is not None and not TIME_PATTERN.match(v):
@@ -51,8 +54,11 @@ class NotificationPreferenceUpdate(BaseModel):
     quiet_hours_end: str | None = None
     timezone: str | None = None
     frequency_mode: FrequencyMode | None = None
+    immediate_enabled: bool | None = None
+    daily_digest_enabled: bool | None = None
+    daily_digest_time: str | None = None
 
-    @field_validator("quiet_hours_start", "quiet_hours_end")
+    @field_validator("quiet_hours_start", "quiet_hours_end", "daily_digest_time")
     @classmethod
     def validate_time_format(cls, v: str | None) -> str | None:
         if v is not None and not TIME_PATTERN.match(v):

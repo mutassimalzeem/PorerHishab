@@ -14,6 +14,9 @@ export const mockDefaultPreferences: NotificationPreference = {
   quiet_hours_end: "07:00",
   timezone: "Asia/Dhaka",
   frequency_mode: "immediate",
+  immediate_enabled: true,
+  daily_digest_enabled: false,
+  daily_digest_time: "20:00",
   created_at: "2026-11-01T08:00:00Z",
   updated_at: "2026-11-01T08:00:00Z",
 };
@@ -32,6 +35,9 @@ export const mockCustomPreferences: NotificationPreference = {
   quiet_hours_end: "08:00",
   timezone: "Asia/Dhaka",
   frequency_mode: "daily_digest",
+  immediate_enabled: false,
+  daily_digest_enabled: true,
+  daily_digest_time: "09:00",
   created_at: "2026-11-01T08:00:00Z",
   updated_at: "2026-11-01T09:00:00Z",
 };

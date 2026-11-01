@@ -120,7 +120,10 @@ def evaluate_eligibility(
     Policy:
     - Already sent events are suppressed (idempotency safeguard).
     - Frequency 'off' suppresses the channel.
-    - Frequency 'daily_digest' defers immediate delivery.
+    - Legacy frequency mode 'daily_digest' defers immediate delivery.
+    - Immediate alerts toggle (immediate_enabled):
+      When disabled, non-critical alerts are frequency-suppressed.
+      CRITICAL alerts bypass and remain immediately eligible for financial safety.
     - Channel disabled suppresses delivery.
     - Email requires explicit consent.
     - Severity below threshold suppresses delivery.
@@ -129,6 +132,7 @@ def evaluate_eligibility(
     now = now_utc or datetime.now(timezone.utc)
     channel_norm = channel.lower()
     severity_norm = alert_severity.lower()
+    is_critical = severity_norm == "critical"
 
     if already_sent:
         return EligibilityResult(
@@ -144,7 +148,15 @@ def evaluate_eligibility(
             reason=EligibilityReason.FREQUENCY_SUPPRESSED,
         )
     if freq == "daily_digest":
-        # Deferred for digest engine; immediate dispatch is suppressed
+        return EligibilityResult(
+            is_eligible=False,
+            reason=EligibilityReason.FREQUENCY_SUPPRESSED,
+        )
+
+    # Immediate alerts preference:
+    # Non-critical alerts are suppressed if immediate_enabled is False.
+    # CRITICAL alerts bypass this preference so critical financial safety warnings reach the user.
+    if not preference.immediate_enabled and not is_critical:
         return EligibilityResult(
             is_eligible=False,
             reason=EligibilityReason.FREQUENCY_SUPPRESSED,
@@ -189,7 +201,6 @@ def evaluate_eligibility(
     # Policy: INFO and WARNING (low, medium, warning, high) respect quiet hours.
     # CRITICAL alerts bypass quiet hours to guarantee user safety.
     if preference.quiet_hours_enabled:
-        is_critical = severity_norm == "critical"
         if not is_critical:
             in_quiet, next_eligible = calculate_quiet_hours_window(
                 now,

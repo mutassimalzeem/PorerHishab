@@ -140,3 +140,34 @@ it("renders properly in Bengali when language is changed", async () => {
   expect(screen.getByRole("button", { name: "পছন্দসমূহ সংরক্ষণ করুন" })).toBeInTheDocument();
 });
 
+it("toggles immediate alerts and daily digest with digest time input", async () => {
+  vi.spyOn(api, "notificationPreferences").mockResolvedValue(mockDefaultPreferences);
+  const updateSpy = vi
+    .spyOn(api, "updateNotificationPreferences")
+    .mockResolvedValue(mockCustomPreferences);
+
+  render(<NotificationPreferences />);
+
+  expect(await screen.findByRole("heading", { name: "Notification preferences" })).toBeInTheDocument();
+
+  // Daily digest checkbox reveals digest time
+  expect(screen.queryByLabelText("Digest time:")).not.toBeInTheDocument();
+  const digestCheckbox = screen.getByLabelText("Receive one daily summary instead of multiple emails");
+  await userEvent.click(digestCheckbox);
+
+  expect(screen.getByLabelText("Digest time:")).toBeInTheDocument();
+
+  // Toggle immediate alerts
+  const immediateCheckbox = screen.getByLabelText("Receive important financial alerts as they happen");
+  await userEvent.click(immediateCheckbox);
+
+  const saveButton = screen.getByRole("button", { name: "Save preferences" });
+  await userEvent.click(saveButton);
+
+  expect(updateSpy).toHaveBeenCalledWith(
+    expect.objectContaining({
+      immediate_enabled: false,
+      daily_digest_enabled: true,
+    })
+  );
+});

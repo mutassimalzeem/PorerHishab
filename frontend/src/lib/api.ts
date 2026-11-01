@@ -36,6 +36,9 @@ import type {
   NotificationPreference,
   NotificationPreferenceUpdate,
   NotificationDeliveryList,
+  NotificationHistoryList,
+  NotificationDigest,
+  DigestEvaluation,
 } from "../domain";
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 let tokens: Tokens | null = null;
@@ -333,4 +336,14 @@ export const api = {
     request<NotificationDeliveryList>(
       `/finance/notification-deliveries${query(filters)}`,
     ),
+  notificationHistory: (
+    filters: Record<string, string | number | boolean | undefined> = {},
+  ) =>
+    request<NotificationHistoryList>(
+      `/finance/notifications/history${query(filters)}`,
+    ),
+  evaluateDailyDigest: () =>
+    post<DigestEvaluation>("/finance/notifications/digest/evaluate", {}),
+  userDigests: (limit: number = 10) =>
+    request<NotificationDigest[]>(`/finance/notifications/digests?limit=${limit}`),
 };
