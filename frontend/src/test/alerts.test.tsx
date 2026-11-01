@@ -232,3 +232,83 @@ it("renders properly in Bengali", async () => {
   expect(screen.getByRole("tab", { name: t("All") })).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: t("Unread") })).toBeInTheDocument();
 });
+
+it("switches to notification history view and renders deliveries", async () => {
+  vi.spyOn(api, "alerts").mockResolvedValue(mockAlertList);
+  const historySpy = vi.spyOn(api, "notificationHistory").mockResolvedValue({
+    items: [
+      {
+        id: 1,
+        user_id: 101,
+        channel: "email",
+        notification_event: "DAILY_DIGEST",
+        status: "SENT",
+        alert_id: null,
+        digest_id: 10,
+        delivered_at: "2026-11-01T20:00:00Z",
+        created_at: "2026-11-01T20:00:00Z",
+        failure_reason: null,
+      },
+      {
+        id: 2,
+        user_id: 101,
+        channel: "in_app",
+        notification_event: "ALERT_CREATED",
+        status: "SENT",
+        alert_id: 42,
+        digest_id: null,
+        delivered_at: "2026-11-01T10:00:00Z",
+        created_at: "2026-11-01T10:00:00Z",
+        failure_reason: null,
+      },
+    ],
+    total: 2,
+    limit: 50,
+    offset: 0,
+  });
+
+  renderAlerts();
+
+  const historyTab = await screen.findByRole("button", {
+    name: t("Notification history"),
+  });
+  await userEvent.click(historyTab);
+
+  expect(historySpy).toHaveBeenCalled();
+  expect(await screen.findByText(t("Daily digest"))).toBeInTheDocument();
+  expect(screen.getByText("ALERT_CREATED")).toBeInTheDocument();
+});
+
+it("evaluates daily digest on demand from notification history view", async () => {
+  vi.spyOn(api, "alerts").mockResolvedValue(mockAlertList);
+  vi.spyOn(api, "notificationHistory").mockResolvedValue({
+    items: [],
+    total: 0,
+    limit: 50,
+    offset: 0,
+  });
+  const digestEvalSpy = vi.spyOn(api, "evaluateDailyDigest").mockResolvedValue({
+    status: "generated",
+    digest_id: 12,
+    item_count: 2,
+    local_date: "2026-11-01",
+    message: "Daily digest generated with 2 alerts.",
+  });
+
+  renderAlerts();
+
+  const historyTab = await screen.findByRole("button", {
+    name: t("Notification history"),
+  });
+  await userEvent.click(historyTab);
+
+  const evalDigestBtn = await screen.findByRole("button", {
+    name: t("Evaluate daily digest"),
+  });
+  await userEvent.click(evalDigestBtn);
+
+  expect(digestEvalSpy).toHaveBeenCalled();
+  expect(
+    await screen.findByText("Daily digest generated with 2 alerts."),
+  ).toBeInTheDocument();
+});

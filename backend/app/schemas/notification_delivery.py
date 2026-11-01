@@ -40,7 +40,7 @@ class NotificationDeliveryEvent(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    alert_id: int
+    alert_id: int | None = None
     user_id: int
     event_type: str
     channel: NotificationChannel
@@ -60,9 +60,11 @@ class NotificationDeliveryResponse(BaseModel):
 
     id: int
     user_id: int
-    alert_id: int
+    alert_id: int | None = None
+    digest_id: int | None = None
     channel: str
     notification_event: str
+    occurrence_count: int = 1
     idempotency_key: str
     status: str
     attempt_count: int
@@ -84,6 +86,34 @@ class NotificationDeliveryListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     items: list[NotificationDeliveryResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class NotificationHistoryItemResponse(BaseModel):
+    """User-scoped notification history record showing delivery attempt outcomes."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    channel: str
+    notification_event: str
+    status: str
+    alert_id: int | None = None
+    digest_id: int | None = None
+    delivered_at: datetime | None = None
+    created_at: datetime
+    failure_reason: str | None = None
+
+
+class NotificationHistoryListResponse(BaseModel):
+    """Paginated list of user-scoped notification history."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[NotificationHistoryItemResponse]
     total: int
     limit: int
     offset: int

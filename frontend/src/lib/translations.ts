@@ -29,6 +29,18 @@ export const bn = {
   "Off": "বন্ধ",
   "Daily digest is planned for a future update; immediate delivery is active.":
     "দৈনিক সারসংক্ষেপ ভবিষ্যৎ আপডেটের জন্য পরিকল্পিত; তাৎক্ষণিক বিতরণ সক্রিয় রয়েছে।",
+  "Immediate alerts": "জরুরি বিজ্ঞপ্তি",
+  "Receive important financial alerts as they happen": "গুরুত্বপূর্ণ আর্থিক সতর্কতা ঘটার সাথে সাথেই গ্রহণ করুন",
+  "Critical financial safety alerts may still be delivered immediately even if paused.": "জরুরি সুরক্ষার স্বার্থে অত্যন্ত ঝুঁকিপূর্ণ সতর্কতাগুলো স্থগিত থাকলেও অবিলম্বে পাঠানো হতে পারে।",
+  "Receive one daily summary instead of multiple emails": "একাধিক ইমেইলের পরিবর্তে একটি দৈনিক সংক্ষিপ্তসার গ্রহণ করুন",
+  "Digest time": "সংক্ষিপ্তসারের সময়",
+  "Notification history": "বিজ্ঞপ্তির ইতিহাস",
+  "Evaluate daily digest": "দৈনিক সংক্ষিপ্তসার তৈরি করুন",
+  "Evaluating digest...": "সংক্ষিপ্তসার তৈরি করা হচ্ছে...",
+  "Reading notification history...": "বিজ্ঞপ্তির ইতিহাস পড়া হচ্ছে...",
+  "No notifications found": "কোনো বিজ্ঞপ্তি পাওয়া যায়নি",
+  "No notification deliveries recorded yet.": "এখনো কোনো বিজ্ঞপ্তির বিতরণ রেকর্ড করা হয়নি।",
+  "Delivered": "বিতরণ সম্পন্ন",
   "Save preferences": "পছন্দসমূহ সংরক্ষণ করুন",
   "Saving preferences...": "পছন্দ সংরক্ষণ করা হচ্ছে...",
   "Preferences saved successfully.": "পছন্দসমূহ সফলভাবে সংরক্ষিত হয়েছে।",
@@ -1413,5 +1425,13 @@ export const bn = {
     "পরিকল্পনা খুলুন",
   "Open Transactions":
     "লেনদেন খুলুন",
+  "Show active financial alerts in application": "অ্যাপ্লিকেশনে সক্রিয় আর্থিক সতর্কতা দেখান",
+  "Take action": "পদক্ষেপ নিন",
+  "Mark as actioned": "পদক্ষেপ নেওয়া হয়েছে হিসেবে চিহ্নিত করুন",
+  "Channel": "মাধ্যম",
+  "In-app": "ইন-অ্যাপ",
+  "View Accounts": "অ্যাকাউন্ট দেখুন",
+  "View Transactions": "লেনদেন দেখুন",
+  "Values captured at detection time for verification.": "যাচাইয়ের জন্য শনাক্তকরণ সময়ে সংরক্ষিত মানসমূহ।",
 } as const;
 export type TranslationKey = keyof typeof bn;

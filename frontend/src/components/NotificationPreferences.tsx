@@ -6,7 +6,7 @@ import type { NotificationPreference } from "../domain";
 import { Section } from "./ui";
 
 export function NotificationPreferences() {
-  const [pref, setPref] = useState<NotificationPreference | null>(null);
+  const [, setPref] = useState<NotificationPreference | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,9 @@ export function NotificationPreferences() {
   const [quietHoursEnd, setQuietHoursEnd] = useState("07:00");
   const [timezone, setTimezone] = useState("Asia/Dhaka");
   const [frequencyMode, setFrequencyMode] = useState<"immediate" | "daily_digest" | "off">("immediate");
+  const [immediateEnabled, setImmediateEnabled] = useState(true);
+  const [dailyDigestEnabled, setDailyDigestEnabled] = useState(false);
+  const [dailyDigestTime, setDailyDigestTime] = useState("20:00");
 
   useEffect(() => {
     let active = true;
@@ -60,6 +63,9 @@ export function NotificationPreferences() {
             ? "off"
             : "immediate"
         );
+        setImmediateEnabled(data.immediate_enabled !== undefined ? Boolean(data.immediate_enabled) : true);
+        setDailyDigestEnabled(Boolean(data.daily_digest_enabled));
+        setDailyDigestTime(data.daily_digest_time || "20:00");
         setLoading(false);
       })
       .catch(() => {
@@ -90,6 +96,9 @@ export function NotificationPreferences() {
         quiet_hours_end: quietHoursEnd,
         timezone,
         frequency_mode: frequencyMode,
+        immediate_enabled: immediateEnabled,
+        daily_digest_enabled: dailyDigestEnabled,
+        daily_digest_time: dailyDigestTime,
       });
       setPref(updated);
       setSavedSuccess(true);
@@ -104,20 +113,21 @@ export function NotificationPreferences() {
   if (loading) {
     return (
       <Section title={t("Notification preferences")}>
-        <p className="muted" role="status">
-          {t("Reading notification preferences...")}
-        </p>
+        <p className="muted">{t("Reading notification preferences...")}</p>
       </Section>
     );
   }
 
-  if (error && !pref) {
-    return (
-      <Section title={t("Notification preferences")}>
-        <div role="alert" className="error-notice">
-          <p>{error}</p>
+  return (
+    <Section title={t("Notification preferences")}>
+      {error && (
+        <div style={{ marginBottom: "16px" }}>
+          <p className="error" style={{ color: "#b91c1c", marginBottom: "8px" }}>
+            {error}
+          </p>
           <button
             type="button"
+            className="secondary"
             onClick={() => {
               setLoading(true);
               setError(null);
@@ -127,31 +137,27 @@ export function NotificationPreferences() {
             {t("Retry")}
           </button>
         </div>
-      </Section>
-    );
-  }
+      )}
 
-  return (
-    <Section title={t("Notification preferences")}>
-      <p className="muted">
-        {t("Manage how and when PorerHishab notifies you about financial alerts.")}
-      </p>
+      {savedSuccess && (
+        <div
+          style={{
+            backgroundColor: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            color: "#166534",
+            padding: "10px 14px",
+            borderRadius: "6px",
+            marginBottom: "16px",
+            fontSize: "0.9rem",
+          }}
+        >
+          {t("Preferences saved successfully.")}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="notification-preferences-form" noValidate>
-        {savedSuccess && (
-          <div role="status" className="success-banner" style={{ marginBottom: "16px", color: "#166534" }}>
-            <strong>{t("Preferences saved successfully.")}</strong>
-          </div>
-        )}
-
-        {error && (
-          <div role="alert" className="error-notice" style={{ marginBottom: "16px" }}>
-            <p>{error}</p>
-          </div>
-        )}
-
-        <dl className="settings-list">
-          {/* In-app notifications */}
+      <form onSubmit={handleSubmit}>
+        <dl className="form-grid">
+          {/* In-App Notifications */}
           <div>
             <dt>
               <label htmlFor="pref-in-app">{t("In-app notifications")}</label>
@@ -171,7 +177,7 @@ export function NotificationPreferences() {
             </dd>
           </div>
 
-          {/* Minimum in-app severity */}
+          {/* In-App Severity */}
           <div>
             <dt>
               <label htmlFor="pref-in-app-sev">{t("Minimum in-app severity")}</label>
@@ -193,7 +199,7 @@ export function NotificationPreferences() {
             </dd>
           </div>
 
-          {/* Email notifications */}
+          {/* Email Notifications */}
           <div>
             <dt>
               <label htmlFor="pref-email">{t("Email notifications")}</label>
@@ -265,6 +271,71 @@ export function NotificationPreferences() {
             </dd>
           </div>
 
+          {/* Immediate alerts toggle */}
+          <div>
+            <dt>
+              <label htmlFor="pref-immediate">{t("Immediate alerts")}</label>
+            </dt>
+            <dd>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input
+                    type="checkbox"
+                    id="pref-immediate"
+                    checked={immediateEnabled}
+                    onChange={(e) => setImmediateEnabled(e.target.checked)}
+                  />
+                  <label htmlFor="pref-immediate">
+                    {t("Receive important financial alerts as they happen")}
+                  </label>
+                </div>
+                <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
+                  {t("Critical financial safety alerts may still be delivered immediately even if paused.")}
+                </p>
+              </div>
+            </dd>
+          </div>
+
+          {/* Daily digest toggle & time */}
+          <div>
+            <dt>
+              <label htmlFor="pref-daily-digest">{t("Daily digest")}</label>
+            </dt>
+            <dd>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input
+                    type="checkbox"
+                    id="pref-daily-digest"
+                    checked={dailyDigestEnabled}
+                    onChange={(e) => setDailyDigestEnabled(e.target.checked)}
+                  />
+                  <label htmlFor="pref-daily-digest">
+                    {t("Receive one daily summary instead of multiple emails")}
+                  </label>
+                </div>
+                {dailyDigestEnabled && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                    <label htmlFor="pref-digest-time" style={{ fontSize: "0.85rem" }}>
+                      {t("Digest time")}:
+                    </label>
+                    <input
+                      type="text"
+                      id="pref-digest-time"
+                      value={dailyDigestTime}
+                      onChange={(e) => setDailyDigestTime(e.target.value)}
+                      placeholder="20:00"
+                      style={{ width: "90px" }}
+                    />
+                    <span className="muted" style={{ fontSize: "0.8rem" }}>
+                      ({timezone})
+                    </span>
+                  </div>
+                )}
+              </div>
+            </dd>
+          </div>
+
           {/* Quiet hours */}
           <div>
             <dt>
@@ -285,13 +356,13 @@ export function NotificationPreferences() {
                 </div>
 
                 {quietHoursEnabled && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginTop: "4px" }}>
+                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <label htmlFor="pref-quiet-start" style={{ fontSize: "0.8rem" }}>
                         {t("Start time")}
                       </label>
                       <input
-                        type="time"
+                        type="text"
                         id="pref-quiet-start"
                         value={quietHoursStart}
                         onChange={(e) => setQuietHoursStart(e.target.value)}
@@ -304,7 +375,7 @@ export function NotificationPreferences() {
                         {t("End time")}
                       </label>
                       <input
-                        type="time"
+                        type="text"
                         id="pref-quiet-end"
                         value={quietHoursEnd}
                         onChange={(e) => setQuietHoursEnd(e.target.value)}
@@ -333,7 +404,7 @@ export function NotificationPreferences() {
             </dd>
           </div>
 
-          {/* Frequency */}
+          {/* Legacy Frequency dropdown */}
           <div>
             <dt>
               <label htmlFor="pref-frequency">{t("Notification frequency")}</label>
@@ -352,13 +423,6 @@ export function NotificationPreferences() {
                   <option value="daily_digest">{t("Daily digest")}</option>
                   <option value="off">{t("Off")}</option>
                 </select>
-                {frequencyMode === "daily_digest" && (
-                  <p className="muted" style={{ fontSize: "0.8rem", margin: "4px 0 0 0" }}>
-                    {t(
-                      "Daily digest is planned for a future update; immediate delivery is active."
-                    )}
-                  </p>
-                )}
               </div>
             </dd>
           </div>

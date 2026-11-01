@@ -226,3 +226,7 @@ export type NotificationPreference = ApiSchemas["NotificationPreferenceResponse"
 export type NotificationPreferenceUpdate = ApiSchemas["NotificationPreferenceUpdate"];
 export type NotificationDelivery = ApiSchemas["NotificationDeliveryResponse"];
 export type NotificationDeliveryList = ApiSchemas["NotificationDeliveryListResponse"];
+export type NotificationHistoryItem = ApiSchemas["NotificationHistoryItemResponse"];
+export type NotificationHistoryList = ApiSchemas["NotificationHistoryListResponse"];
+export type NotificationDigest = ApiSchemas["NotificationDigestResponse"];
+export type DigestEvaluation = ApiSchemas["DigestEvaluationResponse"];

@@ -34,7 +34,7 @@ from app.services.finance.coaching_feedback import visible_coaching
 from app.services.finance.obligations import obligation_amounts_for_items
 from app.services.finance.runway import financial_runway
 from app.services.intelligence.periods import today_dhaka
-from app.services.notifications.dispatcher import enqueue_notifications_for_alert
+from app.services.notifications.orchestrator import orchestrate_alert_lifecycle_event
 import logging
 
 logger = logging.getLogger(__name__)
@@ -591,7 +591,7 @@ def evaluate_alerts(
     db.flush()
     for alert_obj, event_type in events_to_dispatch:
         try:
-            enqueue_notifications_for_alert(db, alert_obj, event_type)
+            orchestrate_alert_lifecycle_event(db, alert_obj, event_type, occurrence_count=getattr(alert_obj, "occurrence_count", 1))
         except Exception as err:
             logger.error(
                 "Failed to enqueue notification delivery for alert %s: %s",

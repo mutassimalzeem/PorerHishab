@@ -4,7 +4,7 @@ Provides:
 - Deterministic idempotency key generation.
 - Concurrency-safe delivery enqueueing.
 - Row-level claiming with SELECT FOR UPDATE SKIP LOCKED.
-- Channel delivery dispatching (in-app, email).
+- Channel delivery dispatching (in-app, email, daily digest).
 - Bounded retries with exponential/staged backoff.
 - Transient vs permanent failure handling and DEAD_LETTER transitions.
 - Independent DB session handling for background tasks.
@@ -33,12 +33,20 @@ logger = logging.getLogger(__name__)
 
 def generate_idempotency_key(
     user_id: int,
-    alert_id: int,
+    alert_id: int | None,
     channel: str,
     notification_event: str,
+    occurrence_count: int | None = None,
+    digest_id: int | None = None,
 ) -> str:
     """Generate a deterministic logical idempotency key. Never uses timestamps."""
-    return f"usr_{user_id}:alt_{alert_id}:chn_{channel.lower()}:evt_{notification_event.upper()}"
+    channel_norm = channel.lower()
+    event_norm = notification_event.upper()
+    if digest_id is not None:
+        return f"usr_{user_id}:digest_{digest_id}:chn_{channel_norm}:evt_{event_norm}"
+    if occurrence_count is not None and occurrence_count > 1:
+        return f"usr_{user_id}:alt_{alert_id}:chn_{channel_norm}:evt_{event_norm}:occ_{occurrence_count}"
+    return f"usr_{user_id}:alt_{alert_id}:chn_{channel_norm}:evt_{event_norm}"
 
 
 def get_or_create_user_preferences(
@@ -69,38 +77,59 @@ def get_or_create_user_preferences(
 def enqueue_single_delivery(
     db: Session,
     user_id: int,
-    alert_id: int,
+    alert_id: int | None,
     channel: str,
     notification_event: str,
     initial_status: str = "PENDING",
     failure_category: str | None = None,
     failure_reason: str | None = None,
     next_attempt_at: datetime | None = None,
+    occurrence_count: int = 1,
+    digest_id: int | None = None,
 ) -> NotificationDelivery:
     """Enqueue a single notification delivery outbox item idempotently."""
     channel_norm = channel.lower()
     event_norm = notification_event.upper()
-    key = generate_idempotency_key(user_id, alert_id, channel_norm, event_norm)
+    key = generate_idempotency_key(
+        user_id,
+        alert_id,
+        channel_norm,
+        event_norm,
+        occurrence_count=occurrence_count,
+        digest_id=digest_id,
+    )
 
     # Check for existing delivery under logical identity or idempotency key
-    existing = (
-        db.query(NotificationDelivery)
-        .filter(
-            (NotificationDelivery.user_id == user_id)
-            & (NotificationDelivery.alert_id == alert_id)
-            & (NotificationDelivery.channel == channel_norm)
-            & (NotificationDelivery.notification_event == event_norm)
-        )
-        .first()
+    query = db.query(NotificationDelivery).filter(
+        NotificationDelivery.user_id == user_id,
+        NotificationDelivery.channel == channel_norm,
+        NotificationDelivery.notification_event == event_norm,
     )
+    if digest_id is not None:
+        query = query.filter(NotificationDelivery.digest_id == digest_id)
+    else:
+        query = query.filter(
+            NotificationDelivery.alert_id == alert_id,
+            NotificationDelivery.occurrence_count == occurrence_count,
+        )
+
+    existing = query.first()
+    if not existing:
+        existing = (
+            db.query(NotificationDelivery)
+            .filter(NotificationDelivery.idempotency_key == key)
+            .first()
+        )
     if existing:
         return existing
 
     delivery = NotificationDelivery(
         user_id=user_id,
         alert_id=alert_id,
+        digest_id=digest_id,
         channel=channel_norm,
         notification_event=event_norm,
+        occurrence_count=occurrence_count,
         idempotency_key=key,
         status=initial_status,
         attempt_count=0,
@@ -133,92 +162,8 @@ def enqueue_notifications_for_alert(
     notification_event: str,
 ) -> list[NotificationDelivery]:
     """Evaluate preferences and enqueue notification delivery records for an alert event."""
-    if not settings.NOTIFICATION_DELIVERY_ENABLED:
-        return []
-
-    pref = get_or_create_user_preferences(db, alert.user_id)
-    deliveries: list[NotificationDelivery] = []
-    now = datetime.now(timezone.utc)
-
-    # 1. In-app delivery outbox record
-    in_app_eligibility = evaluate_eligibility(
-        pref,
-        channel="in_app",
-        alert_severity=alert.severity,
-        notification_event=notification_event,
-        now_utc=now,
-    )
-    if in_app_eligibility.is_eligible:
-        d = enqueue_single_delivery(
-            db,
-            user_id=alert.user_id,
-            alert_id=alert.id,
-            channel="in_app",
-            notification_event=notification_event,
-            initial_status="PENDING",
-        )
-        deliveries.append(d)
-    else:
-        # Create suppressed record for auditability if desired, or skip
-        d = enqueue_single_delivery(
-            db,
-            user_id=alert.user_id,
-            alert_id=alert.id,
-            channel="in_app",
-            notification_event=notification_event,
-            initial_status="SUPPRESSED",
-            failure_category=in_app_eligibility.reason.value.lower(),
-            failure_reason=f"In-app suppressed: {in_app_eligibility.reason.value}",
-        )
-        deliveries.append(d)
-
-    # 2. Email delivery outbox record
-    email_eligibility = evaluate_eligibility(
-        pref,
-        channel="email",
-        alert_severity=alert.severity,
-        notification_event=notification_event,
-        now_utc=now,
-    )
-    if email_eligibility.is_eligible:
-        d = enqueue_single_delivery(
-            db,
-            user_id=alert.user_id,
-            alert_id=alert.id,
-            channel="email",
-            notification_event=notification_event,
-            initial_status="PENDING",
-            next_attempt_at=now,
-        )
-        deliveries.append(d)
-    elif email_eligibility.reason == EligibilityReason.QUIET_HOURS:
-        # Deferred for quiet hours
-        d = enqueue_single_delivery(
-            db,
-            user_id=alert.user_id,
-            alert_id=alert.id,
-            channel="email",
-            notification_event=notification_event,
-            initial_status="PENDING",
-            next_attempt_at=email_eligibility.next_eligible_at,
-            failure_reason="Deferred: quiet hours active",
-        )
-        deliveries.append(d)
-    else:
-        # Suppressed due to no consent, disabled, or below threshold
-        d = enqueue_single_delivery(
-            db,
-            user_id=alert.user_id,
-            alert_id=alert.id,
-            channel="email",
-            notification_event=notification_event,
-            initial_status="SUPPRESSED",
-            failure_category=email_eligibility.reason.value.lower(),
-            failure_reason=f"Email suppressed: {email_eligibility.reason.value}",
-        )
-        deliveries.append(d)
-
-    return deliveries
+    from app.services.notifications.orchestrator import orchestrate_alert_lifecycle_event
+    return orchestrate_alert_lifecycle_event(db, alert, notification_event)
 
 
 def claim_pending_deliveries(
@@ -283,6 +228,76 @@ def process_single_delivery(
         delivery.attempt_count,
     )
 
+    # Handle Daily Digest Delivery
+    if delivery.notification_event == "DAILY_DIGEST" or delivery.digest_id is not None:
+        from app.models.notification_digest import NotificationDigest
+        from app.services.notifications.email_content import build_privacy_safe_digest_email
+
+        digest = (
+            db.query(NotificationDigest)
+            .filter(NotificationDigest.id == delivery.digest_id)
+            .first()
+        )
+        if not digest:
+            delivery.status = "DEAD_LETTER"
+            delivery.failed_at = now
+            delivery.failure_category = "permanent"
+            delivery.failure_reason = "Underlying digest not found"
+            db.commit()
+            return False
+
+        user = db.query(User).filter(User.id == delivery.user_id).first()
+        if not user or not user.email:
+            delivery.status = "DEAD_LETTER"
+            delivery.failed_at = now
+            delivery.failure_category = "invalid_recipient"
+            delivery.failure_reason = "User email address missing or unavailable"
+            digest.status = "FAILED"
+            digest.failed_at = now
+            digest.failure_reason = delivery.failure_reason
+            db.commit()
+            return False
+
+        email_sender = get_email_sender()
+        email_msg = build_privacy_safe_digest_email(
+            digest,
+            digest.items,
+            user.email,
+        )
+        result = email_sender.send(email_msg)
+
+        if result.success:
+            delivery.status = "SENT"
+            delivery.delivered_at = now
+            delivery.provider = result.provider
+            delivery.failure_category = None
+            delivery.failure_reason = None
+
+            digest.status = "SENT"
+            digest.sent_at = now
+            digest.failure_reason = None
+            db.commit()
+            return True
+        else:
+            delivery.provider = result.provider
+            delivery.failure_reason = result.error_message
+            delivery.failure_category = result.failure_category
+
+            if result.is_transient and delivery.attempt_count < delivery.max_attempts:
+                delivery.status = "FAILED"
+                delivery.next_attempt_at = now + compute_retry_delay(delivery.attempt_count)
+                digest.status = "PENDING"
+            else:
+                delivery.status = "DEAD_LETTER"
+                delivery.failed_at = now
+                digest.status = "FAILED"
+                digest.failed_at = now
+                digest.failure_reason = result.error_message
+
+            db.commit()
+            return False
+
+    # Handle Alert Delivery
     alert = (
         db.query(FinancialAlert)
         .filter(FinancialAlert.id == delivery.alert_id)
@@ -309,7 +324,6 @@ def process_single_delivery(
 
     if not eligibility.is_eligible:
         if eligibility.reason == EligibilityReason.QUIET_HOURS:
-            # Reschedule after quiet hours
             delivery.status = "PENDING"
             delivery.next_attempt_at = eligibility.next_eligible_at
             delivery.failure_reason = "Quiet hours active at send time"
@@ -359,7 +373,6 @@ def process_single_delivery(
             delivery.failure_reason = result.error_message
             delivery.failure_category = result.failure_category
 
-            # Classify transient vs permanent retry
             if result.is_transient and delivery.attempt_count < delivery.max_attempts:
                 delivery.status = "FAILED"
                 delivery.next_attempt_at = now + compute_retry_delay(delivery.attempt_count)
@@ -391,7 +404,6 @@ def process_delivery_by_id(delivery_id: int) -> bool:
         if not delivery:
             return False
 
-        # Claim if not already processing
         if delivery.status in ("PENDING", "FAILED"):
             delivery.status = "PROCESSING"
             delivery.last_attempt_at = datetime.now(timezone.utc)

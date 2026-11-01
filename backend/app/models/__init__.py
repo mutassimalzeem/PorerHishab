@@ -10,6 +10,7 @@ from app.models.obligation_allocation import ObligationAllocation
 from app.models.financial_alert import FinancialAlert
 from app.models.notification_preference import NotificationPreference
 from app.models.notification_delivery import NotificationDelivery
+from app.models.notification_digest import NotificationDigest, NotificationDigestItem
 
 __all__ = [
     "CoachingFeedback",
@@ -24,4 +25,6 @@ __all__ = [
     "FinancialAlert",
     "NotificationPreference",
     "NotificationDelivery",
+    "NotificationDigest",
+    "NotificationDigestItem",
 ]
