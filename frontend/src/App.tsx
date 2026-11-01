@@ -37,6 +37,7 @@ import { Accounts } from "./pages/Accounts";
 import { Cashflow } from "./pages/Cashflow";
 import { Transactions } from "./pages/Transactions";
 import { Plans } from "./pages/Plans";
+import { Scenarios } from "./pages/Scenarios";
 import { FinancialHealth } from "./pages/FinancialHealth";
 import { Insights } from "./pages/Insights";
 import { Ask } from "./pages/Ask";
@@ -50,6 +51,7 @@ const navigation = [
   { to: "/cashflow", label: "Cashflow", icon: ChartNoAxesCombined },
   { to: "/transactions", label: "Transactions", icon: List },
   { to: "/plans", label: "Plans", icon: Target },
+  { to: "/scenarios", label: "Scenarios", icon: ChartNoAxesCombined },
   { to: "/health", label: "Financial Health", icon: ChartNoAxesColumn },
   { to: "/insights", label: "Insights", icon: ChartNoAxesColumn },
   { to: "/ask", label: "Ask PorerHishab", icon: MessageSquare },
@@ -259,6 +261,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             <Route path="/cashflow" element={<Cashflow />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/plans" element={<Plans />} />
+            <Route path="/scenarios" element={<Scenarios />} />
             <Route path="/health" element={<FinancialHealth />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/ask" element={<Ask />} />

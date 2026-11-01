@@ -1,5 +1,6 @@
 // Frontend-owned copy only. Backend prose and user records retain their original language.
 export const bn = {
+  "Scenarios": "\u09ac\u09bf\u0995\u09b2\u09cd\u09aa \u09aa\u09b0\u09bf\u0995\u09b2\u09cd\u09aa\u09a8\u09be",
   "Notification preferences": "বিজ্ঞপ্তির পছন্দসমূহ",
   "Manage how and when PorerHishab notifies you about financial alerts.":
     "আর্থিক সতর্কবার্তা সম্পর্কে পরের হিসাব কীভাবে এবং কখন আপনাকে জানাবে তা পরিচালনা করুন।",

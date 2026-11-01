@@ -115,10 +115,7 @@ def build_context(db, user_id, *, schedules_confirmed=False, income_change_perce
             observed_income=floor(income*(D("1")+income_delta/100))
             observed_expense=floor(expense*(D("1")+expense_delta/100))
             near_term=max(runway.scheduled_expense_reserve, floor(runway.expected_expense_reserve*(D("1")+expense_delta/100)))
-            protected=near_term+observed_expense*RESERVE_MONTHS+overdue_total+earmarks
-            free_cash=max(ZERO,trusted-protected)
-            monthly=max(ZERO,observed_income-max(observed_expense,near_term)-observed_income*MONTHLY_BUFFER_FACTOR)
-            return floor(min(free_cash,monthly)),floor(protected)
+            return capacity_from_facts(observed_income, observed_expense, near_term, trusted, overdue_total, earmarks)
         capacity,reserve=calculate(ZERO,ZERO)
         scenario,_=calculate(income_change_percent,expense_change_percent)
         capacity=min(capacity,scenario)
@@ -352,3 +349,11 @@ def planning_overview(db,user_id,*,schedules_confirmed=False,as_of=None):
     return GoalPlanningOverview(capacity=context.capacity,goals=items,total_target_amount=sum((g.target_amount for g in items),ZERO),total_remaining_amount=sum((g.remaining_amount for g in items),ZERO),
         total_planned_monthly=accepted,total_proposed_monthly=sum((g.proposed_monthly for g in items),ZERO),capacity_utilization=floor(accepted/capacity*100) if capacity is not None and capacity>ZERO else None,
         over_capacity=capacity is not None and accepted>capacity,upcoming_milestones=[m for m in milestones if m.status=="pending"][:20],missed_milestones=[m for m in milestones if m.status=="missed"][:20])
+
+
+def capacity_from_facts(income, expense, near_term, trusted, overdue, earmarks):
+    """Shared pure AI-15P policy for real planning and isolated what-if inputs."""
+    protected=near_term+expense*RESERVE_MONTHS+overdue+earmarks
+    free_cash=max(ZERO,trusted-protected)
+    monthly=max(ZERO,income-max(expense,near_term)-income*MONTHLY_BUFFER_FACTOR)
+    return floor(min(free_cash,monthly)),floor(protected)
