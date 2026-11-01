@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.financial_alert import FinancialAlert
 from app.models.notification_delivery import NotificationDelivery
+from app.models.user import User
 from app.models.notification_digest import NotificationDigest, NotificationDigestItem
 from app.models.notification_preference import NotificationPreference
 from app.services.notifications.dispatcher import (
@@ -170,6 +171,10 @@ def generate_daily_digest_for_user(
 
     Returns (digest, reason_str).
     """
+    # Serialize the existing-digest check and alert eligibility read. Otherwise
+    # a concurrent commit can make alerts disappear between the two reads and
+    # incorrectly return skipped_no_alerts instead of the persisted digest.
+    db.query(User).filter(User.id == user_id).with_for_update().one()
     pref = get_or_create_user_preferences(db, user_id)
     now = now_utc or datetime.now(timezone.utc)
 

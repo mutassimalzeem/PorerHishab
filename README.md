@@ -488,6 +488,8 @@ Live embedding smoke requires `RUN_LIVE_AI_TESTS=1`. The deterministic quality g
 | [AI-15B reconciliation](docs/ai-15b-obligation-reconciliation.md) | Persistence, matching, APIs, migration, tests and tradeoffs |
 | [AI-15K account position](docs/ai-15k-account-position.md) | Deterministic account position, trusted cash aggregation, and coach integration |
 
+| [AI-15O financial health](docs/ai-15o-financial-health.md) | Deterministic scores, coverage, evidence, versioned history and descriptive trends |
+
 ## Author
 
 **Shahriar Zeem** — Backend Developer | ML Enthusiast

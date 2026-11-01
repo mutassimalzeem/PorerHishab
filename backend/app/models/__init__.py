@@ -28,3 +28,5 @@ __all__ = [
     "NotificationDigest",
     "NotificationDigestItem",
 ]
+
+from app.models.financial_health import FinancialHealthSnapshot

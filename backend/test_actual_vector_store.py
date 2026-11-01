@@ -27,17 +27,22 @@ transactions = [
     },
 ]
 
-ids = add_transaction_documents(transactions)
+def main():
+    ids = add_transaction_documents(transactions)
 
-print(ids)
+    print(ids)
 
-results = search_transactions(
-    query="Where did I spend money on food?",
-    user_id=7,
-    k=2,
-)
+    results = search_transactions(
+        query="Where did I spend money on food?",
+        user_id=7,
+        k=2,
+    )
 
-for result in results:
-    print(result.page_content)
-    print(result.metadata)
-    print("---")
+    for result in results:
+        print(result.page_content)
+        print(result.metadata)
+        print("---")
+
+
+if __name__ == "__main__":
+    main()

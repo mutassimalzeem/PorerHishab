@@ -1,0 +1,72 @@
+import type { ApiSchemas } from "../generated/api";
+export const healthFixture: ApiSchemas["FinancialHealthProfile"] = {
+  overall_score: "72.00",
+  status: "stable",
+  coverage_percent: "85.71",
+  available_components: [
+    "cashflow_stability",
+    "liquidity",
+    "obligation_pressure",
+    "spending_stability",
+    "account_reliability",
+    "financial_stress",
+  ],
+  missing_components: ["savings_progress"],
+  data_quality_status: "good",
+  limitations: [],
+  components: [
+    "cashflow_stability",
+    "liquidity",
+    "obligation_pressure",
+    "spending_stability",
+    "account_reliability",
+    "savings_progress",
+    "financial_stress",
+  ].map((key) => ({
+    key,
+    score: key === "savings_progress" ? null : "72.00",
+    status: key === "savings_progress" ? "insufficient_data" : "stable",
+    data_available: key !== "savings_progress",
+    explanation:
+      "Three complete months with recorded positive income are required.",
+    evidence: [
+      {
+        metric: "trusted_cash",
+        value: "10000.00",
+        unit: "BDT",
+        source: "account_position",
+        as_of_date: "2026-11-01",
+        observed_at: "2026-11-01T00:00:00Z",
+      },
+    ],
+    limitations: [],
+  })),
+  trend: {
+    direction: "improving",
+    change: "8",
+    period: "90d",
+    confidence: "adequate",
+    components: { liquidity: "improving" },
+  },
+  calculation_version: "ai-15o-v1",
+  schema_version: "1",
+  as_of_date: "2026-11-01",
+  observed_at: "2026-11-01T00:00:00Z",
+};
+export const emptyHealth: ApiSchemas["FinancialHealthProfile"] = {
+  ...healthFixture,
+  overall_score: null,
+  status: "insufficient_data",
+  coverage_percent: "0",
+  observed_at: null,
+  available_components: [],
+  missing_components: healthFixture.components.map((c) => c.key),
+  data_quality_status: "insufficient",
+  components: healthFixture.components.map((c) => ({
+    ...c,
+    score: null,
+    status: "insufficient_data",
+    data_available: false,
+    evidence: [],
+  })),
+};

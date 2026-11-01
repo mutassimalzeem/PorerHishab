@@ -6,6 +6,7 @@ calculate trusted BDT position aggregates without N+1 queries.
 """
 
 from collections import defaultdict
+from datetime import date
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
@@ -61,6 +62,7 @@ def classify_account_position(
 def get_account_overview(
     db: Session,
     user_id: int,
+    *, as_of: date | None = None,
 ) -> AccountOverviewResponse:
     """Load all accounts for the authenticated user and compute position and trusted BDT total."""
     accounts = (
@@ -112,6 +114,7 @@ def get_account_overview(
             account=acc,
             user_id=user_id,
             transactions=tx_by_account[acc.id],
+            as_of=as_of,
         )
 
         pos_status, is_eligible = classify_account_position(acc, recon)
