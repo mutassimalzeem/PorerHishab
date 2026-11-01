@@ -14,6 +14,8 @@ from datetime import date, timedelta
 from decimal import Decimal, ROUND_UP
 from types import SimpleNamespace
 
+from fastapi import HTTPException
+
 from app.schemas.spending_decision import SpendingDecisionRequest
 from app.services.finance.spending_decision import assess_spending_decision
 from app.services.intelligence.categories import comparison_expenses_by_category
@@ -103,11 +105,33 @@ def recommendations(db, user_id, as_of=None, history_data=None):
 
 def coach_cashflow(db, user_id, request, as_of=None):
     as_of = as_of or today_dhaka()
+    use_account_position = getattr(request, "use_account_position", False)
+    starting_balance = getattr(request, "starting_balance", None)
+    balance_source = "caller"
+    account_note = None
+
+    if use_account_position or starting_balance is None:
+        from app.services.finance.account_position import get_account_overview
+        overview = get_account_overview(db, user_id=user_id)
+        if overview.trusted_bdt_position.total is not None:
+            starting_balance = overview.trusted_bdt_position.total
+            balance_source = "account_position"
+            names = ", ".join(overview.trusted_bdt_position.contributing_account_names)
+            account_note = (
+                f"Starting balance (৳{starting_balance}) is derived from trusted BDT account positions "
+                f"(based on {overview.trusted_bdt_position.eligible_accounts_count} reconciled account(s): {names})."
+            )
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="Trusted account position is unavailable. Add or confirm a balance for at least one BDT account before using account-backed cashflow.",
+            )
+
     h = history(db, user_id, as_of)
     income = h["baseline"]["average_monthly_income"] if h["adequate"] else None
     expense = h["baseline"]["average_monthly_expenses"] if h["adequate"] else None
-    projected = request.starting_balance
-    no_income = request.starting_balance
+    projected = starting_balance
+    no_income = starting_balance
     months = []
     for offset in range(request.months_ahead):
         start = as_of if offset == 0 else month_shift(as_of, offset)
@@ -124,9 +148,9 @@ def coach_cashflow(db, user_id, request, as_of=None):
                        "uncertain_scheduled_income": planned_income, "reserved_expenses": reserve,
                        "projected_balance": projected if h["adequate"] else None,
                        "balance_without_future_income": no_income})
-    return {"as_of_date": as_of, "starting_balance": request.starting_balance, "months": months,
+    return {"as_of_date": as_of, "starting_balance": starting_balance, "balance_source": balance_source, "months": months,
             "coverage": h["coverage"], "assumptions": [
-                "Starting balance is caller-confirmed, not a bank-reconciled balance.",
+                account_note if account_note else "Starting balance is caller-confirmed, not a bank-reconciled balance.",
                 "Current-month estimates are prorated by remaining calendar days; later months use historical averages.",
                 "Each month reserves the larger of estimated historical expenses and scheduled expenses to avoid adding overlapping bills twice.",
                 "Schedules may omit other spending; the maximum is a scenario assumption, not reconciliation.",
@@ -140,9 +164,31 @@ def coach_purchase(db, user_id, request, as_of=None):
     as_of = as_of or today_dhaka()
     end = as_of + timedelta(days=request.horizon_days)
     from app.services.finance.runway import financial_runway
+    use_account_position = getattr(request, "use_account_position", False)
+    starting_balance = getattr(request, "starting_balance", None)
+    balance_source = "caller"
+    account_note = None
+
+    if use_account_position or starting_balance is None:
+        from app.services.finance.account_position import get_account_overview
+        overview = get_account_overview(db, user_id=user_id)
+        if overview.trusted_bdt_position.total is not None:
+            starting_balance = overview.trusted_bdt_position.total
+            balance_source = "account_position"
+            names = ", ".join(overview.trusted_bdt_position.contributing_account_names)
+            account_note = (
+                f"Using trusted account position (৳{starting_balance}) based on "
+                f"{overview.trusted_bdt_position.eligible_accounts_count} reconciled BDT account(s) ({names})."
+            )
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="Trusted account position is unavailable. Check or update an account balance before using account-backed purchase guidance.",
+            )
+
     runway = financial_runway(db, user_id, as_of=as_of, horizon_days=request.horizon_days,
                              safety_threshold=request.safety_buffer,
-                             starting_balance=request.starting_balance)
+                             starting_balance=starting_balance)
     reserve, uncertain = runway.scheduled_expense_reserve, runway.known_future_income
     remaining = money(runway.known_obligations_end_balance - request.purchase_amount)
     projected_minimum = runway.minimum_projected_balance
@@ -150,16 +196,20 @@ def coach_purchase(db, user_id, request, as_of=None):
     if status is None and (remaining < request.safety_buffer or (projected_minimum is not None and projected_minimum - request.purchase_amount <= request.safety_buffer)):
         status = "caution"
     base = assess_spending_decision(SpendingDecisionRequest(
-        purchase_amount=request.purchase_amount, starting_balance=request.starting_balance,
+        purchase_amount=request.purchase_amount, starting_balance=starting_balance,
         safety_buffer=request.safety_buffer + reserve))
+    assumptions = [
+        account_note if account_note else "Caller confirms the available balance and safety buffer.",
+        "Scheduled expenses in the inclusive horizon are reserved; scheduled income is excluded.",
+        "The purchase is assumed additional to scheduled expenses.",
+    ]
     return {"status": status or base.status, "purchase_amount": request.purchase_amount,
             "scheduled_expense_reserve": reserve,
             "remaining_after_purchase_and_reserve": remaining,
+            "balance_source": balance_source,
             "runway": runway,
             "uncertain_scheduled_income": uncertain, "horizon_end": end,
-            "assumptions": ["Caller confirms the available balance and safety buffer.",
-                            "Scheduled expenses in the inclusive horizon are reserved; scheduled income is excluded.",
-                            "The purchase is assumed additional to scheduled expenses."],
+            "assumptions": assumptions,
             "warnings": ["This checks known plans only; unrecorded expenses, overdue bills, and future purchases may make it unaffordable.",
                          "No income projection is treated as money available today."] + runway.limitations}
 

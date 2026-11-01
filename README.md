@@ -24,7 +24,9 @@ Status as of **31 October 2026**:
 | Financial alerts and coaching (AI-15F) | Implemented; merged in PR #42 | Deterministic prioritized cash, obligation, spending and goal reviews with bilingual evidence; [implementation notes](docs/ai-15f-financial-alerts-and-coaching.md) |
 | Coaching feedback (AI-15G) | Implemented; merged in PR #43 | Owner-scoped dismissal, reported actions, relevance feedback, expiring snoozes and bilingual restoration; [implementation notes](docs/ai-15g-coaching-feedback.md) |
 | Personalized action plan (AI-15H) | Implemented; merged in PR #44 | Deterministic user-scoped action planning built from financial coaching and explicit feedback; [implementation notes](docs/ai-15h-personalized-action-plan.md) |
-| Action outcome tracking (AI-15I) | Implemented; PR review pending | Read-only before/after evidence for reported actions, safe historical settlement and bilingual observations; [implementation notes](docs/ai-15i-action-outcome-tracking.md) |
+| Action outcome tracking (AI-15I) | Implemented and merged | Read-only before/after evidence for reported actions, safe historical settlement and bilingual observations; [implementation notes](docs/ai-15i-action-outcome-tracking.md) |
+| Coaching effectiveness metrics (AI-15J) | Implemented and merged | Deterministic tracking of adoption rate, adherence, and recurring financial trend indicators; [implementation notes](docs/ai-15j-coaching-effectiveness.md) |
+| Account position & trusted cash (AI-15K) | Implemented | Deterministic account position, reported/derived balance reconciliation, trusted BDT cash aggregation, cashflow and purchase integration; [implementation notes](docs/ai-15k-account-position.md) |
 | Bangla/Roman Bangla coaching | Partial / future work | Bengali interface and some categorization rules exist; Ask currently uses supported English questions |
 | Financial integrations and delivery | Planned | SMS/PDF/email ingestion, bank/MFS synchronization, WhatsApp/Messenger and notifications |
 | Production rollout | Pending | Hosting, operational controls, security hardening and production data validation |
@@ -136,13 +138,31 @@ Suggestions never allocate money or mark items paid automatically. Separate fees
 
 See the [AI-15B report](docs/ai-15b-obligation-reconciliation.md) for matching, APIs, concurrency guarantees and migrations.
 
+### Account position and trusted cash integration (AI-15K)
+
+- Authenticated account management (`GET /accounts`, `POST /accounts`, `GET /accounts/position`, `GET /accounts/{account_id}`).
+- Batch-loading reconciliation service eliminating N+1 queries.
+- Deterministic account position classification (`trusted`, `unreconciled`, `insufficient_data`, `unsupported_currency`).
+- Aggregation of trusted BDT cash position:
+  - Only BDT accounts with zero reconciliation difference contribute to the aggregate total.
+  - Accounts with discrepancies or unverified balances are excluded and flagged for user review.
+  - Foreign currency accounts (e.g. USD) are tracked individually with clear exclusion notice.
+  - Returns explicit unavailable state when no trusted accounts exist (never manufactures `0.00`).
+- Frontend Accounts page with balance management (current and opening), difference explanations, and foreign currency callouts.
+- Dashboard account position card alongside recorded net activity.
+- Cashflow outlook and Purchase decision integration allowing users to select their trusted account position or enter a balance manually.
+- Full bilingual English and Bengali support with keyboard and screen reader accessibility.
+
+See the [AI-15K report](docs/ai-15k-account-position.md) for architecture, aggregation rules, and verification.
+
 ## Frontend: the Khata workspace
 
 The React + TypeScript application uses a paper-and-teal ledger design, localized numbers/dates and responsive desktop/mobile navigation.
 
 | Screen | Implemented workflows |
 | --- | --- |
-| Overview | Recorded activity, coverage, upcoming commitments, recent transactions, signals and savings links |
+| Overview | Recorded activity, coverage, account position, upcoming commitments, recent transactions, signals and savings links |
+| Accounts | Account position, reported and opening balance management, reconciliation status, discrepancy explanation, and foreign currency tracking |
 | Transactions | Search/filter, pagination, manual entry, CSV upload, details and category correction |
 | Cashflow | Schedules, reconciliation candidates/allocations, remaining principal, forecasts and purchase assessments |
 | Plans | Savings targets, reported progress, goal editing and contribution needs |
@@ -205,6 +225,12 @@ These are proposed directions, not shipped features, verified accuracy targets, 
 | AI-14 integration | Auth/CSV contracts, generated API types, frontend/backend integration and regression fixes |
 | AI-15A | Account balance reconciliation; merged in PR #36 |
 | AI-15B | Transaction-to-obligation reconciliation; merged in PR #37 |
+| AI-15F | Financial alerts and coaching; merged in PR #42 |
+| AI-15G | Coaching feedback; merged in PR #43 |
+| AI-15H | Personalized action plan; merged in PR #44 |
+| AI-15I | Action outcome tracking; merged |
+| AI-15J | Coaching effectiveness metrics; merged |
+| AI-15K | Account position and trusted cash integration |
 
 Milestone reports describe their implementation-time state. Current code and OpenAPI take precedence over historical descriptions of interfaces that were later extended.
 
@@ -458,6 +484,7 @@ Live embedding smoke requires `RUN_LIVE_AI_TESTS=1`. The deterministic quality g
 | [Khata redesign](docs/frontend-khata-redesign.md) | Visual design, localization and responsive verification |
 | [Frontend setup](frontend/README.md) | Run/build/test instructions and platform notes |
 | [AI-15B reconciliation](docs/ai-15b-obligation-reconciliation.md) | Persistence, matching, APIs, migration, tests and tradeoffs |
+| [AI-15K account position](docs/ai-15k-account-position.md) | Deterministic account position, trusted cash aggregation, and coach integration |
 
 ## Author
 

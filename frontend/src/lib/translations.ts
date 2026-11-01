@@ -1078,5 +1078,195 @@ export const bn = {
     "এই পরামর্শের এক বা একাধিক দায় ব্যবহারকারীর জন্য আর নেই।",
   "Rolling follow-ups are capped at 30 days; spending evidence months require an equal full follow-up of up to 31 days. The minimum observation is 7 days.":
     "চলমান পর্যবেক্ষণ সর্বোচ্চ ৩০ দিন; মাসভিত্তিক ব্যয়ের তুলনায় সমান পূর্ণ সময়কাল লাগে, যা সর্বোচ্চ ৩১ দিন। ন্যূনতম পর্যবেক্ষণ ৭ দিন।",
+  "Accounts":
+    "হিসাবসমূহ",
+  "Your recorded account position":
+    "আপনার সংরক্ষিত হিসাবের অবস্থান",
+  "Understand what is recorded and how well it reconciles.":
+    "কী রেকর্ড করা আছে এবং তা কীভাবে সমন্বয় হয় তা বুঝুন।",
+  "Total trusted BDT position":
+    "মোট নির্ভরযোগ্য বিডিটি অবস্থান",
+  "Not available yet":
+    "এখনো উপলব্ধ নয়",
+  "Add or confirm a balance for at least one BDT account.":
+    "কমপক্ষে একটি বিডিটি হিসাবের ব্যালেন্স যোগ বা নিশ্চিত করুন।",
+  "Add account":
+    "হিসাব যোগ করুন",
+  "New account":
+    "নতুন হিসাব",
+  "Account name":
+    "হিসাবের নাম",
+  "Account type":
+    "হিসাবের ধরন",
+  "Bank":
+    "ব্যাংক",
+  "Cash":
+    "নগদ",
+  "Mobile wallet":
+    "মোবাইল ওয়ালেট",
+  "Credit":
+    "ক্রেডিট",
+  "Other":
+    "অন্যান্য",
+  "Current balance":
+    "বর্তমান ব্যালেন্স",
+  "Opening balance":
+    "প্রারম্ভিক ব্যালেন্স",
+  "Opening balance date":
+    "প্রারম্ভিক ব্যালেন্সের তারিখ",
+  "Balance as of":
+    "ব্যালেন্সের তারিখ ও সময়",
+  "Manual":
+    "ম্যানুয়াল",
+  "Statement":
+    "স্টেটমেন্ট",
+  "Mobile app":
+    "মোবাইল অ্যাপ",
+  "Reconciled":
+    "সমন্বিত",
+  "Reported only":
+    "শুধু ব্যবহারকারীর তথ্য",
+  "Derived from opening balance":
+    "প্রারম্ভিক ব্যালেন্স থেকে প্রাপ্ত",
+  "Needs review":
+    "পর্যালোচনা প্রয়োজন",
+  "Difference":
+    "পার্থক্য",
+  "Derived balance":
+    "হিসাবকৃত ব্যালেন্স",
+  "Reported balance":
+    "তথ্যমতে ব্যালেন্স",
+  "Balance not recorded":
+    "ব্যালেন্স রেকর্ড করা হয়নি",
+  "Derived balance unavailable":
+    "হিসাবকৃত ব্যালেন্স অনুপলব্ধ",
+  "A known opening balance and transaction history are required to derive this value.":
+    "এই মান পেতে জানা প্রারম্ভিক ব্যালেন্স এবং লেনদেনের ইতিহাস প্রয়োজন।",
+  "This balance is information you provide. PorerHishab does not verify it against your bank.":
+    "এই ব্যালেন্স আপনার দেওয়া তথ্য। পরেরহিসাব এটি ব্যাংকের সাথে যাচাই করে না।",
+  "Reported balance and recorded activity do not currently match.":
+    "তথ্যমতে ব্যালেন্স এবং সংরক্ষিত লেনদেনের মধ্যে মিল নেই।",
+  "Not included in trusted BDT position":
+    "নির্ভরযোগ্য বিডিটি অবস্থানে অন্তর্ভুক্ত নয়",
+  "Currency conversion is not available.":
+    "মুদ্রা রূপান্তর ব্যবস্থা উপলব্ধ নয়।",
+  "No accounts yet":
+    "এখনো কোনো হিসাব নেই",
+  "Add an account or import account-linked transactions to start tracking your position.":
+    "আপনার অবস্থান ট্র্যাক করতে একটি হিসাব যোগ করুন বা লেনদেন আমদানি করুন।",
+  "Update balance":
+    "ব্যালেন্স হালনাগাদ",
+  "Update opening balance":
+    "প্রারম্ভিক ব্যালেন্স হালনাগাদ",
+  "Edit current balance":
+    "বর্তমান ব্যালেন্স সম্পাদনা",
+  "Edit opening balance":
+    "প্রারম্ভিক ব্যালেন্স সম্পাদনা",
+  "Reconciliation details":
+    "সমন্বয়ের বিস্তারিত",
+  "Why?":
+    "কেন?",
+  "Possible explanations for differences:":
+    "পার্থক্যের সম্ভাব্য কারণসমূহ:",
+  "Missing transactions, duplicate records, incorrect amounts, incorrect opening balance, or timing differences.":
+    "বাদ পড়া লেনদেন, ডুপ্লিকেট রেকর্ড, ভুল অঙ্ক, ভুল প্রারম্ভিক ব্যালেন্স অথবা সময়ের পার্থক্য।",
+  "Transactions recorded":
+    "রেকর্ডকৃত লেনদেন",
+  "Latest transaction":
+    "সর্বশেষ লেনদেন",
+  "Save account":
+    "হিসাব সংরক্ষণ করুন",
+  "Save balance":
+    "ব্যালেন্স সংরক্ষণ করুন",
+  "Account saved successfully.":
+    "হিসাব সফলভাবে সংরক্ষিত হয়েছে।",
+  "Balance updated successfully.":
+    "ব্যালেন্স সফলভাবে হালনাগাদ হয়েছে।",
+  "Opening balance updated successfully.":
+    "প্রারম্ভিক ব্যালেন্স সফলভাবে হালনাগাদ হয়েছে।",
+  "Account position":
+    "হিসাবের অবস্থান",
+  "BDT accounts reconciled":
+    "বিডিটি হিসাব সমন্বিত",
+  "account needs review":
+    "হিসাব পর্যালোচনা প্রয়োজন",
+  "accounts need review":
+    "হিসাব পর্যালোচনা প্রয়োজন",
+  "View accounts":
+    "হিসাবসমূহ দেখুন",
+  "View accounts →":
+    "হিসাবসমূহ দেখুন →",
+  "Starting balance source":
+    "শুরুর ব্যালেন্সের উৎস",
+  "Enter a balance":
+    "একটি ব্যালেন্স লিখুন",
+  "Use trusted account position":
+    "নির্ভরযোগ্য হিসাব অবস্থান ব্যবহার করুন",
+  "Trusted account position unavailable":
+    "নির্ভরযোগ্য হিসাব অবস্থান অনুপলব্ধ",
+  "Using trusted account position":
+    "নির্ভরযোগ্য হিসাবের অবস্থান ব্যবহার করা হচ্ছে",
+  "Using a balance you entered manually":
+    "আপনার হাতে লেখা ব্যালেন্স ব্যবহার করা হচ্ছে",
+  "Check or update an account balance before using account-backed purchase guidance.":
+    "হিসাবভিত্তিক কেনাকাটার পরামর্শ ব্যবহার করার আগে হিসাবের ব্যালেন্স পরীক্ষা বা হালনাগাদ করুন।",
+  "Review":
+    "পর্যালোচনা",
+  "All BDT accounts reconciled":
+    "সকল বিডিটি হিসাব সমন্বিত",
+  "trusted":
+    "নির্ভরযোগ্য",
+  "partially_trusted":
+    "আংশিক নির্ভরযোগ্য",
+  "unreconciled":
+    "অসমন্বিত",
+  "unsupported_currency":
+    "অসমর্থিত মুদ্রা",
+  "mismatch":
+    "অমিল",
+  "transaction_snapshot":
+    "লেনদেনের স্ন্যাপশট",
+  "bank":
+    "ব্যাংক",
+  "cash":
+    "নগদ",
+  "mobile_wallet":
+    "মোবাইল ওয়ালেট",
+  "credit":
+    "ক্রেডিট",
+  "other":
+    "অন্যান্য",
+  "Available balance source":
+    "উপলব্ধ ব্যালেন্সের উৎস",
+  "Starting balance from trusted accounts:":
+    "নির্ভরযোগ্য হিসাবসমূহ থেকে শুরুর ব্যালেন্স:",
+  "Contributing accounts:":
+    "অবদানকারী হিসাবসমূহ:",
+  "Excluded accounts:":
+    "বাদ দেওয়া হিসাবসমূহ:",
+  "Manage accounts":
+    "হিসাবসমূহ পরিচালনা করুন",
+  "Manage accounts →":
+    "হিসাবসমূহ পরিচালনা করুন →",
+  "No trusted account balance available yet":
+    "এখনও কোনো নির্ভরযোগ্য হিসাব ব্যালেন্স উপলব্ধ নেই",
+  "Based on":
+    "ভিত্তিতে",
+  "account":
+    "হিসাব",
+  "accounts":
+    "হিসাবসমূহ",
+  "Notice":
+    "বিজ্ঞপ্তি",
+  "Reported":
+    "রিপোর্টকৃত",
+  "Add an account to track its position.":
+    "এর অবস্থান পর্যবেক্ষণ করতে একটি হিসাব যোগ করুন।",
+  "accounts excluded":
+    "হিসাব বাদ দেওয়া হয়েছে",
+  "account excluded":
+    "হিসাব বাদ দেওয়া হয়েছে",
+  "Total trusted BDT position:":
+    "মোট নির্ভরযোগ্য বিডিটি অবস্থান:",
 } as const;
 export type TranslationKey = keyof typeof bn;

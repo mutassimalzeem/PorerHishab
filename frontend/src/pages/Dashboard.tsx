@@ -17,6 +17,7 @@ import {
 } from "../components/ui";
 import { FinancialContext } from "../components/FinancialContext";
 import { TransactionTable } from "../components/TransactionTable";
+
 export function Dashboard({ user }: { user: User }) {
   useLanguage();
   const picture = useResource(useCallback(() => api.intelligence(), []));
@@ -28,6 +29,8 @@ export function Dashboard({ user }: { user: User }) {
   );
   const saving = useResource(useCallback(() => api.recommendations(), []));
   const insights = useResource(useCallback(() => api.nudges(), []));
+  const accountsResource = useResource(useCallback(() => api.accounts(), []));
+
   return (
     <>
       <PageHeading
@@ -49,6 +52,8 @@ export function Dashboard({ user }: { user: User }) {
         {(data) => {
           const s = data.snapshot;
           const obligations = s.scheduled_obligations;
+          const trustedPos = accountsResource.data?.trusted_bdt_position;
+
           return (
             <>
               <div className="period-row">
@@ -104,6 +109,39 @@ export function Dashboard({ user }: { user: User }) {
                   </p>
                 </div>
               </section>
+
+              {/* Account position integration */}
+              <div className="account-position-dashboard" data-testid="dashboard-account-position">
+                <div className="section-heading">
+                  <h3>{t("Account position")}</h3>
+                  <Link to="/accounts">{t("View accounts →")}</Link>
+                </div>
+                {trustedPos && trustedPos.total !== null ? (
+                  <div>
+                    <Amount value={trustedPos.total} />
+                    <p className="source">
+                      {digits(trustedPos.eligible_accounts_count)}{" "}
+                      {t("BDT accounts reconciled")}
+                      {trustedPos.review_accounts_count > 0 && (
+                        <span>
+                          {" "}• {digits(trustedPos.review_accounts_count)}{" "}
+                          {trustedPos.review_accounts_count === 1
+                            ? t("account needs review")
+                            : t("accounts need review")}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <strong className="account-unavailable-label">{t("Not available yet")}</strong>
+                    <p className="source">
+                      {t("Add or confirm a balance for at least one BDT account.")}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <FinancialContext coverage={s.data_coverage} />
               <div className="dashboard-columns">
                 <div>

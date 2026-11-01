@@ -68,20 +68,25 @@ def reconcile_account_balance(
     account: Account,
     user_id: int,
     as_of: date | None = None,
+    transactions: list[Transaction] | None = None,
 ) -> dict:
     """Reconcile stored balances using Decimal arithmetic and separate fee costs."""
     if account.user_id != user_id:
         raise ValueError("Account does not belong to the user")
 
-    query = db.query(Transaction).filter(
-        Transaction.account_id == account.id, Transaction.user_id == user_id)
-    if as_of is not None:
-        query = query.filter(Transaction.date <= as_of)
-    transactions = (
-        query
-        .order_by(Transaction.date.asc(), Transaction.id.asc())
-        .all()
-    )
+    if transactions is None:
+        query = db.query(Transaction).filter(
+            Transaction.account_id == account.id, Transaction.user_id == user_id)
+        if as_of is not None:
+            query = query.filter(Transaction.date <= as_of)
+        transactions = (
+            query
+            .order_by(Transaction.date.asc(), Transaction.id.asc())
+            .all()
+        )
+    elif as_of is not None:
+        transactions = [t for t in transactions if t.date <= as_of]
+
     latest_transaction = transactions[-1] if transactions else None
     latest_transaction_balance = (
         latest_transaction.balance if latest_transaction is not None else None

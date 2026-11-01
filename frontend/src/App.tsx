@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Settings as SettingsIcon,
   Target,
+  Wallet,
 } from "lucide-react";
 import { Dialog } from "./components/Dialog";
 import { useMediaQuery } from "./lib/useMediaQuery";
@@ -30,6 +31,7 @@ import { api, setSession } from "./lib/api";
 import { date, errorMessage, today } from "./lib/format";
 import { Auth } from "./pages/Auth";
 import { Dashboard } from "./pages/Dashboard";
+import { Accounts } from "./pages/Accounts";
 import { Cashflow } from "./pages/Cashflow";
 import { Transactions } from "./pages/Transactions";
 import { Plans } from "./pages/Plans";
@@ -37,14 +39,17 @@ import { Insights } from "./pages/Insights";
 import { Ask } from "./pages/Ask";
 import { Settings } from "./pages/Settings";
 import { Empty, ErrorNotice } from "./components/ui";
+
 const navigation = [
   { to: "/", label: "Overview", icon: House },
+  { to: "/accounts", label: "Accounts", icon: Wallet },
   { to: "/cashflow", label: "Cashflow", icon: ChartNoAxesCombined },
   { to: "/transactions", label: "Transactions", icon: List },
   { to: "/plans", label: "Plans", icon: Target },
   { to: "/insights", label: "Insights", icon: ChartNoAxesColumn },
   { to: "/ask", label: "Ask PorerHishab", icon: MessageSquare },
 ];
+
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const { language } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -206,6 +211,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Dashboard user={user} />} />
+            <Route path="/accounts" element={<Accounts />} />
             <Route path="/cashflow" element={<Cashflow />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/plans" element={<Plans />} />
@@ -246,7 +252,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
         <nav className="mobile-quick-nav" aria-label={t("Quick navigation")}>
           {navigation
             .filter((n) =>
-              ["/", "/cashflow", "/transactions", "/ask"].includes(n.to),
+              ["/", "/accounts", "/cashflow", "/transactions", "/ask"].includes(n.to),
             )
             .map((n) => (
               <NavLink key={n.to} to={n.to} end={n.to === "/"}>
@@ -259,6 +265,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
     </div>
   );
 }
+
 export default function App() {
   useLanguage();
   const [user, setUser] = useState<User | null>(null);
