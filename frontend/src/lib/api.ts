@@ -168,6 +168,41 @@ export function query(
   return `?${params}`;
 }
 export const api = {
+  planningGoal: (id: number) =>
+    request<ApiSchemas["GoalRead"]>(`/finance/goals/${id}`),
+  planningOverview: (confirmed = false) =>
+    request<ApiSchemas["GoalPlanningOverview"]>(
+      `/finance/goals/planning/overview?schedules_confirmed=${confirmed}`,
+    ),
+  personalizedPlans: (id: number) =>
+    request<ApiSchemas["PersonalizedGoalPlan"][]>(`/finance/goals/${id}/plans`),
+  personalizedPlan: (id: number) =>
+    request<ApiSchemas["PersonalizedGoalPlan"]>(
+      `/finance/goals/${id}/plans/current`,
+    ),
+  createGoalPlan: (id: number, body: ApiSchemas["PlanRequest"]) =>
+    post<ApiSchemas["PersonalizedGoalPlan"]>(`/finance/goals/${id}/plan`, body),
+  replanGoal: (id: number, body: ApiSchemas["PlanRequest"]) =>
+    post<ApiSchemas["PersonalizedGoalPlan"]>(
+      `/finance/goals/${id}/replan`,
+      body,
+    ),
+  contributeGoal: (id: number, body: ApiSchemas["ContributionRequest"]) =>
+    post<ApiSchemas["ContributionResult"]>(
+      `/finance/goals/${id}/contributions`,
+      body,
+    ),
+  goalEvents: (id: number) =>
+    request<ApiSchemas["GoalEventRead"][]>(`/finance/goals/${id}/events`),
+  updateGoalMilestone: (
+    goal: number,
+    milestone: number,
+    body: ApiSchemas["MilestoneUpdate"],
+  ) =>
+    request<ApiSchemas["GoalMilestoneRead"]>(
+      `/finance/goals/${goal}/milestones/${milestone}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
   financialHealth: () =>
     request<ApiSchemas["FinancialHealthProfile"]>("/finance/health"),
   evaluateFinancialHealth: () =>

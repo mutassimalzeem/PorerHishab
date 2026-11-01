@@ -80,7 +80,8 @@ export type Goal = Required<
     | "target_date"
     | "status"
   >
->;
+> &
+  Partial<Pick<ApiSchemas["GoalRead"], "goal_type" | "priority" | "currency">>;
 export type GoalCreate = Pick<
   Goal,
   "name" | "target_amount" | "current_saved" | "target_date"
@@ -215,18 +216,24 @@ export type TrustedBdtPosition = ApiSchemas["TrustedBdtPosition"];
 export type AccountCreate = ApiSchemas["AccountCreate"];
 export type AccountBalanceUpdate = ApiSchemas["AccountBalanceUpdate"];
 export type OpeningBalanceUpdate = ApiSchemas["OpeningBalanceUpdate"];
-export type AccountBalanceReconciliation = ApiSchemas["AccountBalanceReconciliation"];
+export type AccountBalanceReconciliation =
+  ApiSchemas["AccountBalanceReconciliation"];
 
 export type FinancialAlert = ApiSchemas["FinancialAlertResponse"];
 export type AlertEvaluationSummary = ApiSchemas["AlertEvaluationSummary"];
 export type AlertUnreadCount = ApiSchemas["AlertUnreadCountResponse"];
 export type AlertList = ApiSchemas["AlertListResponse"];
 
-export type NotificationPreference = ApiSchemas["NotificationPreferenceResponse"];
-export type NotificationPreferenceUpdate = ApiSchemas["NotificationPreferenceUpdate"];
+export type NotificationPreference =
+  ApiSchemas["NotificationPreferenceResponse"];
+export type NotificationPreferenceUpdate =
+  ApiSchemas["NotificationPreferenceUpdate"];
 export type NotificationDelivery = ApiSchemas["NotificationDeliveryResponse"];
-export type NotificationDeliveryList = ApiSchemas["NotificationDeliveryListResponse"];
-export type NotificationHistoryItem = ApiSchemas["NotificationHistoryItemResponse"];
-export type NotificationHistoryList = ApiSchemas["NotificationHistoryListResponse"];
+export type NotificationDeliveryList =
+  ApiSchemas["NotificationDeliveryListResponse"];
+export type NotificationHistoryItem =
+  ApiSchemas["NotificationHistoryItemResponse"];
+export type NotificationHistoryList =
+  ApiSchemas["NotificationHistoryListResponse"];
 export type NotificationDigest = ApiSchemas["NotificationDigestResponse"];
 export type DigestEvaluation = ApiSchemas["DigestEvaluationResponse"];

@@ -165,6 +165,35 @@ def financial_coaching(db, user_id, *, as_of=None, priority=None, safety_thresho
         item = goal_recommendation(db, user_id, goal, as_of, history)
         if item is not None:
             result.append(item)
+    # One review per goal: augment an existing goal risk rather than duplicating it.
+    from app.models.goal_planning import GoalMilestone
+    from app.services.finance.goal_planning import latest_plans
+    plans = latest_plans(db, user_id)
+    plan_ids = [p.id for p in plans.values()]
+    missed = db.query(GoalMilestone).filter(GoalMilestone.user_id == user_id,
+        GoalMilestone.plan_id.in_(plan_ids), GoalMilestone.status != "reported_completed",
+        GoalMilestone.due_date < as_of).order_by(GoalMilestone.due_date, GoalMilestone.id).all() if plan_ids else []
+    goal_map = {g.id: g for g in goals}
+    seen_goals = set()
+    for milestone in missed:
+        goal = goal_map.get(milestone.goal_id)
+        if goal is None or goal.id in seen_goals:
+            continue
+        seen_goals.add(goal.id)
+        item = next((r for r in result if r.type == "goal_risk" and r.evidence.goal_id == goal.id), None)
+        if item is None:
+            item = recommendation("goal_risk", f"{goal.id}:milestone:{milestone.id}", as_of, end,
+                priority="medium", source="goal_assessment", subject=goal.name, quality="limited",
+                evidence=dict(period=Period(kind="goal_milestone", start=min(date.fromisoformat(plans[goal.id].profile["as_of_date"]), milestone.due_date), end=milestone.due_date, is_complete=True, label="saved goal checkpoint").to_dict(), goal_id=goal.id, goal_name=goal.name,
+                    current_saved=goal.current_saved, target_amount=goal.target_amount, target_date=goal.target_date),
+                limitations=["Milestone progress is user-reported; no scheduled contribution is assumed to have occurred."])
+            item.title = "Review a missed goal milestone"
+            item.description = "A saved goal checkpoint is past due without sufficient reported progress."
+            item.recommended_action = "Review reported contributions or accept a revised goal plan."
+            result.append(item)
+        item.evidence.milestone_id = milestone.id
+        item.evidence.milestone_due_date = milestone.due_date
+        item.evidence.milestone_target = milestone.target_cumulative
     # One unassigned reserve only. Existing active goals may already claim cash.
     if goals:
         limitations.append(CAVEATS["active_goals"])

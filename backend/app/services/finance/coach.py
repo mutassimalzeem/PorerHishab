@@ -219,9 +219,9 @@ def goal_plan(db, user_id, goal, as_of=None, history_data=None):
     h = history_data or history(db, user_id, as_of)
     assessment = goal_assessment(db, user_id, goal, as_of, h)
     remaining = assessment.remaining
-    days = max(1, (goal.target_date - as_of).days)
-    weeks = (days + 6) // 7
-    weekly = (remaining / weeks).quantize(Decimal("0.01"), rounding=ROUND_UP) if remaining is not None else None
+    days = max(1, (goal.target_date - as_of).days) if goal.target_date else None
+    weeks = (days + 6) // 7 if days is not None else None
+    weekly = (remaining / weeks).quantize(Decimal("0.01"), rounding=ROUND_UP) if remaining is not None and weeks is not None else None
     limitations = list(LIMITATIONS) + list(assessment.limitations)
     return {"goal_id": goal.id, "as_of_date": as_of, "remaining_amount": remaining,
             "required_weekly": weekly, "required_monthly": assessment.required_monthly,

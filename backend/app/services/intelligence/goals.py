@@ -70,6 +70,14 @@ class GoalAssessment:
         }
 
 
+def required_monthly_contribution(remaining, target_date, as_of):
+    """Shared calendar-month convention; unknown deadlines never become one month."""
+    if remaining is None or target_date is None:
+        return None
+    months = max(1, (target_date.year - as_of.year) * 12 + target_date.month - as_of.month + 1)
+    return (remaining / months).quantize(Decimal("0.01"), rounding=ROUND_UP)
+
+
 def goal_assessment(
     db: Session,
     user_id: int,
@@ -88,15 +96,7 @@ def goal_assessment(
         money(max(ZERO, goal.target_amount - goal.current_saved))
         if goal.current_saved is not None else None
     )
-    months = max(
-        1,
-        (goal.target_date.year - as_of.year) * 12
-        + goal.target_date.month - as_of.month + 1,
-    )
-    required_monthly = (
-        (remaining / months).quantize(Decimal("0.01"), rounding=ROUND_UP)
-        if remaining is not None else None
-    )
+    required_monthly = required_monthly_contribution(remaining, goal.target_date, as_of)
 
     capacity = None
     limitations: list[str] = []
@@ -113,7 +113,7 @@ def goal_assessment(
             SavingsGoal.id != goal.id,
         ).all()
         for other in others:
-            if other.current_saved is None:
+            if other.current_saved is None or other.target_date is None:
                 capacity = None
                 limitations.append(OTHER_GOAL_UNKNOWN_SAVINGS_LIMITATION)
                 break
@@ -138,12 +138,14 @@ def goal_assessment(
         status = AFFORDABILITY_CANCELLED
     elif remaining == 0:
         status = AFFORDABILITY_COMPLETED
-    elif goal.target_date < as_of:
+    elif goal.target_date is not None and goal.target_date < as_of:
         status = AFFORDABILITY_OVERDUE
     elif required_monthly is not None and capacity is not None:
         status = AFFORDABILITY_FEASIBLE if capacity >= required_monthly \
             else AFFORDABILITY_AT_RISK
 
+    if goal.target_date is None:
+        limitations.append("A target date is required to calculate a dated contribution schedule.")
     if remaining is None:
         limitations.append(UNKNOWN_SAVINGS_LIMITATION)
     if history is None or not history.get("adequate"):

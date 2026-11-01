@@ -178,6 +178,7 @@ describe("English and Bengali interface", () => {
         </LanguageProvider>
       </MemoryRouter>,
     );
+    await user.click(await screen.findByRole("button", {name: "View contribution preview"}));
     await screen.findByText("Capacity is not established");
     await user.click(screen.getByRole("button", { name: "Edit " + goal.name }));
     await user.clear(screen.getByLabelText("Goal name"));

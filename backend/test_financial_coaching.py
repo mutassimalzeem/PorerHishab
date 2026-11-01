@@ -231,8 +231,7 @@ def test_missing_goal_target_date_is_not_invented(data):
     db, users, _ = data
     h = monthly_history(db, users[0].id, AS_OF)
     assert goal_recommendation(db, users[0].id, SimpleNamespace(target_date=None), AS_OF, h) is None
-    with pytest.raises(ValueError):
-        GoalCreate(name="Missing date", target_amount="1000", current_saved="0", target_date=None)
+    assert GoalCreate(name="Missing date", target_amount="1000", current_saved="0", target_date=None).target_date is None
 
 
 def test_overdue_goal_can_be_reviewed_without_forecast_history(data):

@@ -17,14 +17,19 @@ import {
   Pager,
   ResourceView,
 } from "../components/ui";
+import { GoalPlanner } from "../components/GoalPlanner";
 import { Dialog } from "../components/Dialog";
-function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
+function GoalDetail({
+  goal,
+  onEdit,
+  onPlan,
+}: {
+  goal: Goal;
+  onEdit: () => void;
+  onPlan: () => void;
+}) {
   useLanguage();
-  const plan = useResource(
-    useCallback(() => api.goalPlan(goal.id), [goal.id]),
-    `${goal.current_saved}:${goal.target_date}:${goal.target_amount}:${goal.status}`,
-  );
-  const [cadence, setCadence] = useState<"monthly" | "weekly">("monthly");
+  const [preview, setPreview] = useState(false);
   const saved = goal.current_saved;
   const progress =
     saved === null
@@ -57,7 +62,8 @@ function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
         </div>
         <div>
           <small>
-            {t("Target by")} {date(goal.target_date)}
+            {t("Target by")}{" "}
+            {goal.target_date ? date(goal.target_date) : t("No target date")}
           </small>
           <Amount value={goal.target_amount} />
         </div>
@@ -81,69 +87,85 @@ function GoalDetail({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
           </p>
         </>
       )}
-      <ResourceView resource={plan} label={t("Checking contribution needs...")}>
-        {(p) => (
-          <>
-            <div className="contribution-plan">
-              <div className="section-heading">
-                <span className="value-kind">{t("Required contribution")}</span>
-                <div
-                  className="segmented"
-                  role="group"
-                  aria-label={goal.name + " " + uiLabel("contribution period")}
-                >
-                  <button
-                    aria-pressed={cadence === "monthly"}
-                    onClick={() => setCadence("monthly")}
-                  >
-                    {t("Monthly")}{" "}
-                  </button>
-                  <button
-                    aria-pressed={cadence === "weekly"}
-                    onClick={() => setCadence("weekly")}
-                  >
-                    {t("Weekly")}{" "}
-                  </button>
-                </div>
-              </div>
-              <Amount
-                value={
-                  cadence === "monthly" ? p.required_monthly : p.required_weekly
-                }
-              />
-              <small>
-                {t("To reach the target by")} {date(goal.target_date)}.
-              </small>
-            </div>
-            <div className="capacity-line">
-              <span>{t("Estimated monthly capacity")}</span>
-              <Amount value={p.estimated_monthly_capacity} />
-            </div>
-            <p className={`assessment assessment-${p.affordability}`}>
-              {
-                {
-                  unknown: t("Capacity is not established"),
-                  appears_feasible: t("Appears feasible from recorded history"),
-                  at_risk: t("The target may need more room"),
-                  completed: t("Target reported as complete"),
-                  cancelled: t("This plan is cancelled"),
-                  overdue: t("The target date has passed"),
-                }[p.affordability]
-              }
-            </p>
-            <p className="source">
-              {t("As of")} {date(p.as_of_date)}
-              {t(". Estimates are not a guaranteed timeline.")}{" "}
-            </p>
-            <Notes assumptions={p.assumptions} limitations={p.limitations} />
-          </>
-        )}
-      </ResourceView>
+      <button onClick={onPlan}>{t("Plan milestones")}</button>
+      <button onClick={() => setPreview((v) => !v)} aria-expanded={preview}>
+        {t("View contribution preview")}
+      </button>
+      {preview && <ContributionPreview goal={goal} />}
     </article>
+  );
+}
+function ContributionPreview({ goal }: { goal: Goal }) {
+  const plan = useResource(
+    useCallback(() => api.goalPlan(goal.id), [goal.id]),
+    `${goal.current_saved}:${goal.target_date}:${goal.target_amount}:${goal.status}`,
+  );
+  const [cadence, setCadence] = useState<"monthly" | "weekly">("monthly");
+  return (
+    <ResourceView resource={plan} label={t("Checking contribution needs...")}>
+      {(p) => (
+        <>
+          <div className="contribution-plan">
+            <div className="section-heading">
+              <span className="value-kind">{t("Required contribution")}</span>
+              <div
+                className="segmented"
+                role="group"
+                aria-label={goal.name + " " + uiLabel("contribution period")}
+              >
+                <button
+                  aria-pressed={cadence === "monthly"}
+                  onClick={() => setCadence("monthly")}
+                >
+                  {t("Monthly")}{" "}
+                </button>
+                <button
+                  aria-pressed={cadence === "weekly"}
+                  onClick={() => setCadence("weekly")}
+                >
+                  {t("Weekly")}{" "}
+                </button>
+              </div>
+            </div>
+            <Amount
+              value={
+                cadence === "monthly" ? p.required_monthly : p.required_weekly
+              }
+            />
+            <small>
+              {t("To reach the target by")}{" "}
+              {goal.target_date ? date(goal.target_date) : t("No target date")}.
+            </small>
+          </div>
+          <div className="capacity-line">
+            <span>{t("Estimated monthly capacity")}</span>
+            <Amount value={p.estimated_monthly_capacity} />
+          </div>
+          <p className={`assessment assessment-${p.affordability}`}>
+            {
+              {
+                unknown: t("Capacity is not established"),
+                appears_feasible: t("Appears feasible from recorded history"),
+                at_risk: t("The target may need more room"),
+                completed: t("Target reported as complete"),
+                cancelled: t("This plan is cancelled"),
+                overdue: t("The target date has passed"),
+              }[p.affordability]
+            }
+          </p>
+          <p className="source">
+            {t("As of")} {date(p.as_of_date)}
+            {t(". Estimates are not a guaranteed timeline.")}{" "}
+          </p>
+          <Notes assumptions={p.assumptions} limitations={p.limitations} />
+        </>
+      )}
+    </ResourceView>
   );
 }
 export function Plans() {
   useLanguage();
+  const [planningGoal, setPlanningGoal] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -166,7 +188,9 @@ export function Plans() {
       current_saved: f.get("current_saved")
         ? String(f.get("current_saved"))
         : null,
-      target_date: String(f.get("target_date")),
+      target_date: String(f.get("target_date")) || null,
+      goal_type: String(f.get("goal_type") || "savings"),
+      priority: Number(f.get("priority") || 3),
     };
     try {
       if (editing) {
@@ -178,6 +202,10 @@ export function Plans() {
           changes.current_saved = values.current_saved;
         if (values.target_date !== editing.target_date)
           changes.target_date = values.target_date;
+        if (values.goal_type !== (editing.goal_type ?? "savings"))
+          changes.goal_type = values.goal_type as GoalUpdate["goal_type"];
+        if (values.priority !== (editing.priority ?? 3))
+          changes.priority = values.priority;
         const status = f.get("status") as Goal["status"];
         if (status && status !== editing.status) changes.status = status;
         await api.editGoal(editing.id, changes);
@@ -278,16 +306,44 @@ export function Plans() {
             name="target_date"
             type="date"
             min={editing ? undefined : today()}
-            required
             defaultValue={editing?.target_date ?? ""}
+          />
+          <label className="field">
+            <span>{t("Goal category")}</span>
+            <select
+              name="goal_type"
+              defaultValue={editing?.goal_type ?? "savings"}
+            >
+              {[
+                "emergency_fund",
+                "purchase",
+                "savings",
+                "debt_repayment",
+                "expense_reduction",
+                "custom",
+              ].map((k) => (
+                <option key={k} value={k}>
+                  {uiLabel(k)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Field
+            label={t("Goal priority (1 is highest)")}
+            name="priority"
+            type="number"
+            min="1"
+            max="5"
+            defaultValue={editing?.priority ?? 3}
           />
           {editing && (
             <label className="field">
               <span>{t("Goal status")}</span>
               <select name="status" defaultValue={editing.status}>
-                {editing.status === "active" ? (
+                {editing.status === "active" || editing.status === "paused" ? (
                   <>
                     <option value="active">{t("Active")}</option>
+                    <option value="paused">{t("Pause goal")}</option>
                     <option value="completed">{t("Completed")}</option>
                     <option value="cancelled">{t("Cancelled")}</option>
                   </>
@@ -322,6 +378,17 @@ export function Plans() {
           </div>
         </form>
       </Dialog>
+      {planningGoal !== null && (
+        <GoalPlanner
+          key={planningGoal}
+          goalId={planningGoal}
+          onSaved={() => setRevision((v) => v + 1)}
+          onClose={() => {
+            setPlanningGoal(null);
+            setRevision((v) => v + 1);
+          }}
+        />
+      )}
       <ResourceView resource={goals} label={t("Reading your savings plans...")}>
         {(p) => (
           <>
@@ -331,6 +398,7 @@ export function Plans() {
                   <GoalDetail
                     key={goal.id}
                     goal={goal}
+                    onPlan={() => setPlanningGoal(goal.id)}
                     onEdit={() => {
                       setEditing(goal);
                       setAdding(true);
