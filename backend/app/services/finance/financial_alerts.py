@@ -34,6 +34,10 @@ from app.services.finance.coaching_feedback import visible_coaching
 from app.services.finance.obligations import obligation_amounts_for_items
 from app.services.finance.runway import financial_runway
 from app.services.intelligence.periods import today_dhaka
+from app.services.notifications.dispatcher import enqueue_notifications_for_alert
+import logging
+
+logger = logging.getLogger(__name__)
 
 ZERO = Decimal("0.00")
 LARGE_CASH_FRACTION = Decimal("0.50")
@@ -401,6 +405,7 @@ def evaluate_alerts(
     updated = 0
     resolved = 0
     unchanged = 0
+    events_to_dispatch: list[tuple[FinancialAlert, str]] = []
 
     candidate_keys = {c.alert_key for c in candidates}
 
@@ -432,6 +437,7 @@ def evaluate_alerts(
             )
             db.add(new_alert)
             created += 1
+            events_to_dispatch.append((new_alert, 'ALERT_CREATED'))
         else:
             existing = existing_alerts[candidate.alert_key]
 
@@ -455,6 +461,7 @@ def evaluate_alerts(
                 existing.occurrence_count += 1
                 existing.updated_at = now
                 updated += 1
+                events_to_dispatch.append((existing, 'ALERT_RECURRED'))
 
             elif existing.status == "dismissed":
                 # 3. Escalation check on dismissed condition
@@ -481,6 +488,7 @@ def evaluate_alerts(
                     existing.occurrence_count += 1
                     existing.updated_at = now
                     updated += 1
+                    events_to_dispatch.append((existing, 'ALERT_ESCALATED'))
                 else:
                     # Preserve dismissal and its dismissal timestamp; update detection timestamp and evidence
                     # Note: occurrence_count is NOT incremented
@@ -501,6 +509,9 @@ def evaluate_alerts(
                     escalated_to_critical = (
                         candidate.severity == "critical" and existing.severity != "critical"
                     )
+                    old_sev_rank = SEVERITY_ORDER.get(existing.severity, 99)
+                    new_sev_rank = SEVERITY_ORDER.get(candidate.severity, 99)
+                    is_escalated = escalated_to_critical or (new_sev_rank < old_sev_rank)
                     existing.severity = candidate.severity
                     existing.alert_type = candidate.alert_type
                     existing.title = candidate.title
@@ -517,6 +528,8 @@ def evaluate_alerts(
                         existing.read_at = None  # Escalation requires re-reading
                         existing.actioned_at = None  # Material escalation invalidates prior non-critical action
                     updated += 1
+                    if is_escalated:
+                        events_to_dispatch.append((existing, 'ALERT_ESCALATED'))
                 else:
                     # Idempotent unchanged evaluation: read_at and actioned_at preserved
                     existing.last_detected_at = now
@@ -574,6 +587,17 @@ def evaluate_alerts(
                 existing.resolved_at = now
                 existing.updated_at = now
                 resolved += 1
+
+    db.flush()
+    for alert_obj, event_type in events_to_dispatch:
+        try:
+            enqueue_notifications_for_alert(db, alert_obj, event_type)
+        except Exception as err:
+            logger.error(
+                "Failed to enqueue notification delivery for alert %s: %s",
+                getattr(alert_obj, "id", None),
+                err,
+            )
 
     db.commit()
 

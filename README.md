@@ -28,6 +28,7 @@ Status as of **31 October 2026**:
 | Coaching effectiveness metrics (AI-15J) | Implemented and merged | Deterministic tracking of adoption rate, adherence, and recurring financial trend indicators; [implementation notes](docs/ai-15j-coaching-effectiveness.md) |
 | Account position & trusted cash (AI-15K) | Implemented and merged | Deterministic account position, reported/derived balance reconciliation, trusted BDT cash aggregation, cashflow and purchase integration; [implementation notes](docs/ai-15k-account-position.md) |
 | Proactive financial alerts & notification readiness (AI-15L) | Implemented | Persistent user-scoped financial alerts, deterministic trigger evaluation, deduplication, meaningful change detection, notification readiness boundary, and bilingual notification center; [implementation notes](docs/ai-15l-financial-alerts.md) |
+| Notification delivery infrastructure (AI-15M) | Implemented | Outbox delivery records, provider-independent email abstraction, safe test backend, quiet hours, email consent, and bilingual preferences UI; [implementation notes](docs/ai-15m-notification-delivery.md) |
 | Bangla/Roman Bangla coaching | Partial / future work | Bengali interface and some categorization rules exist; Ask currently uses supported English questions |
 | Financial integrations and delivery | Planned | SMS/PDF/email ingestion, bank/MFS synchronization, WhatsApp/Messenger and notifications |
 | Production rollout | Pending | Hosting, operational controls, security hardening and production data validation |

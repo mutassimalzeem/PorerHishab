@@ -8,6 +8,8 @@ from app.models.merchant_preference import MerchantCategoryPreference
 from app.models.scheduled_cashflow_item import ScheduledCashflowItem
 from app.models.obligation_allocation import ObligationAllocation
 from app.models.financial_alert import FinancialAlert
+from app.models.notification_preference import NotificationPreference
+from app.models.notification_delivery import NotificationDelivery
 
 __all__ = [
     "CoachingFeedback",
@@ -20,4 +22,6 @@ __all__ = [
     "ScheduledCashflowItem",
     "ObligationAllocation",
     "FinancialAlert",
+    "NotificationPreference",
+    "NotificationDelivery",
 ]

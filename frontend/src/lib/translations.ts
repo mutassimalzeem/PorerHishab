@@ -1,5 +1,44 @@
 // Frontend-owned copy only. Backend prose and user records retain their original language.
 export const bn = {
+  "Notification preferences": "বিজ্ঞপ্তির পছন্দসমূহ",
+  "Manage how and when PorerHishab notifies you about financial alerts.":
+    "আর্থিক সতর্কবার্তা সম্পর্কে পরের হিসাব কীভাবে এবং কখন আপনাকে জানাবে তা পরিচালনা করুন।",
+  "In-app notifications": "অ্যাপে বিজ্ঞপ্তি",
+  "Show alerts in your notification center": "আপনার নোটিফিকেশন সেন্টারে সতর্কবার্তা দেখান",
+  "Email notifications": "ইমেইল বিজ্ঞপ্তি",
+  "Send alert notifications to your registered email": "আপনার নিবন্ধিত ইমেইলে সতর্কবার্তা পাঠান",
+  "Email consent": "ইমেইলের সম্মতি",
+  "I consent to receiving security and financial alert notifications at my registered email address. PorerHishab will never send marketing or promotional emails.":
+    "আমি আমার নিবন্ধিত ইমেইল ঠিকানায় নিরাপত্তা ও আর্থিক সতর্কবার্তা বিজ্ঞপ্তি পেতে সম্মতি দিচ্ছি। পরের হিসাব কখনো বিপণন বা প্রচারমূলক ইমেইল পাঠাবে না।",
+  "Consent is required before email notifications can be sent.":
+    "ইমেইল বিজ্ঞপ্তি পাঠানোর জন্য সম্মতির প্রয়োজন।",
+  "Minimum email severity": "ইমেইলের সর্বনিম্ন গুরুত্ব",
+  "Minimum in-app severity": "অ্যাপের সর্বনিম্ন গুরুত্ব",
+  "Quiet hours": "নীরব সময়",
+  "Quiet hours enabled": "নীরব সময় সক্রিয়",
+  "Pause non-critical notifications during quiet hours":
+    "নীরব সময়ে সংকটপূর্ণ নয় এমন বিজ্ঞপ্তি স্থগিত রাখুন",
+  "Start time": "শুরুর সময়",
+  "End time": "শেষের সময়",
+  "Timezone": "সময় অঞ্চল",
+  "Critical alerts bypass quiet hours to protect your finances.":
+    "আপনার অর্থ সুরক্ষার জন্য সংকটপূর্ণ সতর্কবার্তা নীরব সময় উপেক্ষা করে।",
+  "Notification frequency": "বিজ্ঞপ্তির পৌনঃপুনিকতা",
+  "Immediate": "তাৎক্ষণিক",
+  "Daily digest": "দৈনিক সারসংক্ষেপ",
+  "Off": "বন্ধ",
+  "Daily digest is planned for a future update; immediate delivery is active.":
+    "দৈনিক সারসংক্ষেপ ভবিষ্যৎ আপডেটের জন্য পরিকল্পিত; তাৎক্ষণিক বিতরণ সক্রিয় রয়েছে।",
+  "Save preferences": "পছন্দসমূহ সংরক্ষণ করুন",
+  "Saving preferences...": "পছন্দ সংরক্ষণ করা হচ্ছে...",
+  "Preferences saved successfully.": "পছন্দসমূহ সফলভাবে সংরক্ষিত হয়েছে।",
+  "Could not save preferences. Please try again.":
+    "পছন্দ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
+  "Reading notification preferences...": "বিজ্ঞপ্তির পছন্দসমূহ পড়া হচ্ছে...",
+  "Could not load notification preferences. Please try again.":
+    "বিজ্ঞপ্তির পছন্দসমূহ লোড করা যায়নি। আবার চেষ্টা করুন।",
+  "Retry": "আবার চেষ্টা করুন",
+  "Warning": "সতর্কতা",
   "Outcome observations normally apply only to acted-on recommendations; dismissed, not-relevant, snoozed and unrated recommendations are excluded from outcome tracking. Dismissed, not-relevant and snoozed feedback are still included in overall feedback totals.":
     "\u09ab\u09b2\u09be\u09ab\u09b2 \u09aa\u09b0\u09cd\u09af\u09ac\u09c7\u0995\u09cd\u09b7\u09a3 \u09b8\u09be\u09a7\u09be\u09b0\u09a3\u09a4 \u09b6\u09c1\u09a7\u09c1 \u0995\u09be\u099c \u0995\u09b0\u09c7\u099b\u09c7\u09a8 \u09ac\u09b2\u09c7 \u099c\u09be\u09a8\u09be\u09a8\u09cb \u09aa\u09b0\u09be\u09ae\u09b0\u09cd\u09b6\u09c7\u09b0 \u099c\u09a8\u09cd\u09af \u09aa\u09cd\u09b0\u09af\u09cb\u099c\u09cd\u09af; \u09b8\u09b0\u09bf\u09af\u09bc\u09c7 \u09b0\u09be\u0996\u09be, \u09aa\u09cd\u09b0\u09be\u09b8\u0999\u09cd\u0997\u09bf\u0995 \u09a8\u09af\u09bc, \u09b8\u09be\u09ae\u09af\u09bc\u09bf\u0995 \u09ac\u09bf\u09b0\u09a4\u09bf\u09a4\u09c7 \u09b0\u09be\u0996\u09be \u098f\u09ac\u0982 \u09ae\u09a4\u09be\u09ae\u09a4 \u09a8\u09be \u09a6\u09c7\u0993\u09af\u09bc\u09be \u09aa\u09b0\u09be\u09ae\u09b0\u09cd\u09b6 \u09ab\u09b2\u09be\u09ab\u09b2 \u09aa\u09b0\u09cd\u09af\u09ac\u09c7\u0995\u09cd\u09b7\u09a3 \u09a5\u09c7\u0995\u09c7 \u09ac\u09be\u09a6 \u09af\u09be\u09af\u09bc\u0964 \u09b8\u09b0\u09bf\u09af\u09bc\u09c7 \u09b0\u09be\u0996\u09be, \u09aa\u09cd\u09b0\u09be\u09b8\u0999\u09cd\u0997\u09bf\u0995 \u09a8\u09af\u09bc \u098f\u09ac\u0982 \u09b8\u09be\u09ae\u09af\u09bc\u09bf\u0995 \u09ac\u09bf\u09b0\u09a4\u09bf\u09a4\u09c7 \u09b0\u09be\u0996\u09be \u09ae\u09a4\u09be\u09ae\u09a4 \u09b8\u09be\u09ae\u0997\u09cd\u09b0\u09bf\u0995 \u09ae\u09a4\u09be\u09ae\u09a4\u09c7\u09b0 \u09ae\u09cb\u099f \u09b9\u09bf\u09b8\u09be\u09ac\u09c7 \u0985\u09a8\u09cd\u09a4\u09b0\u09cd\u09ad\u09c1\u0995\u09cd\u09a4 \u09a5\u09be\u0995\u09c7\u0964",
   "Coaching effectiveness":

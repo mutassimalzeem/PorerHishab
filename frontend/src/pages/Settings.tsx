@@ -3,6 +3,8 @@ import { useLanguage } from "../lib/useLanguage";
 import { t } from "../lib/locale";
 import type { User } from "../domain";
 import { PageHeading, Section } from "../components/ui";
+import { NotificationPreferences } from "../components/NotificationPreferences";
+
 export function Settings({
   user,
   onLogout,
@@ -56,6 +58,9 @@ export function Settings({
             "Backend explanations and your records remain in their original language.",
           )}
         </p>
+
+        <NotificationPreferences />
+
         <Section title={t("Data & assumptions")}>
           <p>
             {t(
