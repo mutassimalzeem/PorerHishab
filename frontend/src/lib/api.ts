@@ -168,6 +168,16 @@ export function query(
   return `?${params}`;
 }
 export const api = {
+  financialHealth: () =>
+    request<ApiSchemas["FinancialHealthProfile"]>("/finance/health"),
+  evaluateFinancialHealth: () =>
+    post<ApiSchemas["FinancialHealthProfile"]>("/finance/health/evaluate", {}),
+  financialHealthHistory: () =>
+    request<ApiSchemas["FinancialHealthProfile"][]>("/finance/health/history"),
+  financialHealthTrend: (days = 90) =>
+    request<ApiSchemas["FinancialHealthTrend"]>(
+      `/finance/health/trend?days=${days}`,
+    ),
   accounts: () => request<AccountOverviewResponse>("/accounts"),
   addAccount: (body: AccountCreate) =>
     post<AccountPositionItem>("/accounts", body),
@@ -345,5 +355,7 @@ export const api = {
   evaluateDailyDigest: () =>
     post<DigestEvaluation>("/finance/notifications/digest/evaluate", {}),
   userDigests: (limit: number = 10) =>
-    request<NotificationDigest[]>(`/finance/notifications/digests?limit=${limit}`),
+    request<NotificationDigest[]>(
+      `/finance/notifications/digests?limit=${limit}`,
+    ),
 };

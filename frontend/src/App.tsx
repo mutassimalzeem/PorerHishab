@@ -37,6 +37,7 @@ import { Accounts } from "./pages/Accounts";
 import { Cashflow } from "./pages/Cashflow";
 import { Transactions } from "./pages/Transactions";
 import { Plans } from "./pages/Plans";
+import { FinancialHealth } from "./pages/FinancialHealth";
 import { Insights } from "./pages/Insights";
 import { Ask } from "./pages/Ask";
 import { Settings } from "./pages/Settings";
@@ -49,6 +50,7 @@ const navigation = [
   { to: "/cashflow", label: "Cashflow", icon: ChartNoAxesCombined },
   { to: "/transactions", label: "Transactions", icon: List },
   { to: "/plans", label: "Plans", icon: Target },
+  { to: "/health", label: "Financial Health", icon: ChartNoAxesColumn },
   { to: "/insights", label: "Insights", icon: ChartNoAxesColumn },
   { to: "/ask", label: "Ask PorerHishab", icon: MessageSquare },
 ];
@@ -249,11 +251,15 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Dashboard user={user} />} />
-            <Route path="/alerts" element={<Alerts onAlertChange={refreshUnread} />} />
+            <Route
+              path="/alerts"
+              element={<Alerts onAlertChange={refreshUnread} />}
+            />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/cashflow" element={<Cashflow />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/plans" element={<Plans />} />
+            <Route path="/health" element={<FinancialHealth />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/ask" element={<Ask />} />
             <Route
@@ -291,7 +297,9 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
         <nav className="mobile-quick-nav" aria-label={t("Quick navigation")}>
           {navigation
             .filter((n) =>
-              ["/", "/accounts", "/cashflow", "/transactions", "/ask"].includes(n.to),
+              ["/", "/accounts", "/cashflow", "/transactions", "/ask"].includes(
+                n.to,
+              ),
             )
             .map((n) => (
               <NavLink key={n.to} to={n.to} end={n.to === "/"}>

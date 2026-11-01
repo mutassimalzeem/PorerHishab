@@ -41,7 +41,7 @@ def cash_position(db, user_id, as_of):
 
 def financial_runway(db, user_id, *, as_of=None, horizon_days=30,
                      safety_threshold=DEFAULT_SAFETY_THRESHOLD, mode: RunwayMode = "historical",
-                     starting_balance=None, history=None):
+                     starting_balance=None, history=None, account_overview=None):
     """Monthly historical estimate, or explicitly limited dated-obligations scenario.
 
     Caller balance is for existing coach APIs only; known account cash caps it.
@@ -57,7 +57,16 @@ def financial_runway(db, user_id, *, as_of=None, horizon_days=30,
         raise ValueError("Starting balance must be finite Decimal")
     end = as_of + timedelta(days=horizon_days)
     period = Period(kind="runway_horizon", start=as_of, end=end, is_complete=False, label=f"next {horizon_days} days (inclusive)")
-    balance, reported, derived, source, confidence = cash_position(db, user_id, as_of)
+    if account_overview is None:
+        balance, reported, derived, source, confidence = cash_position(db, user_id, as_of)
+    else:
+        # Internal evaluation context from AI-15K: no second account query or
+        # reconciliation pass, and never substitute its partial trusted sum.
+        bdt = [a for a in account_overview.items if a.currency == "BDT"]
+        complete = bool(bdt) and all(a.position_status == "trusted" for a in bdt)
+        balance = account_overview.trusted_bdt_position.total if complete else None
+        reported = derived = balance
+        source, confidence = ("reconciled", "high") if complete else ("unknown", "unknown")
     limitations = [
         "Scheduled income is uncertain and never added to projected cash.",
         "Imported history, account reports and schedules may be incomplete or stale; pending transfers and unrecorded spending are unknown.",
