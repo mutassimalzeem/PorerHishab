@@ -168,7 +168,9 @@ export type Cashflow = Required<
     | "assumptions"
     | "limitations"
   >
->;
+> & {
+  balance_source?: string;
+};
 export type Decision = Required<
   Pick<
     ApiSchemas["CoachPurchaseResponse"],
@@ -181,7 +183,9 @@ export type Decision = Required<
     | "assumptions"
     | "warnings"
   >
->;
+> & {
+  balance_source?: string;
+};
 export type Answer = Required<
   Pick<
     ApiSchemas["FinanceQuestionResponse"],
@@ -204,3 +208,11 @@ export type Intelligence = ApiSchemas["IntelligenceResponse"];
 export type TransactionFilters = ApiOperations["GET /transactions"]["query"];
 export type GoalUpdate = ApiSchemas["GoalUpdate"];
 export type ScheduledUpdate = ApiSchemas["ScheduledCashflowUpdate"];
+
+export type AccountPositionItem = ApiSchemas["AccountPositionItem"];
+export type AccountOverviewResponse = ApiSchemas["AccountOverviewResponse"];
+export type TrustedBdtPosition = ApiSchemas["TrustedBdtPosition"];
+export type AccountCreate = ApiSchemas["AccountCreate"];
+export type AccountBalanceUpdate = ApiSchemas["AccountBalanceUpdate"];
+export type OpeningBalanceUpdate = ApiSchemas["OpeningBalanceUpdate"];
+export type AccountBalanceReconciliation = ApiSchemas["AccountBalanceReconciliation"];

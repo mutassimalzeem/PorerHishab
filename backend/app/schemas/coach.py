@@ -126,8 +126,15 @@ class NudgePage(BaseModel):
 
 
 class CoachCashflowRequest(StrictModel):
-    starting_balance: Money
+    starting_balance: Money | None = None
+    use_account_position: bool = False
     months_ahead: int = Field(default=3, ge=1, le=12)
+
+    @model_validator(mode="after")
+    def validate_balance_source(self):
+        if self.starting_balance is None and not self.use_account_position:
+            raise ValueError("Either starting_balance or use_account_position=True is required")
+        return self
 
 
 class CoachMonth(BaseModel):
@@ -144,6 +151,7 @@ class CoachMonth(BaseModel):
 class CoachCashflowResponse(BaseModel):
     as_of_date: date
     starting_balance: Decimal
+    balance_source: str = "caller"
     months: list[CoachMonth]
     coverage: Coverage
     assumptions: list[str]
@@ -152,9 +160,16 @@ class CoachCashflowResponse(BaseModel):
 
 class CoachPurchaseRequest(StrictModel):
     purchase_amount: PositiveMoney
-    starting_balance: Money
+    starting_balance: Money | None = None
+    use_account_position: bool = False
     safety_buffer: Money
     horizon_days: int = Field(default=30, ge=1, le=366)
+
+    @model_validator(mode="after")
+    def validate_balance_source(self):
+        if self.starting_balance is None and not self.use_account_position:
+            raise ValueError("Either starting_balance or use_account_position=True is required")
+        return self
 
 
 from app.schemas.runway import FinancialRunway
@@ -166,6 +181,7 @@ class CoachPurchaseResponse(BaseModel):
     purchase_amount: Decimal
     scheduled_expense_reserve: Decimal
     remaining_after_purchase_and_reserve: Decimal
+    balance_source: str = "caller"
     runway: FinancialRunway | None = None
     uncertain_scheduled_income: Decimal
     horizon_end: date

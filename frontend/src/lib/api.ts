@@ -1,27 +1,34 @@
 import type { ApiSchemas } from "../generated/api";
 import { getLanguage, t, uiLabel } from "./locale";
 import type {
+  AccountBalanceReconciliation,
+  AccountBalanceUpdate,
+  AccountCreate,
+  AccountOverviewResponse,
+  AccountPositionItem,
   Answer,
-  Intelligence,
-  GoalUpdate,
-  ScheduledUpdate,
+  CSVUpload,
   Cashflow,
   Decision,
   Goal,
   GoalCreate,
   GoalPlan,
+  GoalUpdate,
+  Intelligence,
   Monthly,
   Nudges,
+  OpeningBalanceUpdate,
   Page,
   Recommendations,
   Scheduled,
   ScheduledCreate,
+  ScheduledUpdate,
   Summary,
   Tokens,
   Transaction,
   TransactionCreate,
+  TrustedBdtPosition,
   User,
-  CSVUpload,
 } from "../domain";
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 let tokens: Tokens | null = null;
@@ -149,6 +156,20 @@ export function query(values: Record<string, string | number | undefined>) {
   return `?${params}`;
 }
 export const api = {
+  accounts: () => request<AccountOverviewResponse>("/accounts"),
+  addAccount: (body: AccountCreate) =>
+    post<AccountPositionItem>("/accounts", body),
+  accountPosition: () => request<TrustedBdtPosition>("/accounts/position"),
+  updateBalance: (id: number, body: AccountBalanceUpdate) =>
+    request<AccountBalanceReconciliation>(`/accounts/${id}/balance`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  updateOpeningBalance: (id: number, body: OpeningBalanceUpdate) =>
+    request<AccountBalanceReconciliation>(`/accounts/${id}/balance/opening`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   coachingFeedback: (id: string, body: ApiSchemas["CoachingFeedbackInput"]) =>
     request<ApiSchemas["CoachingFeedbackRecord"]>(
       `/finance/coaching/${encodeURIComponent(id)}/feedback`,
@@ -236,13 +257,27 @@ export const api = {
   nudges: () => request<Nudges>("/insights/proactive"),
   recommendations: () =>
     request<Recommendations>("/finance/savings/recommendations"),
-  cashflow: (starting_balance: string, months_ahead: number) =>
-    post<Cashflow>("/finance/coach/cashflow", {
-      starting_balance,
-      months_ahead,
-    }),
+  cashflow: (
+    starting_balanceOrParams:
+      | string
+      | {
+          starting_balance?: string;
+          use_account_position?: boolean;
+          months_ahead: number;
+        },
+    months_ahead = 3,
+  ) => {
+    if (typeof starting_balanceOrParams === "string") {
+      return post<Cashflow>("/finance/coach/cashflow", {
+        starting_balance: starting_balanceOrParams,
+        months_ahead,
+      });
+    }
+    return post<Cashflow>("/finance/coach/cashflow", starting_balanceOrParams);
+  },
   decision: (body: {
-    starting_balance: string;
+    starting_balance?: string;
+    use_account_position?: boolean;
     purchase_amount: string;
     safety_buffer: string;
     horizon_days: number;

@@ -5,6 +5,7 @@ import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel, digits } from "../lib/locale";
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import type { Cashflow as CashflowData, Decision, Scheduled } from "../domain";
 import { api } from "../lib/api";
@@ -23,6 +24,7 @@ import {
 } from "../components/ui";
 import { Dialog } from "../components/Dialog";
 import { CashflowChart } from "../components/CashflowChart";
+
 export function Cashflow() {
   useLanguage();
   const [offset, setOffset] = useState(0);
@@ -35,6 +37,9 @@ export function Cashflow() {
   const [notice, setNotice] = useState("");
   const [scenario, setScenario] = useState<CashflowData | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
+  const [scenarioSource, setScenarioSource] = useState<"trusted" | "manual">("manual");
+  const [purchaseSource, setPurchaseSource] = useState<"trusted" | "manual">("manual");
+
   const scheduled = useResource(
     useCallback(
       () => api.scheduled({ status: filter, limit: 20, offset }),
@@ -42,6 +47,13 @@ export function Cashflow() {
     ),
     revision,
   );
+  const accountsResource = useResource(
+    useCallback(() => api.accounts(), []),
+    revision,
+  );
+
+  const trustedPos = accountsResource.data?.trusted_bdt_position;
+
   async function run(
     e: FormEvent<HTMLFormElement>,
     kind: "schedule" | "scenario" | "purchase",
@@ -70,22 +82,44 @@ export function Cashflow() {
         setRevision((v) => v + 1);
         setNotice("Scheduled item saved. No actual transaction was created.");
       }
-      if (kind === "scenario")
-        setScenario(
-          await api.cashflow(
-            String(f.get("starting_balance")),
-            Number(f.get("months_ahead")),
-          ),
-        );
-      if (kind === "purchase")
-        setDecision(
-          await api.decision({
-            starting_balance: String(f.get("starting_balance")),
-            purchase_amount: String(f.get("purchase_amount")),
-            safety_buffer: String(f.get("safety_buffer")),
-            horizon_days: Number(f.get("horizon_days")),
-          }),
-        );
+      if (kind === "scenario") {
+        if (scenarioSource === "trusted") {
+          setScenario(
+            await api.cashflow({
+              use_account_position: true,
+              months_ahead: Number(f.get("months_ahead")),
+            }),
+          );
+        } else {
+          setScenario(
+            await api.cashflow({
+              starting_balance: String(f.get("starting_balance")),
+              months_ahead: Number(f.get("months_ahead")),
+            }),
+          );
+        }
+      }
+      if (kind === "purchase") {
+        if (purchaseSource === "trusted") {
+          setDecision(
+            await api.decision({
+              use_account_position: true,
+              purchase_amount: String(f.get("purchase_amount")),
+              safety_buffer: String(f.get("safety_buffer")),
+              horizon_days: Number(f.get("horizon_days")),
+            }),
+          );
+        } else {
+          setDecision(
+            await api.decision({
+              starting_balance: String(f.get("starting_balance")),
+              purchase_amount: String(f.get("purchase_amount")),
+              safety_buffer: String(f.get("safety_buffer")),
+              horizon_days: Number(f.get("horizon_days")),
+            }),
+          );
+        }
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -306,15 +340,68 @@ export function Cashflow() {
             "Enter a balance you have checked yourself. We do not infer an account balance from transaction history.",
           )}{" "}
         </p>
+
+        <div className="account-radio-group" role="radiogroup" aria-label={t("Starting balance source")}>
+          <label>
+            <input
+              type="radio"
+              name="scenario_source_type"
+              value="trusted"
+              checked={scenarioSource === "trusted"}
+              onChange={() => setScenarioSource("trusted")}
+              disabled={!trustedPos || trustedPos.total === null}
+            />
+            <span>
+              {t("Use trusted account position")}
+              {trustedPos && trustedPos.total !== null ? ` (৳${trustedPos.total})` : ` (${t("Not available yet")})`}
+            </span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="scenario_source_type"
+              value="manual"
+              checked={scenarioSource === "manual"}
+              onChange={() => setScenarioSource("manual")}
+            />
+            <span>{t("Enter a balance")}</span>
+          </label>
+        </div>
+
+        {scenarioSource === "trusted" && trustedPos && (
+          <div className="account-details-panel">
+            <p>
+              <strong>{t("Total trusted BDT position:")}</strong>{" "}
+              {trustedPos.total !== null ? <Amount value={trustedPos.total} /> : t("Not available yet")}
+            </p>
+            {(trustedPos.contributing_account_names || []).length > 0 && (
+              <p className="source">
+                {t("Contributing accounts:")} {(trustedPos.contributing_account_names || []).join(", ")}
+              </p>
+            )}
+            {trustedPos.excluded_accounts_count > 0 && (
+              <p className="muted small">
+                {digits(trustedPos.excluded_accounts_count)}{" "}
+                {trustedPos.excluded_accounts_count === 1 ? t("account excluded") : t("accounts excluded")}
+              </p>
+            )}
+            <p>
+              <Link to="/accounts">{t("Manage accounts →")}</Link>
+            </p>
+          </div>
+        )}
+
         <form className="inline-form" onSubmit={(e) => run(e, "scenario")}>
-          <Field
-            label={t("Starting balance (BDT)")}
-            name="starting_balance"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-          />
+          {scenarioSource === "manual" && (
+            <Field
+              label={t("Starting balance (BDT)")}
+              name="starting_balance"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+            />
+          )}
           <label className="field">
             <span>{t("Look ahead")}</span>
             <select name="months_ahead" defaultValue="3">
@@ -338,8 +425,18 @@ export function Cashflow() {
           <div aria-live="polite">
             <p className="source">
               {t("As of")} {date(scenario.as_of_date)}
-              {t(". User-supplied starting balance:")}{" "}
-              <Amount value={scenario.starting_balance} />.{" "}
+              {scenario.balance_source === "account_position" ? (
+                <>
+                  {". "}
+                  {t("Starting balance from trusted accounts:")}{" "}
+                  <Amount value={scenario.starting_balance} />.{" "}
+                </>
+              ) : (
+                <>
+                  {t(". User-supplied starting balance:")}{" "}
+                  <Amount value={scenario.starting_balance} />.{" "}
+                </>
+              )}
               {digits(scenario.coverage.transaction_count)}{" "}
               {t("observed records in the coverage window.")}{" "}
             </p>
@@ -410,15 +507,68 @@ export function Cashflow() {
             "This check reserves upcoming scheduled expenses and your safety buffer. It excludes future income.",
           )}{" "}
         </p>
+
+        <div className="account-radio-group" role="radiogroup" aria-label={t("Available balance source")}>
+          <label>
+            <input
+              type="radio"
+              name="purchase_source_type"
+              value="trusted"
+              checked={purchaseSource === "trusted"}
+              onChange={() => setPurchaseSource("trusted")}
+              disabled={!trustedPos || trustedPos.total === null}
+            />
+            <span>
+              {t("Use trusted account position")}
+              {trustedPos && trustedPos.total !== null ? ` (৳${trustedPos.total})` : ` (${t("Not available yet")})`}
+            </span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="purchase_source_type"
+              value="manual"
+              checked={purchaseSource === "manual"}
+              onChange={() => setPurchaseSource("manual")}
+            />
+            <span>{t("Enter a balance")}</span>
+          </label>
+        </div>
+
+        {purchaseSource === "trusted" && trustedPos && (
+          <div className="account-details-panel">
+            <p>
+              <strong>{t("Total trusted BDT position:")}</strong>{" "}
+              {trustedPos.total !== null ? <Amount value={trustedPos.total} /> : t("Not available yet")}
+            </p>
+            {(trustedPos.contributing_account_names || []).length > 0 && (
+              <p className="source">
+                {t("Contributing accounts:")} {(trustedPos.contributing_account_names || []).join(", ")}
+              </p>
+            )}
+            {trustedPos.excluded_accounts_count > 0 && (
+              <p className="muted small">
+                {digits(trustedPos.excluded_accounts_count)}{" "}
+                {trustedPos.excluded_accounts_count === 1 ? t("account excluded") : t("accounts excluded")}
+              </p>
+            )}
+            <p>
+              <Link to="/accounts">{t("Manage accounts →")}</Link>
+            </p>
+          </div>
+        )}
+
         <form className="form-grid" onSubmit={(e) => run(e, "purchase")}>
-          <Field
-            label={t("Available balance (BDT)")}
-            name="starting_balance"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-          />
+          {purchaseSource === "manual" && (
+            <Field
+              label={t("Available balance (BDT)")}
+              name="starting_balance"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+            />
+          )}
           <Field
             label={t("Purchase amount (BDT)")}
             name="purchase_amount"
@@ -462,6 +612,13 @@ export function Cashflow() {
                 }[decision.status]
               }
             </h3>
+            <p className="source">
+              {decision.balance_source === "account_position" ? (
+                <strong>{t("Using trusted account position")}</strong>
+              ) : (
+                <span>{t("Using a balance you entered manually")}</span>
+              )}
+            </p>
             <p>
               {t("After the purchase and scheduled expense reserve:")}{" "}
               <Amount value={decision.remaining_after_purchase_and_reserve} />
