@@ -177,3 +177,7 @@ these reads, reusing the existing row-lock/idempotency convention.
 
 The build retains the existing advisory about JavaScript chunks over 500 kB.
 Alembic retains the existing path_separator configuration deprecation warning.
+
+The full-backend CI job installs the existing optional requirements-rag.txt
+so historical RAG tests can import their libraries. Health calculations and
+the separate core-contract job do not require these optional dependencies.
