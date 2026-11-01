@@ -57,8 +57,8 @@ class GoalObservation(BaseModel):
     name: str
     target_amount: Decimal
     current_saved: Decimal | None
-    target_date: date
-    status: Literal['active', 'completed', 'cancelled']
+    target_date: date | None
+    status: Literal['active', 'paused', 'completed', 'cancelled']
 
 class IntelligenceSnapshot(BaseModel):
     as_of_date: date

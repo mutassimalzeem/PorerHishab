@@ -396,6 +396,7 @@ test("populated intelligence, goal editing and modal keyboard behavior", async (
   await expect(
     page.getByRole("heading", { name: "Emergency reserve" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "View contribution preview" }).click();
   await page.getByRole("button", { name: "Weekly" }).click();
   await expect(page.getByRole("button", { name: "Weekly" })).toHaveAttribute(
     "aria-pressed",

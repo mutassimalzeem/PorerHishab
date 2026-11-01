@@ -28,10 +28,15 @@ def owned_goal(db, user_id, goal_id, lock=False):
 
 @router.post("/finance/goals", response_model=GoalRead, status_code=201)
 def create_goal(payload: GoalCreate, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if payload.target_date < today_dhaka():
+    if payload.target_date is not None and payload.target_date < today_dhaka():
         raise HTTPException(422, "target_date cannot be in the past")
+    from app.services.finance.goal_planning import lock_user
+    lock_user(db, current.id)
     goal = SavingsGoal(user_id=current.id, **payload.model_dump())
     db.add(goal)
+    db.flush()
+    from app.services.finance.goal_planning import event
+    event(db, current.id, goal.id, "goal_created", {"target_amount": str(goal.target_amount), "reported_saved": str(goal.current_saved) if goal.current_saved is not None else None, "target_date": str(goal.target_date) if goal.target_date else None})
     db.commit()
     db.refresh(goal)
     return goal
@@ -55,11 +60,14 @@ def read_goal(goal_id: int, current: User = Depends(get_current_user), db: Sessi
 
 @router.patch("/finance/goals/{goal_id}", response_model=GoalRead)
 def patch_goal(goal_id: int, payload: GoalUpdate, current: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.finance.goal_planning import lock_user, event, sync_milestones
+    lock_user(db, current.id)
     goal = owned_goal(db, current.id, goal_id, lock=True)
+    before = {"target_amount": str(goal.target_amount), "reported_saved": str(goal.current_saved) if goal.current_saved is not None else None, "target_date": str(goal.target_date) if goal.target_date else None, "status": goal.status}
     changes = payload.model_dump(exclude_unset=True)
-    if goal.status != "active" and changes.get("status", goal.status) != goal.status:
+    if goal.status in {"completed", "cancelled"} and changes.get("status", goal.status) != goal.status:
         raise HTTPException(409, "Completed or cancelled goals cannot change status")
-    if "target_date" in changes and changes["target_date"] < today_dhaka():
+    if changes.get("target_date") is not None and changes["target_date"] < today_dhaka():
         raise HTTPException(422, "target_date cannot be in the past")
     saved = changes.get("current_saved", goal.current_saved)
     target = changes.get("target_amount", goal.target_amount)
@@ -68,6 +76,9 @@ def patch_goal(goal_id: int, payload: GoalUpdate, current: User = Depends(get_cu
         raise HTTPException(409, "Completion requires reported savings at least equal to the target")
     for name, value in changes.items():
         setattr(goal, name, value)
+    kind = "goal_paused" if status == "paused" and before["status"] != status else "goal_resumed" if status == "active" and before["status"] == "paused" else "goal_updated"
+    event(db, current.id, goal_id, kind, {"previous": before, "changes": payload.model_dump(mode="json", exclude_unset=True), "source": "user_reported"})
+    sync_milestones(db, current.id, goal)
     db.commit()
     db.refresh(goal)
     return goal

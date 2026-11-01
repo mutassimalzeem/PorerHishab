@@ -126,6 +126,12 @@ function OutcomeEvidence({ item }: { item: Outcome }) {
           <dt>{t("Causal claim")}</dt>
           <dd>{item.causal_claim ? t("Yes") : t("No")}</dd>
         </div>
+        {evidence.reported_completed_milestones != null && (
+          <div>
+            <dt>{t("Reported milestone completions")}</dt>
+            <dd>{digits(evidence.reported_completed_milestones)}</dd>
+          </div>
+        )}
         {evidence.category && (
           <div>
             <dt>{t("Category")}</dt>

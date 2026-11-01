@@ -45,6 +45,9 @@ class CoachingEvidence(BaseModel):
     percentage_change: Decimal | None = None
     monthly_values: list[CoachingMonthlyValue] = Field(default_factory=list)
     obligations: list[CoachingObligation] = Field(default_factory=list)
+    milestone_id: int | None = None
+    milestone_due_date: date | None = None
+    milestone_target: Decimal | None = None
     goal_id: int | None = None
     goal_name: str | None = None
     current_saved: Decimal | None = None

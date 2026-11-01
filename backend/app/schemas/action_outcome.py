@@ -58,6 +58,8 @@ class OutcomeEvidence(BaseModel):
     baseline_transaction_count: int | None = None
     follow_up_transaction_count: int | None = None
     obligations: list[OutcomeObligation] = Field(default_factory=list)
+    reported_completed_milestones: int | None = None
+    goal_progress_source: Literal["user_reported"] | None = None
     baseline_runway_status: str | None = None
     follow_up_runway_status: str | None = None
     baseline_runway_mode: str | None = None

@@ -44,6 +44,12 @@ function CoachingEvidence({ evidence }: { evidence: Evidence }) {
         {t("Evidence period")}: {date(evidence.period.start)} {t("to")}{" "}
         {date(evidence.period.end)}
       </p>
+      {evidence.milestone_due_date && (
+        <p>
+          {t("Missed goal milestone")}: {date(evidence.milestone_due_date)}{" "}
+          &middot; <Amount value={evidence.milestone_target} />
+        </p>
+      )}
       {evidence.comparison_period && (
         <p>
           {t("Comparison period")}: {date(evidence.comparison_period.start)}{" "}

@@ -221,8 +221,10 @@ def test_goal_plan_arithmetic_affordability_and_shared_commitments(data):
     assert client.get(url + "/plan", headers=headers[0]).json()["affordability"] == "unknown"
     client.patch(f"/finance/goals/{other['id']}", headers=headers[0], json={"current_saved": "0"})
     assert client.get(url + "/plan", headers=headers[0]).json()["affordability"] == "at_risk"
-    for changes in ({"name": None}, {"target_amount": None}, {"status": "invalid"}, {"target_date": None}, {"user_id": people[1].id}):
+    for changes in ({"name": None}, {"target_amount": None}, {"status": "invalid"}, {"user_id": people[1].id}):
         assert client.patch(url, headers=headers[0], json=changes).status_code == 422
+    assert client.patch(url, headers=headers[0], json={"target_date": None}).status_code == 200
+    assert client.get(url + "/plan", headers=headers[0]).json()["required_monthly"] is None
     client.patch(url, headers=headers[0], json={"status": "cancelled"})
     assert client.get(url + "/plan", headers=headers[0]).json()["affordability"] == "cancelled"
 

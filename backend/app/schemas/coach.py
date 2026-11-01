@@ -6,7 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 Money = Annotated[Decimal, Field(ge=0, max_digits=14, decimal_places=2)]
 PositiveMoney = Annotated[Decimal, Field(gt=0, max_digits=14, decimal_places=2)]
-GoalStatus = Literal["active", "completed", "cancelled"]
+GoalStatus = Literal["active", "paused", "completed", "cancelled"]
+GoalType = Literal["emergency_fund", "purchase", "savings", "debt_repayment", "expense_reduction", "custom"]
 
 
 class StrictModel(BaseModel):
@@ -18,7 +19,10 @@ class GoalCreate(StrictModel):
     description: str | None = Field(default=None, max_length=4000)
     target_amount: PositiveMoney
     current_saved: Money | None = None
-    target_date: date
+    target_date: date | None = None
+    goal_type: GoalType = "savings"
+    currency: Literal["BDT"] = "BDT"
+    priority: int = Field(3, ge=1, le=5)
 
     @field_validator("name")
     @classmethod
@@ -35,10 +39,13 @@ class GoalUpdate(StrictModel):
     current_saved: Money | None = None
     target_date: date | None = None
     status: GoalStatus | None = None
+    goal_type: GoalType | None = None
+    currency: Literal["BDT"] | None = None
+    priority: int | None = Field(None, ge=1, le=5)
 
     @model_validator(mode="after")
     def validate_patch(self):
-        for field in ("name", "target_amount", "target_date", "status"):
+        for field in ("name", "target_amount", "status", "goal_type", "currency", "priority"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} must not be null")
         if self.name is not None:
@@ -54,7 +61,10 @@ class GoalRead(BaseModel):
     description: str | None
     target_amount: Decimal
     current_saved: Decimal | None
-    target_date: date
+    target_date: date | None
+    goal_type: GoalType
+    currency: Literal["BDT"]
+    priority: int
     status: GoalStatus
     created_at: datetime
     updated_at: datetime

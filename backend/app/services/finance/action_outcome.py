@@ -500,6 +500,10 @@ def _goal_outcome(db: Session, user_id: int, recommendation_id: str,
                   current) -> ActionOutcome:
     baseline, follow_up, _ = _windows(action_date, as_of)
     goal = _goal_for_outcome(db, user_id, recommendation_id, current)
+    from app.models.goal_planning import GoalMilestone
+    reports = db.query(GoalMilestone).filter_by(user_id=user_id, goal_id=goal.id,
+        status="reported_completed").all() if goal is not None else []
+    completed = sum(1 for m in reports if m.completed_at is not None and action_date <= _dhaka_date(m.completed_at) <= as_of)
     return ActionOutcome(
         recommendation_id=recommendation_id, recommendation_type=rec,
         subject=goal.name if goal is not None else None,
@@ -507,9 +511,9 @@ def _goal_outcome(db: Session, user_id: int, recommendation_id: str,
         metric="goal_saved_amount", direction="higher_is_better",
         baseline=baseline, follow_up=follow_up,
         interpretation="goal_history_unavailable", evidence_quality="limited",
-        evidence=OutcomeEvidence(),
+        evidence=OutcomeEvidence(reported_completed_milestones=completed, goal_progress_source="user_reported"),
         limitations=_limitations(
-            "Goal savings are user-reported and historical contribution amounts are not stored.",
+            "Goal savings and milestone completions are user-reported; comparable verified historical contribution baselines are unavailable.",
             "A before/after goal change cannot be established from the existing authoritative data.",
             "No contribution or goal value is invented for this outcome."))
 
