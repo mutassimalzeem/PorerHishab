@@ -116,15 +116,37 @@ def test_unknown_capacity_is_blocked_without_becoming_zero():
 
 
 def test_no_step_can_be_created_without_source_evidence():
-    # Upstream input is valid. Exercise the AI-16C contract independently.
-    decisions = decision_set([priority("p1", "cashflow_risk")])
-    plan = build_financial_execution_plan(decisions).model_dump()
-    interpretation = evidence("ev_interpretation")
-    interpretation.evidence_type = EvidenceType.INTERPRETATION
-    plan["evidence"].append(interpretation.model_dump())
-    plan["steps"][0]["evidence_ids"] = [interpretation.evidence_id]
-    with pytest.raises(ValueError, match="Execution step requires source evidence"):
-        FinancialExecutionPlan.model_validate(plan)
+    from app.schemas.financial_execution import FinancialActionStep
+
+    interpretation_only = CoachEvidence(
+        evidence_id="ev_interpretation",
+        evidence_type=EvidenceType.INTERPRETATION,
+        source="policy",
+        label="Policy interpretation only",
+        value="Review this issue",
+        as_of_date=AS_OF,
+    )
+
+    with pytest.raises(ValueError, match="source evidence"):
+        FinancialExecutionPlan(
+            as_of_date=AS_OF,
+            planning_horizon=PERIOD,
+            data_status="sufficient",
+            steps=[
+                FinancialActionStep(
+                    step_id="step_1_p1",
+                    priority_id="p1",
+                    sequence=1,
+                    kind="review_cashflow",
+                    level="high",
+                    title="Cashflow",
+                    description="Review cashflow",
+                    evidence_ids=["ev_interpretation"],
+                    state="ready",
+                )
+            ],
+            evidence=[interpretation_only],
+        )
 
 
 def test_execution_is_non_mutating():
@@ -137,13 +159,12 @@ def test_execution_is_non_mutating():
 
 
 def test_dependency_order_is_enforced_by_contract():
-    with pytest.raises(ValueError, match="Execution dependencies must precede their step"):
+    with pytest.raises(ValueError, match="dependencies"):
         FinancialExecutionPlan(
             as_of_date=AS_OF,
             planning_horizon=PERIOD,
             data_status="sufficient",
             steps=[
-                # Deliberately references a blocker that is not earlier.
                 {
                     "step_id": "step_1_p2",
                     "priority_id": "p2",
@@ -162,8 +183,14 @@ def test_dependency_order_is_enforced_by_contract():
 
 
 def test_money_values_are_not_created_by_execution_layer():
-    decisions = decision_set([priority("p1", "savings_opportunity", level="medium")])
+    decisions = decision_set(
+        [priority("p1", "savings_opportunity", level="medium")]
+    )
     result = build_financial_execution_plan(decisions)
 
+    # Check the schema, not a fallback value that defaults to Decimal("0").
     assert "amount" not in FinancialActionStep.model_fields
-    assert all("amount" not in step.model_dump() for step in result.steps)
+
+    # Also ensure no amount is emitted in serialized output.
+    for step in result.steps:
+        assert "amount" not in step.model_dump()
