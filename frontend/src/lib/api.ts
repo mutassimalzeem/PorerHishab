@@ -39,6 +39,10 @@ import type {
   NotificationHistoryList,
   NotificationDigest,
   DigestEvaluation,
+  CoachRequest,
+  CoachResponse,
+  CoachConversationPage,
+  CoachConversationDetail,
 } from "../domain";
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 let tokens: Tokens | null = null;
@@ -409,6 +413,16 @@ export const api = {
     ),
   evaluateDailyDigest: () =>
     post<DigestEvaluation>("/finance/notifications/digest/evaluate", {}),
+  coachAsk: (body: CoachRequest, language?: string) =>
+    post<CoachResponse>(`/coach/ask${query({ language })}`, body),
+  coachConversations: (limit: number = 20, offset: number = 0) =>
+    request<CoachConversationPage>(
+      `/coach/conversations${query({ limit, offset })}`,
+    ),
+  coachConversationDetail: (id: string) =>
+    request<CoachConversationDetail>(`/coach/conversations/${id}`),
+  coachDeleteConversation: (id: string) =>
+    request<void>(`/coach/conversations/${id}`, { method: "DELETE" }),
   userDigests: (limit: number = 10) =>
     request<NotificationDigest[]>(
       `/finance/notifications/digests?limit=${limit}`,
