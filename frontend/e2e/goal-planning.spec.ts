@@ -52,6 +52,8 @@ test("authenticated goal planning: alternatives, milestones, progress, revisions
       history.push(current);
       body = current;
     } else if (path === `/finance/goals/${goal.id}/replan`) {
+      // Model a real asynchronous save so assertions cannot rely on the old plan.
+      await new Promise((resolve) => setTimeout(resolve, 250));
       current = revisedPlanFixture;
       goal = { ...goal, target_date: current.target_date };
       if (history.length < 2) history.push(current);
@@ -108,7 +110,15 @@ test("authenticated goal planning: alternatives, milestones, progress, revisions
   await expect(
     workspace.getByRole("heading", { name: "Goal milestones", exact: true }),
   ).toBeVisible();
-  await workspace.getByLabel("Reported contribution (BDT)").fill("15000");
+  // The feasibility text also occurs in the old alternative/overview, and the
+  // milestones heading exists even when empty. Wait for the refreshed plan itself.
+  await expect(
+    workspace.getByLabel("Revised target date (optional)"),
+  ).toHaveValue(revisedPlanFixture.target_date ?? "");
+  const contribution = workspace.getByLabel("Reported contribution (BDT)");
+  await expect(contribution).toBeEnabled();
+  await contribution.fill("15000");
+  await expect(contribution).toHaveValue("15000");
   await workspace
     .getByRole("button", { name: "Record contribution", exact: true })
     .click();
