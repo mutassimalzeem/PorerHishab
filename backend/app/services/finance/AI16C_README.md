@@ -1,0 +1,1 @@
+AI-16C execution planning is deterministic and review-only. It consumes FinancialDecisionSet, preserves dependencies/evidence, and never executes financial actions.
