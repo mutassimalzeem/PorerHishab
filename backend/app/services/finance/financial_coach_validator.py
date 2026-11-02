@@ -1,4 +1,4 @@
-"""Deterministic evidence-grounded response validation service (AI-15S-E).
+"""Deterministic evidence-grounded response validation service (AI-15S-E / AI-15S-K).
 
 This service verifies that generated coach responses adhere strictly to verified evidence.
 Any unsupported claims, non-existent evidence IDs, numerical contradictions, or
@@ -20,6 +20,7 @@ from app.schemas.financial_coach import (
     CoachEvidence,
     CoachResponse,
     CoachWarning,
+    EvidenceType,
 )
 from app.services.finance.financial_coach_evidence import EvidencePackage
 from app.services.finance.financial_coach_generator import DeterministicFallbackGenerator
@@ -28,22 +29,51 @@ logger = logging.getLogger(__name__)
 
 # Patterns for prohibited financial phrasing
 GUARANTEE_PATTERN = re.compile(
-    r"\b(guarantee|guaranteed|will definitely|100% certainty|risk-free|promised return)\b",
+    r"\b(guarantee|guaranteed|guaranteeing|guarantees|will definitely|100% certainty|100% certain|"
+    r"100% guaranteed|risk-free|risk free|promised return|promised returns|promised profit|"
+    r"assured return|assured returns|certain outcome|নিশ্চিত|শতভাগ নিশ্চিত|ঝুঁকিমুক্ত)\b",
     re.IGNORECASE,
 )
 
 EXECUTED_ACTION_PATTERN = re.compile(
     r"\b(i have paid|i have transferred|i have sent|i transferred|i completed the transaction|"
-    r"i executed|bill has been paid|money was sent|account has been debited|we deducted)\b",
+    r"i executed|bill has been paid|money was sent|account has been debited|we deducted|"
+    r"has been transferred|was debited|payment was made|payment completed|transaction completed|"
+    r"টাকা পাঠিয়েছি|পরিশোধ করেছি|টাকা কেটে নেওয়া হয়েছে)\b",
     re.IGNORECASE,
 )
 
-# Number extraction from text
+# Bengali numeral mapping
+BENGALI_DIGITS = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
+
+# Regex to detect explicit BDT / currency amounts without mistaking ordinary numbers
+# (e.g. dates like 2026, counts like 12 transactions, percentages like 15%, durations like 3 months)
 CURRENCY_NUMBER_PATTERN = re.compile(
-    r"(?:৳|bdt\s*)\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)"
-    r"|([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)\s*(?:bdt|taka|tk)\b",
+    r"(?:৳|bdt|taka|tk|টাকা)\.?\s*([0-9০-৯]+(?:,[0-9০-৯]{3})*(?:\.[0-9০-৯]{1,2})?)"
+    r"|([0-9০-৯]+(?:,[0-9০-৯]{3})*(?:\.[0-9০-৯]{1,2})?)\s*(?:৳|bdt|taka|tk|টাকা)",
     re.IGNORECASE,
 )
+
+# Deterministic substitutions for safe repair of guarantee phrasing
+GUARANTEE_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\b(is|are|was|were)\s+guaranteed\s+to\b", re.IGNORECASE), r"\1 projected to"),
+    (re.compile(r"\b(you|we|they)\s+will\s+definitely\b", re.IGNORECASE), r"\1 can expect to"),
+    (re.compile(r"\b(it|this|that)\s+will\s+definitely\b", re.IGNORECASE), r"\1 is expected to"),
+    (re.compile(r"\bwill\s+definitely\b", re.IGNORECASE), "is projected to"),
+    (re.compile(r"\b100%\s+certainty\b", re.IGNORECASE), "high likelihood"),
+    (re.compile(r"\b100%\s+certain\b", re.IGNORECASE), "expected"),
+    (re.compile(r"\b100%\s+guaranteed\b", re.IGNORECASE), "projected"),
+    (re.compile(r"\brisk-free\b", re.IGNORECASE), "lower-risk"),
+    (re.compile(r"\brisk\s+free\b", re.IGNORECASE), "lower-risk"),
+    (re.compile(r"\bpromised\s+returns?\b", re.IGNORECASE), "estimated return"),
+    (re.compile(r"\bassured\s+returns?\b", re.IGNORECASE), "estimated return"),
+    (re.compile(r"\bguaranteed\b", re.IGNORECASE), "projected"),
+    (re.compile(r"\bguarantees\b", re.IGNORECASE), "projects"),
+    (re.compile(r"\bguarantee\b", re.IGNORECASE), "estimate"),
+    (re.compile(r"\bশতভাগ নিশ্চিত\b", re.IGNORECASE), "সম্ভাব্য"),
+    (re.compile(r"\bনিশ্চিত\b", re.IGNORECASE), "সম্ভাব্য"),
+    (re.compile(r"\bঝুঁকিমুক্ত\b", re.IGNORECASE), "কম ঝুঁকিপূর্ণ"),
+]
 
 
 @dataclass
@@ -57,45 +87,71 @@ class ValidationReport:
     dropped_actions_count: int = 0
 
 
-def _extract_all_evidence_numbers(evidence_list: list[CoachEvidence]) -> set[Decimal]:
-    """Gather all numeric values present in the evidence package."""
-    numbers: set[Decimal] = set()
-
-    def add_val(val: Any) -> None:
-        if isinstance(val, (int, float, Decimal)):
-            try:
-                d = Decimal(str(val))
-                numbers.add(d)
-                # Also allow truncated integer if decimal has .00
-                if d == d.to_integral_value():
-                    numbers.add(d.to_integral_value())
-            except (InvalidOperation, TypeError):
-                pass
-        elif isinstance(val, dict):
-            for v in val.values():
-                add_val(v)
-        elif isinstance(val, (list, tuple)):
-            for v in val:
-                add_val(v)
-
-    for ev in evidence_list:
-        add_val(ev.value)
-
-    return numbers
-
-
 def _extract_text_amounts(text: str) -> list[Decimal]:
     """Extract all explicit BDT/monetary figures mentioned in text."""
+    if not text:
+        return []
     amounts: list[Decimal] = []
     for match in CURRENCY_NUMBER_PATTERN.finditer(text):
         raw = match.group(1) or match.group(2)
         if raw:
             try:
-                amt = Decimal(raw.replace(",", ""))
+                cleaned = raw.translate(BENGALI_DIGITS).replace(",", "")
+                amt = Decimal(cleaned)
                 amounts.append(amt)
             except (InvalidOperation, TypeError):
                 continue
     return amounts
+
+
+def _extract_numbers_from_value(val: Any, numbers: set[Decimal]) -> None:
+    """Extract numeric amounts from an evidence value without treating missing data as 0."""
+    if val is None:
+        return
+    if isinstance(val, (int, float, Decimal)):
+        try:
+            d = Decimal(str(val))
+            numbers.add(d)
+            if d == d.to_integral_value():
+                numbers.add(d.to_integral_value())
+        except (InvalidOperation, TypeError):
+            pass
+    elif isinstance(val, dict):
+        for k, v in val.items():
+            # Skip non-currency metrics like percentages, counts, days, months
+            k_lower = str(k).lower()
+            if any(skip in k_lower for skip in ("percentage", "percent", "count", "days", "months", "score")):
+                continue
+            _extract_numbers_from_value(v, numbers)
+    elif isinstance(val, (list, tuple)):
+        for v in val:
+            _extract_numbers_from_value(v, numbers)
+
+
+def _extract_evidence_numbers_by_id(evidence_list: list[CoachEvidence]) -> dict[str, set[Decimal]]:
+    """Map each evidence item to the set of supported numeric values."""
+    mapping: dict[str, set[Decimal]] = {}
+    for ev in evidence_list:
+        nums: set[Decimal] = set()
+        _extract_numbers_from_value(ev.value, nums)
+        mapping[ev.evidence_id] = nums
+    return mapping
+
+
+def _extract_all_evidence_numbers(evidence_list: list[CoachEvidence]) -> set[Decimal]:
+    """Gather all numeric values present across the evidence package."""
+    numbers: set[Decimal] = set()
+    for ev in evidence_list:
+        _extract_numbers_from_value(ev.value, numbers)
+    return numbers
+
+
+def _repair_guarantee_text(text: str) -> str:
+    """Safely replace prohibited guarantee phrasing with projection/estimate wording."""
+    res = text
+    for pattern, repl in GUARANTEE_REPLACEMENTS:
+        res = pattern.sub(repl, res)
+    return res
 
 
 class FinancialCoachValidator:
@@ -105,17 +161,29 @@ class FinancialCoachValidator:
         self.package = package
         self.language = language
         self.valid_evidence_ids = package.evidence_ids
+        self.evidence_by_id: dict[str, CoachEvidence] = {
+            ev.evidence_id: ev for ev in package.evidence
+        }
+        self.evidence_numbers_by_id = _extract_evidence_numbers_by_id(package.evidence)
         self.valid_evidence_numbers = _extract_all_evidence_numbers(package.evidence)
+        self.missing_data_keys = set(package.missing_data)
 
     def validate(self, response: CoachResponse) -> tuple[CoachResponse, ValidationReport]:
-        """Validate response against evidence; return sanitized response and report."""
+        """Validate response against evidence; return sanitized response and report.
+
+        Ensures user-visible text (answer, summary, claims, actions) contains only
+        verified amounts, distinguishes estimates from historical facts, and rejects
+        guarantees and execution claims. Does not mutate the caller's input objects.
+        """
         report = ValidationReport(is_valid=True, repaired=False)
         issues: list[str] = []
 
-        # 1. Prohibited execution phrasing in answer
-        if EXECUTED_ACTION_PATTERN.search(response.answer):
-            issues.append("Answer claims to have executed a financial transaction or payment.")
-            logger.warning("Validation failure: execution language detected in answer.")
+        # 1. Prohibited execution phrasing in answer or summary
+        if EXECUTED_ACTION_PATTERN.search(response.answer) or (
+            response.summary and EXECUTED_ACTION_PATTERN.search(response.summary)
+        ):
+            issues.append("Answer or summary claims to have executed a financial transaction or payment.")
+            logger.warning("Validation failure: execution language detected.")
             fallback = DeterministicFallbackGenerator.generate(
                 self.package, "fallback", self.language
             )
@@ -132,48 +200,143 @@ class FinancialCoachValidator:
                 issues=issues,
             )
 
-        # 2. Prohibited guarantee phrasing
-        if GUARANTEE_PATTERN.search(response.answer):
+        # Clone response to prevent unexpected mutations to caller objects
+        resp = response.model_copy(deep=True)
+
+        # 2. Prohibited guarantee phrasing in answer
+        if GUARANTEE_PATTERN.search(resp.answer):
             issues.append("Answer contains prohibited guarantee phrasing.")
-            logger.warning("Validation warning: guarantee phrasing detected.")
-            # We can flag a warning rather than discarding if claims are sound, or add caveat
-            response.warnings.append(
+            logger.warning("Validation warning: guarantee phrasing detected in answer.")
+            repaired_answer = _repair_guarantee_text(resp.answer)
+            if GUARANTEE_PATTERN.search(repaired_answer):
+                # Unrepairable guarantee language: fall back to safe deterministic response
+                issues.append("Guarantee language could not be safely repaired; reverting to deterministic fallback.")
+                fallback = DeterministicFallbackGenerator.generate(
+                    self.package, "fallback", self.language
+                )
+                fallback.conversation_id = resp.conversation_id
+                fallback.warnings.append(
+                    CoachWarning(
+                        code="UNSUPPORTED_GUARANTEE_CAVEAT",
+                        message="Projections and estimates are informative and not guaranteed financial outcomes.",
+                    )
+                )
+                return fallback, ValidationReport(
+                    is_valid=False,
+                    repaired=True,
+                    issues=issues,
+                )
+            resp.answer = repaired_answer
+            report.repaired = True
+            resp.warnings.append(
                 CoachWarning(
                     code="UNSUPPORTED_GUARANTEE_CAVEAT",
                     message="Projections and estimates are informative and not guaranteed financial outcomes.",
                 )
             )
+
+        # 3. Prohibited guarantee phrasing in summary
+        if resp.summary and GUARANTEE_PATTERN.search(resp.summary):
+            repaired_sum = _repair_guarantee_text(resp.summary)
+            if GUARANTEE_PATTERN.search(repaired_sum):
+                resp.summary = None
+            else:
+                resp.summary = repaired_sum
             report.repaired = True
 
-        # 3. Validate claims
-        valid_claims: list[CoachClaim] = []
-        for claim in response.claims:
-            # Check 3a: Claim must reference at least one evidence ID
-            if not claim.evidence_ids:
-                issues.append(f"Claim '{claim.claim_id}' has no referenced evidence IDs.")
-                report.dropped_claims_count += 1
-                continue
+        # 4. Numerical grounding for explicit BDT amounts in answer
+        answer_amounts = _extract_text_amounts(resp.answer)
+        for amt in answer_amounts:
+            matched = any(
+                amt == ev_num or abs(amt - ev_num) < Decimal("0.01")
+                for ev_num in self.valid_evidence_numbers
+            )
+            if not matched:
+                issues.append(
+                    f"Answer cites {amt} BDT which is not supported by structured evidence."
+                )
+                logger.warning("Validation failure: unsupported amount %s BDT in answer.", amt)
+                # An unsupported financial assertion in the primary answer cannot be safely guessed
+                fallback = DeterministicFallbackGenerator.generate(
+                    self.package, "fallback", self.language
+                )
+                fallback.conversation_id = resp.conversation_id
+                fallback.warnings.extend(resp.warnings)
+                return fallback, ValidationReport(
+                    is_valid=False,
+                    repaired=True,
+                    issues=issues,
+                )
 
-            # Check 3b: All referenced evidence IDs must exist in package
-            unknown_ids = [eid for eid in claim.evidence_ids if eid not in self.valid_evidence_ids]
-            if unknown_ids:
-                issues.append(f"Claim '{claim.claim_id}' references unknown evidence IDs: {unknown_ids}.")
-                report.dropped_claims_count += 1
-                continue
-
-            # Check 3c: Numerical grounding in claim text
-            claim_amounts = _extract_text_amounts(claim.text)
-            contradiction_found = False
-            for amt in claim_amounts:
-                # If an explicit monetary amount is cited, verify it matches evidence values
-                # Allow minor tolerance or exact match
+        # 5. Numerical grounding for explicit BDT amounts in summary
+        if resp.summary:
+            summary_amounts = _extract_text_amounts(resp.summary)
+            summary_has_unsupported = False
+            for amt in summary_amounts:
                 matched = any(
                     amt == ev_num or abs(amt - ev_num) < Decimal("0.01")
                     for ev_num in self.valid_evidence_numbers
                 )
                 if not matched:
                     issues.append(
-                        f"Claim '{claim.claim_id}' cites {amt} BDT which is not supported by structured evidence."
+                        f"Summary cites {amt} BDT which is not supported by structured evidence."
+                    )
+                    summary_has_unsupported = True
+                    break
+            if summary_has_unsupported:
+                # Safely repair by removing misleading summary
+                resp.summary = None
+                report.repaired = True
+
+        # 6. Validate claims (relevant evidence matching & estimate grounding)
+        valid_claims: list[CoachClaim] = []
+        for claim in resp.claims:
+            claim_copy = claim.model_copy(deep=True)
+
+            # Check 6a: Claim must reference at least one evidence ID
+            if not claim_copy.evidence_ids:
+                issues.append(f"Claim '{claim_copy.claim_id}' has no referenced evidence IDs.")
+                report.dropped_claims_count += 1
+                continue
+
+            # Check 6b: All referenced evidence IDs must exist in package
+            unknown_ids = [eid for eid in claim_copy.evidence_ids if eid not in self.valid_evidence_ids]
+            if unknown_ids:
+                issues.append(f"Claim '{claim_copy.claim_id}' references unknown evidence IDs: {unknown_ids}.")
+                report.dropped_claims_count += 1
+                continue
+
+            # Check 6c: Claim must not contain guarantee or execution phrasing
+            if GUARANTEE_PATTERN.search(claim_copy.text) or EXECUTED_ACTION_PATTERN.search(claim_copy.text):
+                issues.append(f"Claim '{claim_copy.claim_id}' contains guarantee or execution phrasing.")
+                report.dropped_claims_count += 1
+                continue
+
+            # Check 6d: Estimate presented as guaranteed fact
+            has_estimate = any(
+                self.evidence_by_id.get(eid) and self.evidence_by_id[eid].evidence_type == EvidenceType.ESTIMATE
+                for eid in claim_copy.evidence_ids
+            )
+            if has_estimate and GUARANTEE_PATTERN.search(claim_copy.text):
+                issues.append(f"Claim '{claim_copy.claim_id}' presents an estimate as a guaranteed fact.")
+                report.dropped_claims_count += 1
+                continue
+
+            # Check 6e: Numerical grounding against RELEVANT evidence referenced by this claim
+            claim_amounts = _extract_text_amounts(claim_copy.text)
+            relevant_numbers: set[Decimal] = set()
+            for eid in claim_copy.evidence_ids:
+                relevant_numbers.update(self.evidence_numbers_by_id.get(eid, set()))
+
+            contradiction_found = False
+            for amt in claim_amounts:
+                matched = any(
+                    amt == ev_num or abs(amt - ev_num) < Decimal("0.01")
+                    for ev_num in relevant_numbers
+                )
+                if not matched:
+                    issues.append(
+                        f"Claim '{claim_copy.claim_id}' cites {amt} BDT which is not supported by its referenced evidence."
                     )
                     contradiction_found = True
                     break
@@ -182,49 +345,102 @@ class FinancialCoachValidator:
                 report.dropped_claims_count += 1
                 continue
 
-            valid_claims.append(claim)
+            valid_claims.append(claim_copy)
 
-        # 4. Validate actions
+        # 7. Validate actions (enforce evidence references and classification)
         valid_actions: list[CoachAction] = []
-        for action in response.actions:
-            # Action must not contain execution phrasing
-            if EXECUTED_ACTION_PATTERN.search(action.title) or EXECUTED_ACTION_PATTERN.search(action.description):
-                issues.append(f"Action '{action.action_id}' implies executed transactions.")
+        for action in resp.actions:
+            action_copy = action.model_copy(deep=True)
+
+            # Check 7a: Action must not contain execution phrasing or guarantee language
+            if (
+                EXECUTED_ACTION_PATTERN.search(action_copy.title)
+                or EXECUTED_ACTION_PATTERN.search(action_copy.description)
+                or GUARANTEE_PATTERN.search(action_copy.title)
+                or GUARANTEE_PATTERN.search(action_copy.description)
+            ):
+                issues.append(f"Action '{action_copy.action_id}' contains execution or guarantee phrasing.")
                 report.dropped_actions_count += 1
                 continue
 
-            # If action makes personalized recommendations citing evidence, verify IDs
-            unknown_ids = [eid for eid in action.evidence_ids if eid not in self.valid_evidence_ids]
-            if unknown_ids:
-                issues.append(f"Action '{action.action_id}' references unknown evidence IDs: {unknown_ids}.")
-                # Filter out unknown IDs but keep action if general, or drop if personalized
-                action.evidence_ids = [eid for eid in action.evidence_ids if eid in self.valid_evidence_ids]
+            # Check 7b: Extract any explicit BDT amounts in title or description
+            action_text = f"{action_copy.title} {action_copy.description}"
+            action_amounts = _extract_text_amounts(action_text)
 
-            valid_actions.append(action)
+            # Case A: Action has evidence references
+            if action_copy.evidence_ids:
+                # All referenced IDs must be valid
+                unknown_ids = [eid for eid in action_copy.evidence_ids if eid not in self.valid_evidence_ids]
+                if unknown_ids:
+                    issues.append(
+                        f"Action '{action_copy.action_id}' references unknown evidence IDs: {unknown_ids}."
+                    )
+                    report.dropped_actions_count += 1
+                    continue
 
-        # If too many claims were dropped or if answer had contradictions
-        if len(response.claims) > 0 and len(valid_claims) == 0:
+                # Any explicit BDT amounts must match the referenced evidence numbers
+                relevant_numbers = set()
+                for eid in action_copy.evidence_ids:
+                    relevant_numbers.update(self.evidence_numbers_by_id.get(eid, set()))
+
+                unsupported_action_amount = False
+                for amt in action_amounts:
+                    matched = any(
+                        amt == ev_num or abs(amt - ev_num) < Decimal("0.01")
+                        for ev_num in relevant_numbers
+                    )
+                    if not matched:
+                        issues.append(
+                            f"Action '{action_copy.action_id}' cites unsupported amount {amt} BDT."
+                        )
+                        unsupported_action_amount = True
+                        break
+
+                if unsupported_action_amount:
+                    report.dropped_actions_count += 1
+                    continue
+
+                action_copy.action_type = "personalized"
+                valid_actions.append(action_copy)
+
+            # Case B: Action has NO evidence references
+            else:
+                if action_amounts:
+                    # Action mentions explicit BDT amounts without supporting evidence -> drop
+                    issues.append(
+                        f"Action '{action_copy.action_id}' cites amounts {action_amounts} without evidence grounding."
+                    )
+                    report.dropped_actions_count += 1
+                    continue
+
+                # Useful general advice without pretending to be personalized -> classify as general_guidance
+                action_copy.action_type = "general_guidance"
+                valid_actions.append(action_copy)
+
+        # 8. Check claim drop threshold
+        if len(resp.claims) > 0 and len(valid_claims) == 0:
             issues.append("All claims failed evidence grounding; falling back to deterministic answer.")
             fallback = DeterministicFallbackGenerator.generate(
                 self.package, "fallback", self.language
             )
-            fallback.conversation_id = response.conversation_id
-            fallback.warnings.extend(response.warnings)
+            fallback.conversation_id = resp.conversation_id
+            fallback.warnings.extend(resp.warnings)
             return fallback, ValidationReport(
                 is_valid=False,
                 repaired=True,
                 issues=issues,
                 dropped_claims_count=report.dropped_claims_count,
+                dropped_actions_count=report.dropped_actions_count,
             )
 
         report.issues = issues
         if report.dropped_claims_count > 0 or report.dropped_actions_count > 0:
             report.repaired = True
 
-        response.claims = valid_claims
-        response.actions = valid_actions
+        resp.claims = valid_claims
+        resp.actions = valid_actions
 
-        return response, report
+        return resp, report
 
 
 def validate_coach_response(
