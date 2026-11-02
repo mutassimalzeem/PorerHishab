@@ -35,6 +35,7 @@ def ts(schema):
         extra = schema.get('additionalProperties')
         if extra: fields.append('[key: string]: ' + (ts(extra) if isinstance(extra, dict) else 'unknown') + ';')
         return '{ ' + ' '.join(fields) + ' }' if fields else 'Record<string, unknown>'
+    if kind is None and 'properties' not in schema: return 'unknown'
     raise ValueError(f'Unsupported OpenAPI schema: {schema}')
 
 def generate():

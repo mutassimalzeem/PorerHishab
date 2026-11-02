@@ -13,6 +13,8 @@ import {
   Notes,
   PageHeading,
 } from "../components/ui";
+import { FinancialCoach } from "../components/FinancialCoach";
+
 const starters = [
   "Can I afford a purchase?",
   "What changed this month?",
@@ -21,6 +23,7 @@ const starters = [
   "How much did I spend on food?",
   "How much can I save this month?",
 ];
+
 export function Ask() {
   useLanguage();
   const [question, setQuestion] = useState("");
@@ -28,6 +31,7 @@ export function Ask() {
   const [asked, setAsked] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -56,6 +60,7 @@ export function Ask() {
       setBusy(false);
     }
   }
+
   return (
     <>
       <PageHeading
@@ -64,7 +69,14 @@ export function Ask() {
           "Get answers from your recorded finances, with the calculation in reach.",
         )}
       />
-      <div className="ask-layout">
+
+      {/* AI-15S Interactive Financial Coach */}
+      <section aria-label={t("PorerHishab Financial Coach")}>
+        <FinancialCoach />
+      </section>
+
+      {/* Grounded Direct Query Calculator */}
+      <div className="ask-layout" style={{ marginTop: "2.5rem" }}>
         <section>
           <div className="ask-intro">
             <CornerDownLeft size={30} />

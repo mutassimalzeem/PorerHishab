@@ -237,3 +237,14 @@ export type NotificationHistoryList =
   ApiSchemas["NotificationHistoryListResponse"];
 export type NotificationDigest = ApiSchemas["NotificationDigestResponse"];
 export type DigestEvaluation = ApiSchemas["DigestEvaluationResponse"];
+
+export type CoachResponse = ApiSchemas["CoachResponse"];
+export type CoachRequest = ApiSchemas["CoachRequest"];
+export type CoachClaim = ApiSchemas["CoachClaim"];
+export type CoachEvidence = ApiSchemas["CoachEvidence"];
+export type CoachAction = ApiSchemas["CoachAction"];
+export type CoachWarning = ApiSchemas["CoachWarning"];
+export type CoachConversationSummary = ApiSchemas["CoachConversationSummary"];
+export type CoachConversationPage = ApiSchemas["CoachConversationPage"];
+export type CoachConversationDetail = ApiSchemas["CoachConversationDetail"];
+export type CoachMessageRead = ApiSchemas["CoachMessageRead"];
