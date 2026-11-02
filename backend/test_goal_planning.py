@@ -190,6 +190,9 @@ def test_missed_milestones_feed_stable_coaching_and_reported_outcomes(data):
     assert evidence_key(a[0])==evidence_key(tomorrow[0])
     assert any(r.recommendation_id==a[0].id for r in action_plan(db,g.user_id,as_of=DAY).actions)
     p.record_contribution(db,g.user_id,g.id,ContributionRequest(idempotency_key="complete-goal-01",amount=D("10000")))
+    # Completion stamps real wall-clock time; pin it onto DAY so the fixed action window stays deterministic.
+    for m in db.query(GoalMilestone).filter_by(user_id=g.user_id,goal_id=g.id,status="reported_completed"):m.completed_at=datetime(2026,11,1,12,tzinfo=timezone.utc)
+    db.commit()
     outcome=_goal_outcome(db,g.user_id,a[0].id,"goal_risk",DAY,DAY,None)
     assert outcome.evidence.reported_completed_milestones==len(plan.milestones)
     assert outcome.evidence.goal_progress_source=="user_reported" and outcome.causal_claim is False
