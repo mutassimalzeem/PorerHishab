@@ -108,6 +108,11 @@ class CoachAction(BaseModel):
 
     evidence_ids: list[str] = Field(default_factory=list)
 
+    action_type: str = Field(
+        default="personalized",
+        description="Type of action: 'personalized' or 'general_guidance'.",
+    )
+
 
 class CoachWarning(BaseModel):
     """Important caveat or safety warning."""
@@ -156,9 +161,13 @@ class CoachMessageRead(BaseModel):
     role: str
     content: str
     intent: str | None = None
+    summary: str | None = None
     claims_json: list[dict[str, Any]] | None = None
     actions_json: list[dict[str, Any]] | None = None
     evidence_ids_json: list[str] | None = None
+    evidence_json: list[dict[str, Any]] | None = None
+    warnings_json: list[dict[str, Any]] | None = None
+    limitations_json: list[str] | None = None
     created_at: datetime
 
 

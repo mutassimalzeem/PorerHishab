@@ -1,9 +1,9 @@
-"""Unit tests for financial coach conversation and message persistence (AI-15S-F)."""
+"""Unit tests for financial coach conversation and message persistence (AI-15S-F / AI-15S-K)."""
 
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal as D
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -16,6 +16,7 @@ from app.schemas.financial_coach import (
     CoachEvidence,
     CoachIntent,
     CoachResponse,
+    CoachWarning,
     EvidenceType,
 )
 from app.services.finance.financial_coach_persistence import (
@@ -128,17 +129,47 @@ def test_append_messages_and_retrieval(db_session, users):
                 evidence_ids=["ev_affordability_remaining_balance"],
             )
         ],
+        warnings=[
+            CoachWarning(
+                code="BUFFER_NOTE",
+                message="Consider leaving emergency buffer.",
+            )
+        ],
+        limitations=["Only recorded obligations counted."],
     )
 
     asst_msg = append_assistant_message(db_session, u1.id, conv.id, coach_resp)
     assert asst_msg.role == "assistant"
     assert asst_msg.intent == "affordability"
+    assert asst_msg.summary == "Recommended purchase."
     assert asst_msg.evidence_ids_json == ["ev_affordability_remaining_balance"]
+    assert asst_msg.evidence_json is not None
+    assert len(asst_msg.evidence_json) == 1
+    assert asst_msg.evidence_json[0]["evidence_id"] == "ev_affordability_remaining_balance"
+    assert asst_msg.warnings_json is not None
+    assert len(asst_msg.warnings_json) == 1
+    assert asst_msg.limitations_json == ["Only recorded obligations counted."]
 
     messages = get_conversation_messages(db_session, u1.id, conv.id)
     assert len(messages) == 2
     assert messages[0].role == "user"
     assert messages[1].role == "assistant"
+    assert messages[1].summary == "Recommended purchase."
+
+
+def test_retry_does_not_duplicate_persisted_user_message(db_session, users):
+    """When a user retries a question after failure, consecutive identical user turns must not duplicate."""
+    u1, _ = users
+    conv = create_conversation(db_session, u1.id, title="Retry test")
+
+    m1 = append_user_message(db_session, u1.id, conv.id, "Where did my money go?")
+    m2 = append_user_message(db_session, u1.id, conv.id, "Where did my money go?")
+
+    assert m1.id == m2.id
+
+    # Messages in thread still only 1
+    all_msgs = get_conversation_messages(db_session, u1.id, conv.id)
+    assert len(all_msgs) == 1
 
 
 def test_get_recent_history_context(db_session, users):
@@ -146,15 +177,27 @@ def test_get_recent_history_context(db_session, users):
     conv = create_conversation(db_session, u1.id, title="Multi-turn conversation")
 
     for i in range(5):
+        # We alternate roles so they aren't considered uncompleted retries
         append_user_message(db_session, u1.id, conv.id, f"Question {i}")
+        coach_resp = CoachResponse(
+            conversation_id=conv.id,
+            intent=CoachIntent.GENERAL_FINANCE,
+            answer=f"Answer {i}",
+        )
+        append_assistant_message(db_session, u1.id, conv.id, coach_resp)
 
-    # Limit to 3
-    context = get_recent_history_context(db_session, u1.id, conv.id, limit=3)
-    assert len(context) == 3
+    # Limit to 4 recent messages
+    context = get_recent_history_context(db_session, u1.id, conv.id, limit=4)
+    assert len(context) == 4
     # Check chronological ordering
-    assert context[0]["content"] == "Question 2"
-    assert context[1]["content"] == "Question 3"
+    assert context[0]["role"] == "user"
+    assert context[0]["content"] == "Question 3"
+    assert context[1]["role"] == "assistant"
+    assert context[1]["content"] == "Answer 3"
+    assert context[2]["role"] == "user"
     assert context[2]["content"] == "Question 4"
+    assert context[3]["role"] == "assistant"
+    assert context[3]["content"] == "Answer 4"
 
 
 def test_delete_conversation_cascades(db_session, users):
@@ -164,6 +207,7 @@ def test_delete_conversation_cascades(db_session, users):
 
     assert delete_conversation(db_session, u1.id, conv.id) is True
     assert get_conversation(db_session, u1.id, conv.id) is None
-    # Messages should be deleted
+    # Messages should be completely deleted from table
     assert len(get_conversation_messages(db_session, u1.id, conv.id)) == 0
-
+    direct_query = db_session.query(CoachMessage).filter(CoachMessage.conversation_id == conv.id).all()
+    assert len(direct_query) == 0

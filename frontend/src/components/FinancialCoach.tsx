@@ -30,6 +30,7 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  status?: "pending" | "failed" | "success";
   intent?: string;
   summary?: string | null;
   claims?: CoachClaim[];
@@ -63,6 +64,8 @@ export function FinancialCoach() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const busyRef = useRef(false);
+  const activeRequestIdRef = useRef<number>(0);
 
   // Load user's conversations list on mount
   useEffect(() => {
@@ -89,6 +92,8 @@ export function FinancialCoach() {
   }
 
   async function selectConversation(id: string) {
+    activeRequestIdRef.current++;
+    busyRef.current = false;
     setBusy(true);
     setError(null);
     try {
@@ -98,10 +103,14 @@ export function FinancialCoach() {
         id: `msg_${m.id}`,
         role: m.role as "user" | "assistant",
         text: m.content,
+        status: "success",
         intent: m.intent || undefined,
+        summary: m.summary || null,
         claims: m.claims_json as CoachClaim[] | undefined,
         actions: m.actions_json as CoachAction[] | undefined,
-        limitations: [],
+        evidence: m.evidence_json as CoachEvidence[] | undefined,
+        warnings: m.warnings_json as CoachWarning[] | undefined,
+        limitations: m.limitations_json || [],
       }));
       setMessages(loaded);
       setShowHistory(false);
@@ -113,6 +122,9 @@ export function FinancialCoach() {
   }
 
   function startNewConversation() {
+    activeRequestIdRef.current++;
+    busyRef.current = false;
+    setBusy(false);
     setConversationId(null);
     setMessages([]);
     setInputQuestion("");
@@ -123,22 +135,43 @@ export function FinancialCoach() {
 
   async function handleSubmit(e?: FormEvent, overrideQuestion?: string) {
     if (e) e.preventDefault();
+    if (busy || busyRef.current) return;
     const q = (overrideQuestion ?? inputQuestion).trim();
-    if (!q || busy) return;
+    if (!q) return;
 
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     setLastQuestion(q);
 
-    // Optimistically add user message
-    const tempUserMsgId = `user_${Date.now()}`;
-    const userMessage: ChatMessage = {
-      id: tempUserMsgId,
-      role: "user",
-      text: q,
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputQuestion("");
+    const isRetry = Boolean(overrideQuestion);
+    let targetMsgId: string;
+
+    if (isRetry) {
+      // Find the last user message to update instead of appending duplicate
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+      if (lastUserMsg) {
+        targetMsgId = lastUserMsg.id;
+        setMessages((prev) =>
+          prev.map((m) => (m.id === targetMsgId ? { ...m, status: "pending" as const } : m)),
+        );
+      } else {
+        targetMsgId = `user_${Date.now()}`;
+        setMessages((prev) => [
+          ...prev,
+          { id: targetMsgId, role: "user", text: q, status: "pending" as const },
+        ]);
+      }
+    } else {
+      targetMsgId = `user_${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        { id: targetMsgId, role: "user", text: q, status: "pending" as const },
+      ]);
+      setInputQuestion("");
+    }
+
+    const currentReqId = ++activeRequestIdRef.current;
 
     try {
       const resp: CoachResponse = await api.coachAsk(
@@ -149,15 +182,26 @@ export function FinancialCoach() {
         language === "bn" ? "bn" : "en",
       );
 
+      // If user switched conversations while request was in-flight, discard
+      if (currentReqId !== activeRequestIdRef.current) {
+        return;
+      }
+
       if (resp.conversation_id && resp.conversation_id !== conversationId) {
         setConversationId(resp.conversation_id);
         loadConversations();
       }
 
+      // Mark the user message as successfully submitted
+      setMessages((prev) =>
+        prev.map((m) => (m.id === targetMsgId ? { ...m, status: "success" as const } : m)),
+      );
+
       const asstMessage: ChatMessage = {
         id: `asst_${Date.now()}`,
         role: "assistant",
         text: resp.answer,
+        status: "success",
         intent: resp.intent,
         summary: resp.summary,
         claims: resp.claims,
@@ -172,9 +216,19 @@ export function FinancialCoach() {
 
       setMessages((prev) => [...prev, asstMessage]);
     } catch (err) {
+      if (currentReqId !== activeRequestIdRef.current) {
+        return;
+      }
+      // Mark the user message as failed
+      setMessages((prev) =>
+        prev.map((m) => (m.id === targetMsgId ? { ...m, status: "failed" as const } : m)),
+      );
       setError(errorMessage(err));
     } finally {
-      setBusy(false);
+      if (currentReqId === activeRequestIdRef.current) {
+        busyRef.current = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -218,31 +272,28 @@ export function FinancialCoach() {
       {/* Top Header & Session Controls */}
       <div className="coach-header">
         <div className="coach-header-title">
-          <Bot size={22} className="coach-bot-icon" aria-hidden="true" />
-          <div>
-            <h2>{t("PorerHishab Financial Coach")}</h2>
-            <small>
-              {t(
-                "Personalized, evidence-grounded financial guidance based on your records.",
-              )}
-            </small>
-          </div>
+          <h2>{t("PorerHishab Financial Coach")}</h2>
+          <p className="coach-header-sub">
+            {t(
+              "Personalized, evidence-grounded financial guidance based on your records.",
+            )}
+          </p>
         </div>
+
         <div className="coach-header-actions">
-          {conversations.length > 0 && (
-            <button
-              type="button"
-              className="secondary button-sm"
-              onClick={() => setShowHistory(!showHistory)}
-              aria-expanded={showHistory}
-            >
-              <History size={16} />
-              <span>{t("Saved chats")}</span>
-            </button>
-          )}
           <button
             type="button"
-            className="secondary button-sm"
+            className="ghost coach-history-btn"
+            onClick={() => setShowHistory((prev) => !prev)}
+            aria-label={t("Saved chats")}
+            title={t("Saved chats")}
+          >
+            <History size={18} />
+            <span>{t("Saved chats")}</span>
+          </button>
+          <button
+            type="button"
+            className="secondary coach-new-chat-btn"
             onClick={startNewConversation}
           >
             <PlusCircle size={16} />
@@ -251,10 +302,15 @@ export function FinancialCoach() {
         </div>
       </div>
 
-      {/* Conversations history drawer */}
+      {/* Conversations Drawer */}
       {showHistory && (
         <div className="coach-history-drawer" role="region" aria-label={t("Saved chats")}>
-          <h4>{t("Recent conversations")}</h4>
+          <div className="coach-history-header">
+            <h4>{t("Recent conversations")}</h4>
+          </div>
+          {conversations.length === 0 && (
+            <p className="coach-empty-notice">{t("No conversations found.")}</p>
+          )}
           <ul className="coach-history-list">
             {conversations.map((c) => (
               <li key={c.id}>
@@ -264,9 +320,9 @@ export function FinancialCoach() {
                   onClick={() => selectConversation(c.id)}
                 >
                   <span className="coach-history-title">{c.title}</span>
-                  <small className="coach-history-date">
+                  <span className="coach-history-date">
                     {new Date(c.updated_at).toLocaleDateString()}
-                  </small>
+                  </span>
                 </button>
               </li>
             ))}
@@ -324,10 +380,15 @@ export function FinancialCoach() {
               )}
             </div>
 
-            <div className={`coach-bubble ${m.role === "user" ? "user-bubble" : "asst-bubble"}`}>
+            <div className={`coach-bubble ${m.role === "user" ? "user-bubble" : "asst-bubble"} ${m.status === "failed" ? "msg-failed" : ""}`}>
               {/* Message Role Label */}
               <div className="coach-bubble-author">
                 <strong>{m.role === "user" ? t("You") : t("Financial Coach")}</strong>
+                {m.status === "failed" && (
+                  <span className="coach-status-tag failed" style={{ marginLeft: "8px", color: "var(--danger, #e53e3e)", fontSize: "0.75rem" }}>
+                    ({t("Failed")})
+                  </span>
+                )}
                 {m.intent && m.intent !== "unknown" && (
                   <span className="coach-intent-pill">{uiLabel(m.intent)}</span>
                 )}

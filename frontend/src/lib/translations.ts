@@ -1752,6 +1752,10 @@ export const bn = {
   "Send question": "প্রশ্ন পাঠান",
   "Checking...": "যাচাই হচ্ছে...",
   "Send": "পাঠান",
+  "Sending...": "পাঠানো হচ্ছে...",
+  "Failed": "ব্যর্থ",
+  "Failed to send": "পাঠানো যায়নি",
+  "No conversations found.": "কোনো কথোপকথন পাওয়া যায়নি।",
   "Read-only financial guidance grounded in your records. PorerHishab does not execute bank operations.": "আপনার তথ্যের ভিত্তিতে প্রস্তুত নির্দেশনা। পরের হিসাব কোনো ব্যাংক লেনদেন সম্পাদন করে না।",
   "Get evidence-grounded answers about your spending, cashflow, purchasing decisions, and savings goals.": "আপনার ব্যয়, নগদ প্রবাহ, কেনাকাটার সিদ্ধান্ত এবং সঞ্চয়ের লক্ষ্য সম্পর্কে প্রমাণভিত্তিক উত্তর পান।",
 } as const;

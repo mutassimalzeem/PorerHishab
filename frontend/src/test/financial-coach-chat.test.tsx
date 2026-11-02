@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { FinancialCoach } from "../components/FinancialCoach";
 import { api } from "../lib/api";
 import { setLanguage } from "../lib/locale";
-import type { CoachResponse, CoachConversationPage } from "../domain";
+import type { CoachResponse, CoachConversationPage, CoachConversationDetail } from "../domain";
 
 const mockResponse: CoachResponse = {
   conversation_id: "conv_test_123",
@@ -141,7 +141,7 @@ describe("FinancialCoach frontend component", () => {
     expect(screen.getByText("Total expenses")).toBeInTheDocument();
   });
 
-  it("displays error notice and supports retry on request failure", async () => {
+  it("displays error notice and supports retry on request failure without duplicate messages", async () => {
     const askSpy = vi
       .spyOn(api, "coachAsk")
       .mockRejectedValueOnce(new Error("Network gateway timeout"))
@@ -159,6 +159,9 @@ describe("FinancialCoach frontend component", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("Try again")).toBeInTheDocument();
 
+    // There must be exactly 1 instance of the user's question rendered
+    expect(screen.getAllByText("Where did my money go?").length).toBe(1);
+
     // Click retry
     const retryBtn = screen.getByText("Try again");
     await userEvent.click(retryBtn);
@@ -169,6 +172,142 @@ describe("FinancialCoach frontend component", () => {
         "In October, your total spending was 18,500 BDT across 12 transactions.",
       ),
     ).toBeInTheDocument();
+
+    // After retry success, there still must be only 1 user question in the conversation thread
+    expect(screen.getAllByText("Where did my money go?").length).toBe(1);
+  });
+
+  it("repeated retry retains only one user message across multiple failures", async () => {
+    const askSpy = vi
+      .spyOn(api, "coachAsk")
+      .mockRejectedValueOnce(new Error("Timeout 1"))
+      .mockRejectedValueOnce(new Error("Timeout 2"))
+      .mockResolvedValueOnce(mockResponse);
+
+    renderCoach();
+
+    const textarea = screen.getByPlaceholderText(
+      "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
+    );
+    await userEvent.type(textarea, "How is my budget?");
+    await userEvent.click(screen.getByRole("button", { name: "Send question" }));
+
+    // First failure
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getAllByText("How is my budget?").length).toBe(1);
+
+    // First retry -> fails again
+    await userEvent.click(screen.getByText("Try again"));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getAllByText("How is my budget?").length).toBe(1);
+
+    // Second retry -> succeeds
+    await userEvent.click(screen.getByText("Try again"));
+    expect(
+      await screen.findByText(
+        "In October, your total spending was 18,500 BDT across 12 transactions.",
+      ),
+    ).toBeInTheDocument();
+
+    // Must still have only 1 user message
+    expect(screen.getAllByText("How is my budget?").length).toBe(1);
+    expect(askSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it("prevents double submission on rapid double click", async () => {
+    let resolveAsk: (value: CoachResponse) => void = () => {};
+    const pendingPromise = new Promise<CoachResponse>((resolve) => {
+      resolveAsk = resolve;
+    });
+    const askSpy = vi.spyOn(api, "coachAsk").mockReturnValue(pendingPromise);
+
+    renderCoach();
+
+    const textarea = screen.getByPlaceholderText(
+      "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
+    );
+    await userEvent.type(textarea, "Can I afford 10000 BDT?");
+    const sendBtn = screen.getByRole("button", { name: "Send question" });
+
+    // Double click rapidly
+    await userEvent.click(sendBtn);
+    await userEvent.click(sendBtn);
+
+    expect(askSpy).toHaveBeenCalledTimes(1);
+
+    resolveAsk(mockResponse);
+  });
+
+  it("discards in-flight responses when switching conversations", async () => {
+    let resolveFirstAsk: (value: CoachResponse) => void = () => {};
+    const firstPromise = new Promise<CoachResponse>((resolve) => {
+      resolveFirstAsk = resolve;
+    });
+
+    vi.spyOn(api, "coachAsk").mockReturnValue(firstPromise);
+
+    const mockConversationsList: CoachConversationPage = {
+      items: [
+        {
+          id: "conv_archived_99",
+          title: "Archived Savings Chat",
+          created_at: "2026-10-01T00:00:00Z",
+          updated_at: "2026-10-01T00:00:00Z",
+        },
+      ],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    };
+    vi.spyOn(api, "coachConversations").mockResolvedValue(mockConversationsList);
+
+    const mockDetail: CoachConversationDetail = {
+      id: "conv_archived_99",
+      title: "Archived Savings Chat",
+      created_at: "2026-10-01T00:00:00Z",
+      updated_at: "2026-10-01T00:00:00Z",
+      messages: [
+        {
+          id: 1,
+          conversation_id: "conv_archived_99",
+          role: "assistant",
+          content: "Archived conversation historic message.",
+          created_at: "2026-10-01T00:00:00Z",
+        },
+      ],
+    };
+    vi.spyOn(api, "coachConversationDetail").mockResolvedValue(mockDetail);
+
+    renderCoach();
+
+    // Start a question in thread 1
+    const textarea = screen.getByPlaceholderText(
+      "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
+    );
+    await userEvent.type(textarea, "Pending question in thread 1");
+    await userEvent.click(screen.getByRole("button", { name: "Send question" }));
+
+    // While request is pending, switch to archived chat
+    const historyBtn = screen.getByRole("button", { name: "Saved chats" });
+    await userEvent.click(historyBtn);
+    const itemBtn = await screen.findByText("Archived Savings Chat");
+    await userEvent.click(itemBtn);
+
+    // Selected conversation is loaded
+    expect(
+      await screen.findByText("Archived conversation historic message."),
+    ).toBeInTheDocument();
+
+    // Now resolve the in-flight request from previous conversation
+    resolveFirstAsk({
+      ...mockResponse,
+      answer: "Response for abandoned question 1.",
+    });
+
+    // The abandoned response must NOT be displayed in this conversation
+    expect(
+      screen.queryByText("Response for abandoned question 1."),
+    ).not.toBeInTheDocument();
   });
 
   it("supports starting a new conversation to clear the thread", async () => {
@@ -212,4 +351,3 @@ describe("FinancialCoach frontend component", () => {
     ).toBeInTheDocument();
   });
 });
-

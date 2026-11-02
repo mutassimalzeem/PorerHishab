@@ -1,7 +1,8 @@
-"""FastAPI router for the AI-15S financial coach orchestration (AI-15S-G).
+"""FastAPI router for the AI-15S financial coach orchestration (AI-15S-G / AI-15S-K).
 
 Orchestrates deterministic intent routing, evidence assembly, LLM generation,
-deterministic response validation, and message persistence.
+deterministic response validation, and message persistence with strict tenant
+isolation and failure safety.
 """
 
 from __future__ import annotations
@@ -59,6 +60,7 @@ def ask_financial_coach(
     """Primary financial coach endpoint.
 
     Orchestrates routing, evidence assembly, generation, validation, and persistence.
+    Rolls back database state and prevents leakage on failures.
     """
     message_text = payload.message.strip()
     if not message_text:
@@ -67,83 +69,102 @@ def ask_financial_coach(
             detail="Question cannot be empty.",
         )
 
-    # 1. Resolve or create conversation
-    conv_id = payload.conversation_id
-    if conv_id:
-        conv = get_conversation(db, current.id, conv_id)
-        if not conv:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conversation not found or access denied.",
-            )
-    else:
-        title = message_text[:60] + ("..." if len(message_text) > 60 else "")
-        conv = create_conversation(db, current.id, title=title)
-        conv_id = conv.id
-
-    # 2. Append user question to persistent conversation
-    append_user_message(db, current.id, conv_id, message_text)
-
-    # 3. Deterministic intent routing (AI-15S-B)
+    conv_id: str | None = None
     try:
-        route = route_financial_coach_question(message_text)
-    except Exception as exc:
-        logger.warning("Routing error for question: %s", exc)
-        route = route_financial_coach_question("unknown question")
+        # 1. Resolve or create conversation
+        conv_id = payload.conversation_id
+        if conv_id:
+            conv = get_conversation(db, current.id, conv_id)
+            if not conv:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Conversation not found or access denied.",
+                )
+        else:
+            title = message_text[:60] + ("..." if len(message_text) > 60 else "")
+            conv = create_conversation(db, current.id, title=title)
+            conv_id = conv.id
 
-    # 4. Deterministic evidence assembly (AI-15S-C)
-    evidence_package = assemble_financial_evidence(
-        db=db,
-        user_id=current.id,
-        route=route,
-        question=message_text,
-        purchase_amount=route.extracted_amount,
-    )
+        # 2. Append user question to persistent conversation (avoids duplicates on retry)
+        append_user_message(db, current.id, conv_id, message_text)
 
-    # 5. Fast-path: clarification required or unknown intent
-    if evidence_package.requires_clarification or evidence_package.intent == CoachIntent.UNKNOWN:
-        response = DeterministicFallbackGenerator.generate(
-            evidence_package,
+        # 3. Deterministic intent routing (AI-15S-B)
+        try:
+            route = route_financial_coach_question(message_text)
+        except Exception as exc:
+            logger.warning("Routing error for question: %s", exc)
+            route = route_financial_coach_question("unknown question")
+
+        # 4. Deterministic evidence assembly (AI-15S-C)
+        evidence_package = assemble_financial_evidence(
+            db=db,
+            user_id=current.id,
+            route=route,
             question=message_text,
+            purchase_amount=route.extracted_amount,
+        )
+
+        # 5. Fast-path: clarification required or unknown intent
+        if evidence_package.requires_clarification or evidence_package.intent == CoachIntent.UNKNOWN:
+            response = DeterministicFallbackGenerator.generate(
+                evidence_package,
+                question=message_text,
+                language=language,
+            )
+            response.conversation_id = conv_id
+            append_assistant_message(db, current.id, conv_id, response)
+            return response
+
+        # 6. Retrieve recent history for context (AI-15S-F)
+        history = get_recent_history_context(db, current.id, conv_id, limit=6)
+
+        # 7. Structured generation (AI-15S-D)
+        generator = FinancialCoachGenerator(language=language)
+        unvalidated_response = generator.generate_response(
+            package=evidence_package,
+            question=message_text,
+            conversation_history=history,
+            conversation_id=conv_id,
+        )
+
+        # 8. Deterministic evidence-grounded validation (AI-15S-E / AI-15S-K)
+        validated_response, report = validate_coach_response(
+            response=unvalidated_response,
+            package=evidence_package,
             language=language,
         )
-        response.conversation_id = conv_id
-        append_assistant_message(db, current.id, conv_id, response)
-        return response
+        validated_response.conversation_id = conv_id
 
-    # 6. Retrieve recent history for context (AI-15S-F)
-    history = get_recent_history_context(db, current.id, conv_id, limit=6)
+        if report.repaired:
+            logger.info(
+                "Coach response was repaired for user %s: dropped %d claims, %d actions.",
+                current.id,
+                report.dropped_claims_count,
+                report.dropped_actions_count,
+            )
 
-    # 7. Structured generation (AI-15S-D)
-    generator = FinancialCoachGenerator(language=language)
-    unvalidated_response = generator.generate_response(
-        package=evidence_package,
-        question=message_text,
-        conversation_history=history,
-        conversation_id=conv_id,
-    )
+        # 9. Persist assistant response with structured details
+        append_assistant_message(db, current.id, conv_id, validated_response)
 
-    # 8. Deterministic evidence-grounded validation (AI-15S-E)
-    validated_response, report = validate_coach_response(
-        response=unvalidated_response,
-        package=evidence_package,
-        language=language,
-    )
-    validated_response.conversation_id = conv_id
+        # 10. Return canonical CoachResponse
+        return validated_response
 
-    if report.repaired:
-        logger.info(
-            "Coach response was repaired for user %s: dropped %d claims, %d actions.",
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "Financial coach execution error for user %s, conv %s: %s",
             current.id,
-            report.dropped_claims_count,
-            report.dropped_actions_count,
+            conv_id or "unknown",
+            type(exc).__name__,
+            exc_info=True,
         )
-
-    # 9. Persist assistant response
-    append_assistant_message(db, current.id, conv_id, validated_response)
-
-    # 10. Return canonical CoachResponse
-    return validated_response
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your financial coaching request.",
+        )
 
 
 @router.get("/conversations", response_model=CoachConversationPage)
@@ -194,9 +215,13 @@ def get_conversation_detail(
             role=m.role,
             content=m.content,
             intent=m.intent,
+            summary=m.summary,
             claims_json=m.claims_json,
             actions_json=m.actions_json,
             evidence_ids_json=m.evidence_ids_json,
+            evidence_json=m.evidence_json,
+            warnings_json=m.warnings_json,
+            limitations_json=m.limitations_json,
             created_at=m.created_at,
         )
         for m in messages
@@ -218,10 +243,25 @@ def remove_conversation(
     db: Session = Depends(get_db),
 ) -> Response:
     """Delete a conversation and its messages."""
-    deleted = delete_conversation(db, current.id, conversation_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found or access denied.",
+    try:
+        deleted = delete_conversation(db, current.id, conversation_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found or access denied.",
+            )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "Failed to delete conversation %s for user %s: %s",
+            conversation_id,
+            current.id,
+            type(exc).__name__,
         )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting the conversation.",
+        )
