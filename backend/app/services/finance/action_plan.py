@@ -13,6 +13,11 @@ COMPLETION_NOTE = "Reported done means the user reported completion; no financia
 def action_plan(db, user_id, *, priority=None, **kwargs):
     # Generate once without a priority filter so completion scope remains consistent.
     coaching = visible_coaching(db, user_id, **kwargs)
+    return plan_from_coaching(coaching, priority=priority)
+
+
+def plan_from_coaching(coaching, *, priority=None):
+    """Pure projection shared with AI-16A; callers apply feedback visibility first."""
     ordered = sorted((item for item in coaching.recommendations
                       if priority is None or item.priority == priority),
                      key=lambda item: (PRIORITY[item.priority], TYPE_RANK[item.type], item.id))
