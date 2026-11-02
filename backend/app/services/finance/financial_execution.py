@@ -50,8 +50,10 @@ def _description(priority: FinancialPriority, kind: ExecutionKind) -> str:
 
 def build_financial_execution_plan(decisions: FinancialDecisionSet) -> FinancialExecutionPlan:
     """Turn ordered AI-16B priorities into review steps; never execute money movement."""
+    # Reuse upstream validation for mutable inputs, rather than duplicating its rules.
+    source = FinancialDecisionSet.model_validate(decisions.model_dump(mode="python"))
     steps: list[FinancialActionStep] = []
-    for sequence, priority in enumerate(decisions.priorities, start=1):
+    for sequence, priority in enumerate(source.priorities, start=1):
         kind = _KIND_BY_CATEGORY[priority.category]
         blocked = bool(priority.blocking_priority_ids or priority.blocking_factors)
         steps.append(
@@ -74,11 +76,12 @@ def build_financial_execution_plan(decisions: FinancialDecisionSet) -> Financial
         )
 
     return FinancialExecutionPlan(
-        as_of_date=decisions.as_of_date,
-        planning_horizon=decisions.planning_horizon,
-        data_status=decisions.data_status,
+        source_decision_version=source.policy_version,
+        as_of_date=source.as_of_date,
+        planning_horizon=source.planning_horizon,
+        data_status=source.data_status,
         steps=steps,
-        evidence=[item.model_copy(deep=True) for item in decisions.evidence],
-        warnings=[item.model_copy(deep=True) for item in decisions.warnings],
-        limitations=list(decisions.limitations),
+        evidence=[item.model_copy(deep=True) for item in source.evidence],
+        warnings=[item.model_copy(deep=True) for item in source.warnings],
+        limitations=list(source.limitations),
     )

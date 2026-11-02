@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.coaching import CoachingPriority
 from app.schemas.financial_coach import CoachEvidence, CoachWarning
-from app.schemas.financial_plan import FinancialDecisionSet
 from app.schemas.intelligence import IntelligencePeriod
 
 
@@ -27,7 +26,7 @@ ExecutionState = Literal["ready", "blocked"]
 class FinancialActionStep(BaseModel):
     """A user-review step derived from one AI-16B priority."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
 
     step_id: str
     priority_id: str
@@ -41,9 +40,19 @@ class FinancialActionStep(BaseModel):
     blocking_priority_ids: list[str] = Field(default_factory=list)
     blocking_factors: list[Literal["goal_capacity_unknown", "goal_not_feasible"]] = Field(default_factory=list)
     state: ExecutionState
-    requires_user_confirmation: bool = True
+    requires_user_confirmation: Literal[True] = True
     assumptions: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+
+
+    @model_validator(mode="after")
+    def coherent_step(self):
+        expected = "blocked" if self.blocking_priority_ids or self.blocking_factors else "ready"
+        if self.state != expected:
+            raise ValueError("Execution state must reflect unresolved blockers")
+        if len(self.blocking_priority_ids) != len(set(self.blocking_priority_ids)):
+            raise ValueError("Duplicate execution dependency IDs")
+        return self
 
 
 class FinancialExecutionPlan(BaseModel):
@@ -73,6 +82,11 @@ class FinancialExecutionPlan(BaseModel):
         if [step.sequence for step in self.steps] != list(range(1, len(self.steps) + 1)):
             raise ValueError("Execution steps must have contiguous sequence numbers")
 
+        priority_ids = [step.priority_id for step in self.steps]
+        if len(priority_ids) != len(set(priority_ids)):
+            raise ValueError("Duplicate execution priority IDs")
+        if any(item.as_of_date is not None and item.as_of_date != self.as_of_date for item in self.evidence):
+            raise ValueError("Execution evidence date must match execution date")
         evidence_ids = [item.evidence_id for item in self.evidence]
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ValueError("Duplicate execution evidence IDs")
@@ -91,17 +105,3 @@ class FinancialExecutionPlan(BaseModel):
                 if blocker not in positions or positions[blocker] >= positions[step.priority_id]:
                     raise ValueError("Execution dependencies must precede their step")
         return self
-
-
-
-def execution_plan_from_decisions(decisions: FinancialDecisionSet) -> FinancialExecutionPlan:
-    """Type-check the AI-16B input without executing or changing it."""
-    return FinancialExecutionPlan(
-        as_of_date=decisions.as_of_date,
-        planning_horizon=decisions.planning_horizon,
-        data_status=decisions.data_status,
-        evidence=[item.model_copy(deep=True) for item in decisions.evidence],
-        warnings=[item.model_copy(deep=True) for item in decisions.warnings],
-        limitations=list(decisions.limitations),
-        steps=[],
-    )

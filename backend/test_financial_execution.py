@@ -1,11 +1,10 @@
 from datetime import date
-from decimal import Decimal
 
 import pytest
 
 from app.schemas.coaching import CoachingPriority
 from app.schemas.financial_coach import CoachEvidence, EvidenceType
-from app.schemas.financial_execution import FinancialExecutionPlan
+from app.schemas.financial_execution import FinancialActionStep, FinancialExecutionPlan
 from app.schemas.financial_plan import FinancialDecisionSet, FinancialPriority
 from app.schemas.intelligence import IntelligencePeriod
 from app.services.finance.financial_execution import build_financial_execution_plan
@@ -117,18 +116,15 @@ def test_unknown_capacity_is_blocked_without_becoming_zero():
 
 
 def test_no_step_can_be_created_without_source_evidence():
-    with pytest.raises(ValueError, match="Source evidence"):
-        decision_set([
-            FinancialPriority(
-                priority_id="p1",
-                category="cashflow_risk",
-                level="high",
-                title="Cashflow",
-                reason="cashflow_constraint",
-                evidence_ids=["ev_interpretation"],
-                evidence_quality="derived",
-            ),
-        ])
+    # Upstream input is valid. Exercise the AI-16C contract independently.
+    decisions = decision_set([priority("p1", "cashflow_risk")])
+    plan = build_financial_execution_plan(decisions).model_dump()
+    interpretation = evidence("ev_interpretation")
+    interpretation.evidence_type = EvidenceType.INTERPRETATION
+    plan["evidence"].append(interpretation.model_dump())
+    plan["steps"][0]["evidence_ids"] = [interpretation.evidence_id]
+    with pytest.raises(ValueError, match="Execution step requires source evidence"):
+        FinancialExecutionPlan.model_validate(plan)
 
 
 def test_execution_is_non_mutating():
@@ -141,7 +137,7 @@ def test_execution_is_non_mutating():
 
 
 def test_dependency_order_is_enforced_by_contract():
-    with pytest.raises(ValueError, match="Dependencies"):
+    with pytest.raises(ValueError, match="Execution dependencies must precede their step"):
         FinancialExecutionPlan(
             as_of_date=AS_OF,
             planning_horizon=PERIOD,
@@ -169,5 +165,5 @@ def test_money_values_are_not_created_by_execution_layer():
     decisions = decision_set([priority("p1", "savings_opportunity", level="medium")])
     result = build_financial_execution_plan(decisions)
 
-    assert all("amount" not in step.model_fields for step in result.steps)
-    assert Decimal("0") not in [getattr(step, "amount", Decimal("0")) for step in result.steps]
+    assert "amount" not in FinancialActionStep.model_fields
+    assert all("amount" not in step.model_dump() for step in result.steps)
