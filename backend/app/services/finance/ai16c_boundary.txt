@@ -1,0 +1,1 @@
+AI-16C is deterministic review planning only. It consumes AI-16B FinancialDecisionSet, preserves dependencies and evidence, and never executes financial actions.
