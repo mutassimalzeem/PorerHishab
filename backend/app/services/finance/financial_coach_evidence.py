@@ -935,7 +935,7 @@ class FinancialCoachEvidenceAssembler:
         missing_data: list[str] = []
 
         scenarios_page = listing(self.db, self.user_id, status="saved", limit=5)
-        scenarios = scenarios_page.get("items", [])
+        scenarios = getattr(scenarios_page, "items", []) if not isinstance(scenarios_page, dict) else scenarios_page.get("items", [])
 
         evidence_list.append(
             CoachEvidence(

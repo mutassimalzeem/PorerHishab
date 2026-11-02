@@ -1,6 +1,6 @@
 """Unit tests for financial coach conversation and message persistence (AI-15S-F)."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal as D
 import pytest
 from sqlalchemy import create_engine
@@ -80,6 +80,8 @@ def test_list_conversations_ordering_and_pagination(db_session, users):
     u1, _ = users
     c1 = create_conversation(db_session, u1.id, title="Thread 1")
     c2 = create_conversation(db_session, u1.id, title="Thread 2")
+    c2.updated_at = c1.updated_at + timedelta(seconds=5)
+    db_session.commit()
 
     items, total = list_conversations(db_session, u1.id, limit=10)
     assert total == 2
@@ -164,3 +166,4 @@ def test_delete_conversation_cascades(db_session, users):
     assert get_conversation(db_session, u1.id, conv.id) is None
     # Messages should be deleted
     assert len(get_conversation_messages(db_session, u1.id, conv.id)) == 0
+
