@@ -1,4 +1,4 @@
-"""Conversation and message persistence service for the financial coach (AI-15S-F).
+"""Conversation and message persistence service for the financial coach (AI-15S-F / AI-15S-K).
 
 Manages user-scoped coaching conversations and message histories.
 Strictly enforces single-tenant isolation: queries and mutations must verify ownership.
@@ -7,7 +7,8 @@ Strictly enforces single-tenant isolation: queries and mutations must verify own
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func
@@ -17,6 +18,19 @@ from app.models.financial_coach import CoachConversation, CoachMessage
 from app.schemas.financial_coach import CoachResponse
 
 logger = logging.getLogger(__name__)
+
+
+def _make_json_safe(obj: Any) -> Any:
+    """Recursively convert Decimals, dates, and non-primitive objects to JSON-serializable types."""
+    if isinstance(obj, Decimal):
+        return str(obj)
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    if isinstance(obj, dict):
+        return {k: _make_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_make_json_safe(x) for x in obj]
+    return obj
 
 
 def create_conversation(
@@ -80,6 +94,13 @@ def delete_conversation(
     conv = get_conversation(db, user_id, conversation_id)
     if not conv:
         return False
+
+    # Explicitly delete all associated messages for strict cleanup
+    db.query(CoachMessage).filter(
+        CoachMessage.conversation_id == conversation_id,
+        CoachMessage.user_id == user_id,
+    ).delete(synchronize_session=False)
+
     db.delete(conv)
     db.commit()
     return True
@@ -91,19 +112,39 @@ def append_user_message(
     conversation_id: str,
     content: str,
 ) -> CoachMessage:
-    """Append a user question to the conversation."""
+    """Append a user question to the conversation.
+
+    If the previous message in this conversation was an uncompleted turn
+    with the exact same question (e.g. following a failed request), reuses
+    that turn rather than creating duplicate persisted messages.
+    """
     conv = get_conversation(db, user_id, conversation_id)
     if not conv:
         raise ValueError(f"Conversation {conversation_id} not found or access denied.")
 
+    clean_content = content.strip()
     now = datetime.now(timezone.utc)
     conv.updated_at = now
+
+    # Check for uncompleted user message retry
+    last_msg = (
+        db.query(CoachMessage)
+        .filter(
+            CoachMessage.conversation_id == conversation_id,
+            CoachMessage.user_id == user_id,
+        )
+        .order_by(CoachMessage.id.desc())
+        .first()
+    )
+    if last_msg and last_msg.role == "user" and last_msg.content == clean_content:
+        # Re-use existing user turn from uncompleted attempt
+        return last_msg
 
     msg = CoachMessage(
         conversation_id=conversation_id,
         user_id=user_id,
         role="user",
-        content=content.strip(),
+        content=clean_content,
         created_at=now,
     )
     db.add(msg)
@@ -118,7 +159,7 @@ def append_assistant_message(
     conversation_id: str,
     response: CoachResponse,
 ) -> CoachMessage:
-    """Append the coach's structured answer and evidence IDs to the conversation."""
+    """Append the coach's structured answer and evidence to the conversation."""
     conv = get_conversation(db, user_id, conversation_id)
     if not conv:
         raise ValueError(f"Conversation {conversation_id} not found or access denied.")
@@ -130,6 +171,19 @@ def append_assistant_message(
     claims_data = [c.model_dump(mode="json") for c in response.claims]
     actions_data = [a.model_dump(mode="json") for a in response.actions]
     evidence_ids = [e.evidence_id for e in response.evidence]
+    evidence_data = [
+        {
+            "evidence_id": e.evidence_id,
+            "evidence_type": e.evidence_type.value if hasattr(e.evidence_type, "value") else str(e.evidence_type),
+            "source": e.source,
+            "label": e.label,
+            "value": _make_json_safe(e.value),
+            "unit": e.unit,
+            "as_of_date": str(e.as_of_date) if e.as_of_date else None,
+        }
+        for e in response.evidence
+    ]
+    warnings_data = [w.model_dump(mode="json") for w in response.warnings]
 
     msg = CoachMessage(
         conversation_id=conversation_id,
@@ -137,9 +191,13 @@ def append_assistant_message(
         role="assistant",
         content=response.answer,
         intent=response.intent.value if response.intent else None,
+        summary=response.summary,
         claims_json=claims_data,
         actions_json=actions_data,
         evidence_ids_json=evidence_ids,
+        evidence_json=evidence_data,
+        warnings_json=warnings_data,
+        limitations_json=response.limitations,
         created_at=now,
     )
     db.add(msg)

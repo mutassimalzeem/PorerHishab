@@ -1,4 +1,4 @@
-"""SQLAlchemy models for financial coach conversations and messages (AI-15S-F)."""
+"""SQLAlchemy models for financial coach conversations and messages (AI-15S-F / AI-15S-K)."""
 
 from __future__ import annotations
 
@@ -106,6 +106,11 @@ class CoachMessage(Base):
         nullable=True,
     )
 
+    summary: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     claims_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSON,
         nullable=True,
@@ -117,6 +122,21 @@ class CoachMessage(Base):
     )
 
     evidence_ids_json: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+
+    evidence_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+
+    warnings_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+
+    limitations_json: Mapped[list[str] | None] = mapped_column(
         JSON,
         nullable=True,
     )
