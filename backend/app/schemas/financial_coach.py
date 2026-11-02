@@ -141,3 +141,37 @@ class CoachResponse(BaseModel):
     warnings: list[CoachWarning] = Field(default_factory=list)
 
     limitations: list[str] = Field(default_factory=list)
+
+
+class CoachConversationSummary(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CoachMessageRead(BaseModel):
+    id: int
+    conversation_id: str
+    role: str
+    content: str
+    intent: str | None = None
+    claims_json: list[dict[str, Any]] | None = None
+    actions_json: list[dict[str, Any]] | None = None
+    evidence_ids_json: list[str] | None = None
+    created_at: datetime
+
+
+class CoachConversationDetail(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    messages: list[CoachMessageRead] = Field(default_factory=list)
+
+
+class CoachConversationPage(BaseModel):
+    items: list[CoachConversationSummary]
+    total: int
+    limit: int
+    offset: int

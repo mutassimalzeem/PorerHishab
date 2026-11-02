@@ -41,6 +41,7 @@ from app.api.accounts import router as accounts_router
 from app.api.account_reconcilliation import router as account_reconcilliation_router
 from app.api.financial_alerts import router as alerts_router
 from app.api.notification_preferences import router as notification_preferences_router
+from app.api.financial_coach import router as financial_coach_router
 
 from app.services.transaction_service import save_transactions
 from app.repositories.transaction_repository import (
@@ -90,6 +91,7 @@ app.include_router(accounts_router)
 app.include_router(account_reconcilliation_router)
 app.include_router(alerts_router)
 app.include_router(notification_preferences_router)
+app.include_router(financial_coach_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
