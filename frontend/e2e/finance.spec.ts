@@ -2,10 +2,7 @@ import {
   effectivenessFixture,
   emptyEffectiveness,
 } from "../src/test/coaching-effectiveness.fixture";
-import {
-  actionPlanFixture,
-  emptyActionPlan,
-} from "../src/test/action-plan.fixture";
+import { emptyActionPlan } from "../src/test/action-plan.fixture";
 import {
   actionOutcomesFixture,
   emptyActionOutcomes,
@@ -22,6 +19,7 @@ import {
 } from "../src/test/intelligence.fixture";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
+const reviewFixture = require("../src/test/financial-review.fixture.json");
 // Synthetic test-only contracts. Never bundled into the application or persisted to the API.
 const sample = {
   id: 1,
@@ -72,7 +70,8 @@ async function connect(page: import("@playwright/test").Page, rich = false) {
     const url = new URL(route.request().url()),
       path = url.pathname.replace("/api", "");
     let body: unknown = {};
-    if (path === "/login") body = { access_token: "test-only-token" };
+    if (path === "/finance/review") body = reviewFixture;
+    else if (path === "/login") body = { access_token: "test-only-token" };
     else if (path === "/me")
       body = { id: 1, email: "test@example.com", full_name: "Test User" };
     else if (path === "/finance/action-plan") body = emptyActionPlan;
@@ -771,7 +770,7 @@ test("financial coaching shows priorities, keyboard evidence and bilingual actio
   });
   await navigate(page, "Insights");
   await page.getByRole("button", { name: "Review financial coaching" }).click();
-  const card = page.locator(".coaching-card").first();
+  const card = page.locator(".coaching-list .coaching-card").first();
   await expect(card.getByText("Critical", { exact: true })).toBeVisible();
   const evidence = card.getByText("Why this recommendation?", { exact: true });
   await evidence.focus();
@@ -798,7 +797,7 @@ test("financial coaching shows priorities, keyboard evidence and bilingual actio
       name: bn["Prepare for a possible cash shortfall"],
     }),
   ).toBeVisible();
-  await expect(page.locator(".coaching-card")).toHaveCount(2);
+  await expect(page.locator(".coaching-list .coaching-card")).toHaveCount(2);
   await accessible(page);
   await noOverflow(page);
 });
@@ -852,12 +851,12 @@ test("coaching feedback supports keyboard dismissal, snooze, restore and bilingu
   await navigate(page, "Insights");
   await page.getByRole("button", { name: "Review financial coaching" }).click();
   const dismiss = page
-    .locator(".coaching-card")
+    .locator(".coaching-list .coaching-card")
     .first()
     .getByRole("button", { name: "Dismiss", exact: true });
   await dismiss.focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator(".coaching-card")).toHaveCount(1);
+  await expect(page.locator(".coaching-list .coaching-card")).toHaveCount(1);
   await expect(
     page.getByText("Feedback saved. Financial records are unchanged."),
   ).toBeVisible();
@@ -865,15 +864,15 @@ test("coaching feedback supports keyboard dismissal, snooze, restore and bilingu
   await accessible(page);
   await noOverflow(page);
   await page.getByRole("button", { name: "Restore recommendation" }).click();
-  await expect(page.locator(".coaching-card")).toHaveCount(2);
-  const card = page.locator(".coaching-card").first();
+  await expect(page.locator(".coaching-list .coaching-card")).toHaveCount(2);
+  const card = page.locator(".coaching-list .coaching-card").first();
   await card.getByRole("button", { name: "Snooze", exact: true }).click();
   const input = card.getByLabel("Snooze until");
   await input.fill((await input.getAttribute("min"))!);
   await accessible(page);
   await noOverflow(page);
   await card.getByRole("button", { name: "Save snooze" }).click();
-  await expect(page.locator(".coaching-card")).toHaveCount(1);
+  await expect(page.locator(".coaching-list .coaching-card")).toHaveCount(1);
   await page.locator('.topbar button[lang="bn"]').click();
   await page.locator(".topbar .language-switcher").evaluate(async (element) => {
     element.getBoundingClientRect();
@@ -953,57 +952,38 @@ test("action outcomes shows the empty state when no outcomes are reported", asyn
   await accessible(page);
   await noOverflow(page);
 });
-test("action plan supports retry, keyboard navigation and Bengali", async ({
+test("financial review supports retry, keyboard navigation and Bengali", async ({
   page,
 }) => {
   await connect(page);
   let failed = true;
-  await page.route("**/api/finance/action-plan", async (route) => {
-    if (failed) {
-      await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
-    } else
-      await route.fulfill({
-        json: { ...actionPlanFixture, completed_count: 1 },
-      });
+  await page.route("**/api/finance/review?*", async (route) => {
+    await route.fulfill(
+      failed
+        ? { status: 503, json: { detail: "Unavailable" } }
+        : { json: reviewFixture },
+    );
   });
   await navigate(page, "Insights");
   const section = page.locator("section").filter({
-    has: page.getByRole("heading", {
-      name: new RegExp(`Your next actions|${bn["Your next actions"]}`),
-    }),
+    has: page.getByRole("heading", { name: "Financial review", exact: true }),
   });
   const retry = section.getByRole("button", { name: "Try again" });
   await expect(retry).toBeVisible();
   failed = false;
   await retry.focus();
   await page.keyboard.press("Enter");
-  const cards = section.getByRole("article");
-  await expect(cards).toHaveCount(2);
-  await expect(cards.first().getByRole("heading", { level: 3 })).toContainText(
-    "1. Prepare for a possible cash shortfall",
-  );
-  const link = cards.first().getByRole("link");
+  await expect(section.getByText("Plan status: partial")).toBeVisible();
+  const link = section.getByRole("link").first();
   await link.focus();
   await expect(link).toBeFocused();
-  await expect(link).toHaveAttribute("href", "/cashflow");
-  await expect(section.getByText("Reported done: 1")).toBeVisible();
+  await expect(section.getByText("Blocked for review").first()).toBeVisible();
   await accessible(page);
   await noOverflow(page);
   await page.locator('.topbar button[lang="bn"]').click();
-  await page.locator(".topbar .language-switcher").evaluate(async (element) => {
-    element.getBoundingClientRect();
-    await Promise.all(
-      element
-        .getAnimations({ subtree: true })
-        .map((animation) => animation.finished.catch(() => {})),
-    );
-  });
   await expect(
-    page.getByRole("heading", { name: bn["Your next actions"] }),
+    page.getByRole("heading", { name: bn["Financial review"], exact: true }),
   ).toBeVisible();
-  await expect(cards.first().getByRole("heading", { level: 3 })).toContainText(
-    bn["Prepare for a possible cash shortfall"],
-  );
   await accessible(page);
   await noOverflow(page);
 });
@@ -1079,7 +1059,7 @@ test("outcomes support keyboard retry and refresh with action-plan feedback", as
   ).toBeVisible();
   await page.getByRole("button", { name: "Review financial coaching" }).click();
   await page
-    .locator(".coaching-card")
+    .locator(".coaching-list .coaching-card")
     .first()
     .getByRole("button", { name: "Mark as done", exact: true })
     .click();
@@ -1087,10 +1067,12 @@ test("outcomes support keyboard retry and refresh with action-plan feedback", as
   await expect(outcomes.locator(".outcome-card")).toContainText(
     "Pending observation",
   );
-  await expect(
-    page.getByText("Reported done: 1", { exact: true }),
-  ).toBeVisible();
   await page.getByText("Coaching feedback history", { exact: true }).click();
+  await expect(
+    page
+      .locator(".coaching-history")
+      .getByText("Reported done", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Restore recommendation" }).click();
   await expect(outcomes.locator(".outcome-card")).toHaveCount(0);
   await expect(
