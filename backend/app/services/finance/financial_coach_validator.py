@@ -19,6 +19,7 @@ from app.schemas.financial_coach import (
     CoachAction,
     CoachClaim,
     CoachEvidence,
+    CoachIntent,
     CoachResponse,
     CoachWarning,
     EvidenceType,
@@ -243,6 +244,13 @@ class FinancialCoachValidator:
         # Clone response to prevent unexpected mutations to caller objects
         resp = response.model_copy(deep=True)
         resp.evidence = [ev.model_copy(deep=True) for ev in self.package.evidence]
+
+        # Review text and every associated surface are canonical projections.
+        # Arbitrary model prose cannot establish order, prerequisites or authorization.
+        if self.package.intent == CoachIntent.FINANCIAL_REVIEW:
+            resp = DeterministicFallbackGenerator.generate(self.package, "review", self.language)
+            resp.conversation_id = response.conversation_id
+
         resp.warnings = [warning for warning in resp.warnings
             if not unsupported_financial_text(warning.message, self.package.evidence, self.package.as_of_date)]
         resp.limitations = [text for text in resp.limitations

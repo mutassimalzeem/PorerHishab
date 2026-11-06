@@ -28,6 +28,31 @@ class IntentRoute:
 # Order matters: more specific financial questions are checked first.
 INTENT_PATTERNS: tuple[tuple[CoachIntent, tuple[str, ...]], ...] = (
     (
+        CoachIntent.FINANCIAL_REVIEW,
+        (
+            "financial review",
+            "আর্থিক পর্যালোচনা",
+            "আমার অগ্রাধিকার ব্যাখ্যা",
+            "explain my financial review",
+            "explain my review",
+            "review my financial plan",
+            "review my priorities",
+            "explain my priorities",
+            "why are these priorities",
+            "why are my priorities",
+            "what should i review first",
+            "what should i do first",
+            "which priority comes first",
+            "financial plan review",
+            "plan review",
+            "explain my plan",
+            "why is this step blocked",
+            "why are these steps blocked",
+            "what is blocking my plan",
+            "what is blocking",
+        ),
+    ),
+    (
         CoachIntent.SCENARIO_COMPARISON,
         (
             "compare these scenarios",

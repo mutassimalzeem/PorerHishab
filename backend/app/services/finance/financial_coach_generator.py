@@ -84,6 +84,54 @@ def _sanitize_untrusted_text(text: str) -> str:
     return sanitized.strip()
 
 
+_REVIEW_LEVEL_PRIORITY = {"critical": 1, "high": 2, "medium": 3, "low": 4}
+
+
+def _review_blocker_text(step: Any, priorities_by_id: dict[str, Any]) -> str:
+    """Describe canonical blockers without inventing amounts or new priorities."""
+    reasons: list[str] = []
+    for blocker_id in step.blocking_priority_ids:
+        blocker = priorities_by_id.get(blocker_id)
+        reasons.append(
+            f"the preceding priority '{blocker.title}' is still unresolved"
+            if blocker
+            else "a preceding priority is still unresolved"
+        )
+    for factor in step.blocking_factors:
+        if factor == "goal_capacity_unknown":
+            reasons.append("goal capacity is unknown")
+        elif factor == "goal_not_feasible":
+            reasons.append("the goal is not currently feasible")
+    return "; ".join(reasons) or "a preceding review step is still unresolved"
+
+
+def build_review_actions(review: Any) -> list[CoachAction]:
+    """Derive canonical review actions from the AI-16C execution steps.
+
+    The language model never owns priority order, step state or evidence links;
+    these actions are rebuilt deterministically from the canonical review.
+    """
+    priorities_by_id = {p.priority_id: p for p in review.decisions.priorities}
+    actions: list[CoachAction] = []
+    for step in review.execution_plan.steps:
+        state_note = (
+            f" Currently blocked: {_review_blocker_text(step, priorities_by_id)}."
+            if step.state == "blocked"
+            else " This step is ready for your review."
+        )
+        actions.append(
+            CoachAction(
+                action_id=f"act_{step.step_id}",
+                title=step.title,
+                description=f"{step.description}{state_note}",
+                priority=_REVIEW_LEVEL_PRIORITY.get(step.level, 3),
+                evidence_ids=list(step.evidence_ids),
+                action_type="personalized",
+            )
+        )
+    return actions
+
+
 def build_evidence_payload(
     package: EvidencePackage,
     question: str,
@@ -129,7 +177,7 @@ def build_evidence_payload(
             for msg in conversation_history[-4:]
         ]
 
-    return json.dumps(context_data, ensure_ascii=False, indent=2)
+    return json.dumps(context_data, ensure_ascii=False, indent=2, default=str)
 
 
 class DeterministicFallbackGenerator:
@@ -177,6 +225,8 @@ class DeterministicFallbackGenerator:
             return cls._generate_alert_explanation(package, language)
         elif intent == CoachIntent.FINANCIAL_HEALTH:
             return cls._generate_financial_health(package, language)
+        elif intent == CoachIntent.FINANCIAL_REVIEW:
+            return cls._generate_financial_review(package, language)
         elif intent == CoachIntent.GENERAL_FINANCE:
             return cls._generate_general_finance(package, language)
 
@@ -545,6 +595,222 @@ class DeterministicFallbackGenerator:
         )
 
     @classmethod
+    def _generate_financial_review(cls, package: EvidencePackage, language: str) -> CoachResponse:
+        """Explain the canonical AI-17B review without recalculating or executing anything."""
+        review = package.review
+        if review is None:
+            msg = "The financial review is currently unavailable. No financial action has been taken."
+            return CoachResponse(
+                intent=CoachIntent.FINANCIAL_REVIEW,
+                answer=msg,
+                summary=msg,
+                claims=[],
+                evidence=package.evidence,
+                actions=[],
+                warnings=[CoachWarning(code="REVIEW_UNAVAILABLE", message=msg)],
+                limitations=package.limitations,
+            )
+
+        priorities = review.decisions.priorities
+        steps = review.execution_plan.steps
+        priorities_by_id = {p.priority_id: p for p in priorities}
+        blocked = [s for s in steps if s.state == "blocked"]
+        ready = [s for s in steps if s.state == "ready"]
+
+        claims: list[CoachClaim] = [
+            CoachClaim(
+                claim_id="claim_review_status",
+                text=(
+                    "This is a read-only financial review. It does not execute or "
+                    "authorize any payment, transfer, allocation or goal update."
+                ),
+                evidence_ids=["ev_review_plan"],
+            ),
+            CoachClaim(
+                claim_id="claim_review_horizon",
+                text=(
+                    f"The review horizon runs from {review.plan.planning_horizon.start} "
+                    f"to {review.plan.planning_horizon.end}."
+                ),
+                evidence_ids=["ev_review_horizon"],
+            ),
+        ]
+
+        if review.decisions.data_status != "sufficient":
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_data_status",
+                    text=(
+                        "The available records are incomplete; missing values are not "
+                        "treated as zero and some review steps may be incomplete."
+                    ),
+                    evidence_ids=["ev_review_plan"],
+                )
+            )
+
+        if priorities:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_priority_order",
+                    text=(
+                        "The backend priority order is: "
+                        + "; ".join(p.title for p in priorities)
+                        + "."
+                    ),
+                    evidence_ids=["ev_review_priorities"],
+                )
+            )
+
+        if blocked:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_blocked_steps",
+                    text=(
+                        "Blocked review steps: "
+                        + "; ".join(
+                            f"{s.title} (blocked because {_review_blocker_text(s, priorities_by_id)})"
+                            for s in blocked
+                        )
+                        + "."
+                    ),
+                    evidence_ids=["ev_review_execution_steps"],
+                )
+            )
+
+        if ready:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_ready_steps",
+                    text=(
+                        "Review steps that are ready: "
+                        + "; ".join(s.title for s in ready)
+                        + "."
+                    ),
+                    evidence_ids=["ev_review_execution_steps"],
+                )
+            )
+
+        capacity = (
+            review.plan.goal_planning.capacity
+            if review.plan.goal_planning is not None
+            else None
+        )
+        if capacity is None or capacity.conservative_monthly_capacity is None:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_capacity_unavailable",
+                    text=(
+                        "Planning capacity is unavailable because required inputs are "
+                        "missing; it is not treated as zero."
+                    ),
+                    evidence_ids=["ev_review_capacity_status"],
+                )
+            )
+        else:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_capacity",
+                    text=(
+                        "Estimated conservative monthly savings capacity is "
+                        f"{capacity.conservative_monthly_capacity} BDT."
+                    ),
+                    evidence_ids=["ev_review_conservative_monthly_capacity"],
+                )
+            )
+
+        if capacity is None or capacity.trusted_cash is None:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_trusted_cash_unavailable",
+                    text="Trusted cash is unavailable; it is not treated as zero.",
+                    evidence_ids=["ev_review_trusted_cash_status"],
+                )
+            )
+        else:
+            claims.append(
+                CoachClaim(
+                    claim_id="claim_review_trusted_cash",
+                    text=f"Trusted cash is {capacity.trusted_cash} BDT.",
+                    evidence_ids=["ev_review_trusted_cash"],
+                )
+            )
+
+        answer_parts = [
+            "This is a read-only financial review. It does not execute or authorize "
+            "any payment, transfer, allocation or goal update.",
+        ]
+        if review.decisions.data_status != "sufficient":
+            answer_parts.append(
+                "The available records are incomplete; missing values are not treated as zero."
+            )
+        if priorities:
+            answer_parts.append(
+                "The backend priority order is: " + "; ".join(p.title for p in priorities) + "."
+            )
+        if blocked:
+            answer_parts.append(
+                "Blocked steps: "
+                + "; ".join(
+                    f"{s.title} (blocked because {_review_blocker_text(s, priorities_by_id)})"
+                    for s in blocked
+                )
+                + "."
+            )
+        if ready:
+            answer_parts.append(
+                "Ready for review: " + "; ".join(s.title for s in ready) + "."
+            )
+        if capacity is None or capacity.conservative_monthly_capacity is None:
+            answer_parts.append(
+                "Planning capacity is unavailable because required inputs are missing; "
+                "it is not treated as zero."
+            )
+        else:
+            answer_parts.append(
+                "Estimated conservative monthly savings capacity is "
+                f"{capacity.conservative_monthly_capacity} BDT."
+            )
+        if capacity is None or capacity.trusted_cash is None:
+            answer_parts.append("Trusted cash is unavailable; it is not treated as zero.")
+        else:
+            answer_parts.append(f"Trusted cash is {capacity.trusted_cash} BDT.")
+
+        if language == "bn":
+            answer_parts = [
+                "এটি শুধু আর্থিক পর্যালোচনা। কোনো অর্থ প্রদান, স্থানান্তর, বরাদ্দ বা লক্ষ্য পরিবর্তন অনুমোদিত বা সম্পন্ন হয়নি।",
+                "তথ্য অসম্পূর্ণ হলে অজানা পরিমাণকে শূন্য ধরা হয় না।",
+            ]
+            if priorities:
+                answer_parts.append("পর্যালোচনার অগ্রাধিকার: " + "; ".join(p.title for p in priorities) + "।")
+            for step in steps:
+                state = "পর্যালোচনায় বাধা আছে" if step.state == "blocked" else "পর্যালোচনার জন্য প্রস্তুত"
+                answer_parts.append(step.title + ": " + state + "।")
+                if step.state == "blocked":
+                    answer_parts.append("পূর্বশর্ত: " + _review_blocker_text(step, priorities_by_id) + "।")
+            if capacity is None or capacity.conservative_monthly_capacity is None:
+                answer_parts.append("প্রয়োজনীয় তথ্যের অভাবে সঞ্চয় সামর্থ্য অজানা; এটি শূন্য নয়।")
+            else:
+                answer_parts.append(f"আনুমানিক মাসিক সঞ্চয় সামর্থ্য {capacity.conservative_monthly_capacity} BDT।")
+            if capacity is None or capacity.trusted_cash is None:
+                answer_parts.append("যাচাইকৃত নগদ অজানা; এটি শূন্য নয়।")
+            else:
+                answer_parts.append(f"যাচাইকৃত নগদ {capacity.trusted_cash} BDT।")
+
+        return CoachResponse(
+            intent=CoachIntent.FINANCIAL_REVIEW,
+            answer=" ".join(answer_parts),
+            summary=(
+                "Read-only financial review with backend-ordered priorities and "
+                "explicit blockers."
+            ),
+            claims=claims,
+            evidence=package.evidence,
+            actions=build_review_actions(review),
+            warnings=[w.model_copy(deep=True) for w in review.plan.warnings],
+            limitations=package.limitations,
+        )
+
+    @classmethod
     def _generate_alert_explanation(cls, package: EvidencePackage, language: str) -> CoachResponse:
         count_ev = package.get_evidence_by_id("ev_alerts_active_count")
         count = count_ev.value if count_ev else 0
@@ -679,6 +945,13 @@ class FinancialCoachGenerator:
             response.conversation_id = conversation_id
             return response
 
+        # Review prose is a deterministic projection of the canonical plan. Free-form
+        # model prose cannot safely establish priority or prerequisite semantics.
+        if package.intent == CoachIntent.FINANCIAL_REVIEW:
+            response = DeterministicFallbackGenerator.generate(package, question, self.language)
+            response.conversation_id = conversation_id
+            return response
+
         # Check if external AI is enabled and configured
         if not settings.AI_EXTERNAL_ENABLED or not settings.OPENAI_KEY:
             logger.info("External AI disabled or unconfigured; using deterministic generator.")
@@ -718,6 +991,16 @@ class FinancialCoachGenerator:
     ) -> GeneratedCoachOutput | None:
         lang_name = "Bengali (Bangla)" if self.language == "bn" else "English"
         system_prompt = COACH_SYSTEM_PROMPT_V1.format(language_name=lang_name)
+        if package.intent == CoachIntent.FINANCIAL_REVIEW:
+            system_prompt += (
+                "\nFINANCIAL REVIEW RULES:\n"
+                "- Explain the supplied read-only review only.\n"
+                "- Preserve the exact backend priority order and each step's ready or blocked state.\n"
+                "- Never reorder priorities, invent priority or step IDs, or claim a blocked step is ready.\n"
+                "- Never claim any payment, transfer, allocation, goal update, approval or authorization "
+                "was or will be executed.\n"
+                "- Describe missing capacity or cash as unavailable, never as zero.\n"
+            )
         user_payload = build_evidence_payload(package, question, conversation_history)
 
         chat_model = build_chat_model()

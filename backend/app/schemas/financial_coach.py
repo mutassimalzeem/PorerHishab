@@ -19,6 +19,7 @@ class CoachIntent(str, Enum):
     SCENARIO_COMPARISON = "scenario_comparison"
     ALERT_EXPLANATION = "alert_explanation"
     FINANCIAL_HEALTH = "financial_health"
+    FINANCIAL_REVIEW = "financial_review"
     GENERAL_FINANCE = "general_finance"
     UNKNOWN = "unknown"
 
@@ -35,6 +36,15 @@ class CoachRequest(BaseModel):
     conversation_id: str | None = Field(
         default=None,
         description="Existing conversation identifier, if available.",
+    )
+
+    schedules_confirmed: bool = Field(
+        default=False,
+        description=(
+            "For financial-review explanations, asserts that recorded expense "
+            "schedules are complete. This is a completeness statement only and "
+            "never authorizes execution."
+        ),
     )
 
 

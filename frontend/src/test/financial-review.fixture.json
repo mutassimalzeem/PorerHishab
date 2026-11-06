@@ -1,0 +1,1801 @@
+{
+  "status": "review_only",
+  "requires_user_confirmation": true,
+  "schedules_confirmed": false,
+  "plan": {
+    "as_of_date": "2026-11-01",
+    "data_status": "partial",
+    "actions": [
+      {
+        "id": "upcoming_obligations:1",
+        "recommendation_id": "upcoming_obligations:1",
+        "type": "upcoming_obligations",
+        "priority": "medium",
+        "rank": 1,
+        "title": "Prepare for remaining commitments",
+        "description": "These obligations are due soon or are large relative to established account cash.",
+        "recommended_action": "Review the remaining amounts and due dates before reserving money or confirming a payment.",
+        "amount": "5000.00",
+        "currency": "BDT",
+        "status": "active",
+        "source": "scheduled_cashflow",
+        "evidence_quality": "recorded",
+        "subject": null,
+        "assumptions": [],
+        "limitations": [
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts."
+        ]
+      }
+    ],
+    "completed_feedback": [],
+    "active_count": 1,
+    "completed_count": 0,
+    "assumptions": [],
+    "limitations": [
+      "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+      "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+      "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+      "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+      "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+      "Reported done means the user reported completion; no financial action has been verified.",
+      "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+      "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+      "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+      "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+      "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+      "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+      "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+      "Goal savings are self-reported; score changes do not establish causation.",
+      "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+      "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+      "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+      "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+      "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+      "Reported goal savings are reserved against cash, never added as extra money.",
+      "All recorded spending is protected; no essential spending is assumed discretionary.",
+      "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+      "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+      "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+      "Financial-health context is unavailable; it does not determine goal feasibility.",
+      "Confirm that recorded expense schedules include known commitments before planning.",
+      "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+      "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+      "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+      "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+    ],
+    "planner_version": "ai-16a-v1",
+    "planning_horizon": {
+      "kind": "coaching_horizon",
+      "start": "2026-11-01",
+      "end": "2026-12-01",
+      "is_complete": false,
+      "label": "next 30 days inclusive"
+    },
+    "priorities": [
+      {
+        "action_id": "upcoming_obligations:1",
+        "title": "Prepare for remaining commitments",
+        "description": "Review the remaining amounts and due dates before reserving money or confirming a payment.",
+        "priority": 3,
+        "evidence_ids": [
+          "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d",
+          "ev_plan_policy"
+        ],
+        "action_type": "personalized"
+      },
+      {
+        "action_id": "plan:goal:1",
+        "title": "Review the existing goal plan",
+        "description": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended.",
+        "priority": 3,
+        "evidence_ids": [
+          "ev_plan_goal_1",
+          "ev_plan_policy"
+        ],
+        "action_type": "personalized"
+      }
+    ],
+    "goal_planning": {
+      "capacity": {
+        "as_of_date": "2026-11-01",
+        "observation_start": "2026-08-01",
+        "observation_end": "2026-10-31",
+        "status": "insufficient_data",
+        "conservative_monthly_capacity": null,
+        "scenario_monthly_capacity": null,
+        "trusted_cash": "100000.00",
+        "protected_reserve": null,
+        "upcoming_obligations": "5000.00",
+        "overdue_obligations": "0.00",
+        "reported_earmarks": "0.00",
+        "conservative_income": null,
+        "protected_expenses": null,
+        "health_coverage": null,
+        "health_as_of_date": null,
+        "explanations": [
+          "Confirm that recorded expense schedules include known commitments before planning."
+        ],
+        "limitations": [
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility."
+        ]
+      },
+      "goals": [
+        {
+          "goal_id": 1,
+          "name": "Laptop",
+          "priority": 3,
+          "goal_status": "active",
+          "target_amount": "10000.00",
+          "remaining_amount": "10000.00",
+          "proposed_monthly": "0.00",
+          "accepted_monthly": "0.00",
+          "feasibility": "insufficient_data",
+          "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+        }
+      ],
+      "total_target_amount": "10000.00",
+      "total_remaining_amount": "10000.00",
+      "total_planned_monthly": "0.00",
+      "total_proposed_monthly": "0.00",
+      "capacity_utilization": null,
+      "over_capacity": false,
+      "upcoming_milestones": [],
+      "missed_milestones": []
+    },
+    "financial_health": {
+      "overall_score": "85.00",
+      "status": "strong",
+      "coverage_percent": "100.00",
+      "available_components": [
+        "cashflow_stability",
+        "liquidity",
+        "obligation_pressure",
+        "spending_stability",
+        "account_reliability",
+        "savings_progress",
+        "financial_stress"
+      ],
+      "missing_components": [],
+      "data_quality_status": "high",
+      "limitations": [
+        "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+        "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+        "Goal savings are self-reported; score changes do not establish causation.",
+        "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+        "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+        "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal."
+      ],
+      "components": [
+        {
+          "key": "cashflow_stability",
+          "score": "100.00",
+          "status": "strong",
+          "data_available": true,
+          "explanation": "Based on the average recorded income surplus margin across three complete months.",
+          "evidence": [
+            {
+              "metric": "mean_surplus_margin",
+              "value": "0.8333333333333333333333333333",
+              "unit": "ratio",
+              "source": "monthly_history",
+              "as_of_date": "2026-10-31",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1",
+            "formula": "clamp(50 + 250 * mean monthly net/income)",
+            "months": "3"
+          }
+        },
+        {
+          "key": "liquidity",
+          "score": "100.00",
+          "status": "strong",
+          "data_available": true,
+          "explanation": "Based on recent verified cash relative to the runway service's conservative near-term expense reserve.",
+          "evidence": [
+            {
+              "metric": "trusted_cash",
+              "value": "100000.00",
+              "unit": "BDT",
+              "source": "account_position",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            },
+            {
+              "metric": "expected_expense_reserve",
+              "value": "5161.29",
+              "unit": "BDT",
+              "source": "financial_runway",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1",
+            "formula": "clamp(trusted_cash / (3 * runway reserve) * 100)",
+            "horizon_days": "30"
+          }
+        },
+        {
+          "key": "obligation_pressure",
+          "score": "95.00",
+          "status": "strong",
+          "data_available": true,
+          "explanation": "Based on known remaining upcoming obligations relative to recent verified cash; uncertain income is excluded.",
+          "evidence": [
+            {
+              "metric": "upcoming_remaining_obligations",
+              "value": "5000.00",
+              "unit": "BDT",
+              "source": "financial_runway",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            },
+            {
+              "metric": "trusted_cash",
+              "value": "100000.00",
+              "unit": "BDT",
+              "source": "account_position",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1",
+            "formula": "clamp(100 * (1 - upcoming reserve / trusted cash)); nonpositive cash -> 0"
+          }
+        },
+        {
+          "key": "spending_stability",
+          "score": "100.00",
+          "status": "strong",
+          "data_available": true,
+          "explanation": "Only repeated spending growth across complete months is flagged; an isolated large purchase is not penalized.",
+          "evidence": [
+            {
+              "metric": "monthly_expenses_1",
+              "value": "5000.00",
+              "unit": "BDT",
+              "source": "monthly_history",
+              "as_of_date": "2026-08-31",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            },
+            {
+              "metric": "monthly_expenses_2",
+              "value": "5000.00",
+              "unit": "BDT",
+              "source": "monthly_history",
+              "as_of_date": "2026-09-30",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            },
+            {
+              "metric": "monthly_expenses_3",
+              "value": "5000.00",
+              "unit": "BDT",
+              "source": "monthly_history",
+              "as_of_date": "2026-10-31",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1",
+            "formula": "40 if both later months exceed first month's spending by >50%; otherwise 100"
+          }
+        },
+        {
+          "key": "account_reliability",
+          "score": "100.00",
+          "status": "strong",
+          "data_available": true,
+          "explanation": "Based on observed reconciliation conflicts; missing verification reduces coverage rather than financial condition.",
+          "evidence": [
+            {
+              "metric": "reconciliation_conflicts",
+              "value": 0,
+              "unit": "accounts",
+              "source": "account_position",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            },
+            {
+              "metric": "verified_accounts",
+              "value": 1,
+              "unit": "accounts",
+              "source": "account_position",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1"
+          }
+        },
+        {
+          "key": "savings_progress",
+          "score": "0.00",
+          "status": "strained",
+          "data_available": true,
+          "explanation": "Based on reported progress towards configured goals; absence of goals is unknown.",
+          "evidence": [
+            {
+              "metric": "mean_reported_goal_progress",
+              "value": "0",
+              "unit": "ratio",
+              "source": "savings_goals",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            },
+            {
+              "metric": "configured_goals",
+              "value": 1,
+              "unit": "goals",
+              "source": "savings_goals",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1",
+            "formula": "mean(min(reported_saved / target, 1)) * 100; no inference about contribution history"
+          }
+        },
+        {
+          "key": "financial_stress",
+          "score": "100.00",
+          "status": "strong",
+          "data_available": true,
+          "explanation": "Based on distinct overdue dates with remaining obligations; this describes observable pressure, not emotions.",
+          "evidence": [
+            {
+              "metric": "overdue_dates_with_remaining_obligations",
+              "value": 0,
+              "unit": "dates",
+              "source": "obligation_reconciliation",
+              "as_of_date": "2026-11-01",
+              "observed_at": "2026-11-06T16:03:54.466563Z"
+            }
+          ],
+          "limitations": [],
+          "calculation_metadata": {
+            "weight": "1",
+            "formula": "clamp(100 - 30 * distinct overdue dates)",
+            "window_days": "90"
+          }
+        }
+      ],
+      "trend": {
+        "direction": "insufficient_data",
+        "change": null,
+        "period": "90d",
+        "confidence": "insufficient",
+        "comparison_date": null,
+        "current_date": null,
+        "components": {},
+        "limitation": "Trends require comparable versions, coverage and at least seven days between observations."
+      },
+      "schema_version": "1",
+      "calculation_version": "ai-15o-v1",
+      "as_of_date": "2026-11-01",
+      "observed_at": "2026-11-06T16:03:54.466563Z"
+    },
+    "evidence": [
+      {
+        "evidence_id": "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d",
+        "evidence_type": "derived_fact",
+        "source": "scheduled_cashflow",
+        "label": "Prepare for remaining commitments",
+        "value": {
+          "amount": "5000.00",
+          "evidence": {
+            "period": {
+              "kind": "coaching_horizon",
+              "start": "2026-11-01",
+              "end": "2026-12-01",
+              "is_complete": false,
+              "label": "next 30 days inclusive"
+            },
+            "comparison_period": null,
+            "starting_balance": "100000.00",
+            "balance_source": null,
+            "scheduled_expense_reserve": "5000.00",
+            "uncertain_income": null,
+            "minimum_projected_balance": null,
+            "projected_end_balance": null,
+            "cash_after_known_obligations": null,
+            "safety_threshold": null,
+            "runway_status": null,
+            "runway_mode": null,
+            "first_shortfall_date": null,
+            "first_shortfall_period": null,
+            "category": null,
+            "observed_value": null,
+            "reference_value": null,
+            "percentage_change": null,
+            "monthly_values": [],
+            "obligations": [
+              {
+                "item_id": 1,
+                "title": "Rent",
+                "due_date": "2026-11-03",
+                "original_amount": "5000.00",
+                "allocated_amount": "0.00",
+                "remaining_amount": "5000.00",
+                "timeline_event_id": "obligation:1"
+              }
+            ],
+            "milestone_id": null,
+            "milestone_due_date": null,
+            "milestone_target": null,
+            "goal_id": null,
+            "goal_name": null,
+            "current_saved": null,
+            "target_amount": null,
+            "remaining_amount": null,
+            "target_date": null,
+            "required_monthly": null,
+            "estimated_monthly_capacity": null,
+            "affordability": null
+          }
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_plan_goal_1",
+        "evidence_type": "estimate",
+        "source": "goal_planning.overview",
+        "label": "Existing shared-pool goal proposal",
+        "value": {
+          "goal": {
+            "goal_id": 1,
+            "name": "Laptop",
+            "priority": 3,
+            "goal_status": "active",
+            "target_amount": "10000.00",
+            "remaining_amount": "10000.00",
+            "proposed_monthly": "0.00",
+            "accepted_monthly": "0.00",
+            "feasibility": "insufficient_data",
+            "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+          },
+          "capacity": {
+            "as_of_date": "2026-11-01",
+            "observation_start": "2026-08-01",
+            "observation_end": "2026-10-31",
+            "status": "insufficient_data",
+            "conservative_monthly_capacity": null,
+            "scenario_monthly_capacity": null,
+            "trusted_cash": "100000.00",
+            "protected_reserve": null,
+            "upcoming_obligations": "5000.00",
+            "overdue_obligations": "0.00",
+            "reported_earmarks": "0.00",
+            "conservative_income": null,
+            "protected_expenses": null,
+            "health_coverage": null,
+            "health_as_of_date": null,
+            "explanations": [
+              "Confirm that recorded expense schedules include known commitments before planning."
+            ],
+            "limitations": [
+              "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+              "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+              "Reported goal savings are reserved against cash, never added as extra money.",
+              "All recorded spending is protected; no essential spending is assumed discretionary.",
+              "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+              "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+              "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+              "Financial-health context is unavailable; it does not determine goal feasibility."
+            ]
+          }
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_plan_policy",
+        "evidence_type": "interpretation",
+        "source": "financial_planner",
+        "label": "Versioned priority interpretation",
+        "value": {
+          "planner_version": "ai-16a-v1",
+          "ordered_action_ids": [
+            "upcoming_obligations:1",
+            "plan:goal:1"
+          ]
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      }
+    ],
+    "warnings": [
+      {
+        "code": "UNKNOWN_PLANNING_CAPACITY",
+        "message": "Planning capacity is unavailable; no funded goal allocation is established."
+      }
+    ]
+  },
+  "decisions": {
+    "policy_version": "ai-16b-v1",
+    "source_planner_version": "ai-16a-v1",
+    "as_of_date": "2026-11-01",
+    "planning_horizon": {
+      "kind": "coaching_horizon",
+      "start": "2026-11-01",
+      "end": "2026-12-01",
+      "is_complete": false,
+      "label": "next 30 days inclusive"
+    },
+    "data_status": "partial",
+    "priorities": [
+      {
+        "priority_id": "priority:capacity",
+        "category": "capacity_review",
+        "level": "high",
+        "title": "Establish goal planning inputs",
+        "reason": "capacity_unavailable",
+        "source_action_ids": [],
+        "evidence_ids": [
+          "ev_priority_goal_overview"
+        ],
+        "evidence_quality": "estimated",
+        "blocking_priority_ids": [],
+        "blocking_factors": [],
+        "assumptions": [],
+        "limitations": [
+          "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+          "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+          "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+          "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+          "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+          "Confirm that recorded expense schedules include known commitments before planning.",
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+          "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility.",
+          "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+          "Goal savings are self-reported; score changes do not establish causation.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+          "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+          "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+          "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+          "Reported done means the user reported completion; no financial action has been verified.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+          "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+          "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+        ]
+      },
+      {
+        "priority_id": "priority:obligation_pressure",
+        "category": "obligation_pressure",
+        "level": "medium",
+        "title": "Prepare for remaining commitments",
+        "reason": "known_obligations",
+        "source_action_ids": [
+          "upcoming_obligations:1"
+        ],
+        "evidence_ids": [
+          "ev_plan_policy",
+          "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d"
+        ],
+        "evidence_quality": "derived",
+        "blocking_priority_ids": [],
+        "blocking_factors": [],
+        "assumptions": [],
+        "limitations": [
+          "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+          "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+          "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+          "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+          "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+          "Confirm that recorded expense schedules include known commitments before planning.",
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+          "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility.",
+          "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+          "Goal savings are self-reported; score changes do not establish causation.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+          "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+          "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+          "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+          "Reported done means the user reported completion; no financial action has been verified.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+          "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+          "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+        ]
+      },
+      {
+        "priority_id": "priority:goal:1",
+        "category": "goal_review",
+        "level": "medium",
+        "title": "Review an active goal",
+        "reason": "active_goal",
+        "source_action_ids": [
+          "plan:goal:1"
+        ],
+        "evidence_ids": [
+          "ev_plan_goal_1",
+          "ev_plan_policy",
+          "ev_priority_goal_overview"
+        ],
+        "evidence_quality": "estimated",
+        "blocking_priority_ids": [
+          "priority:capacity",
+          "priority:obligation_pressure"
+        ],
+        "blocking_factors": [
+          "goal_capacity_unknown"
+        ],
+        "assumptions": [],
+        "limitations": [
+          "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+          "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+          "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+          "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+          "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+          "Confirm that recorded expense schedules include known commitments before planning.",
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+          "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility.",
+          "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+          "Goal savings are self-reported; score changes do not establish causation.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+          "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+          "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+          "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+          "Reported done means the user reported completion; no financial action has been verified.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+          "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+          "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+        ]
+      }
+    ],
+    "conflicts": [
+      {
+        "preceding_priority_id": "priority:capacity",
+        "deferred_priority_id": "priority:goal:1",
+        "kind": "funding_constraint",
+        "reason": "resolve_capacity"
+      },
+      {
+        "preceding_priority_id": "priority:obligation_pressure",
+        "deferred_priority_id": "priority:goal:1",
+        "kind": "review_precedence",
+        "reason": "protect_obligations"
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "ev_plan_goal_1",
+        "evidence_type": "estimate",
+        "source": "goal_planning.overview",
+        "label": "Existing shared-pool goal proposal",
+        "value": {
+          "goal": {
+            "goal_id": 1,
+            "name": "Laptop",
+            "priority": 3,
+            "goal_status": "active",
+            "target_amount": "10000.00",
+            "remaining_amount": "10000.00",
+            "proposed_monthly": "0.00",
+            "accepted_monthly": "0.00",
+            "feasibility": "insufficient_data",
+            "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+          },
+          "capacity": {
+            "as_of_date": "2026-11-01",
+            "observation_start": "2026-08-01",
+            "observation_end": "2026-10-31",
+            "status": "insufficient_data",
+            "conservative_monthly_capacity": null,
+            "scenario_monthly_capacity": null,
+            "trusted_cash": "100000.00",
+            "protected_reserve": null,
+            "upcoming_obligations": "5000.00",
+            "overdue_obligations": "0.00",
+            "reported_earmarks": "0.00",
+            "conservative_income": null,
+            "protected_expenses": null,
+            "health_coverage": null,
+            "health_as_of_date": null,
+            "explanations": [
+              "Confirm that recorded expense schedules include known commitments before planning."
+            ],
+            "limitations": [
+              "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+              "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+              "Reported goal savings are reserved against cash, never added as extra money.",
+              "All recorded spending is protected; no essential spending is assumed discretionary.",
+              "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+              "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+              "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+              "Financial-health context is unavailable; it does not determine goal feasibility."
+            ]
+          }
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_plan_policy",
+        "evidence_type": "interpretation",
+        "source": "financial_planner",
+        "label": "Versioned priority interpretation",
+        "value": {
+          "planner_version": "ai-16a-v1",
+          "ordered_action_ids": [
+            "upcoming_obligations:1",
+            "plan:goal:1"
+          ]
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d",
+        "evidence_type": "derived_fact",
+        "source": "scheduled_cashflow",
+        "label": "Prepare for remaining commitments",
+        "value": {
+          "amount": "5000.00",
+          "evidence": {
+            "period": {
+              "kind": "coaching_horizon",
+              "start": "2026-11-01",
+              "end": "2026-12-01",
+              "is_complete": false,
+              "label": "next 30 days inclusive"
+            },
+            "comparison_period": null,
+            "starting_balance": "100000.00",
+            "balance_source": null,
+            "scheduled_expense_reserve": "5000.00",
+            "uncertain_income": null,
+            "minimum_projected_balance": null,
+            "projected_end_balance": null,
+            "cash_after_known_obligations": null,
+            "safety_threshold": null,
+            "runway_status": null,
+            "runway_mode": null,
+            "first_shortfall_date": null,
+            "first_shortfall_period": null,
+            "category": null,
+            "observed_value": null,
+            "reference_value": null,
+            "percentage_change": null,
+            "monthly_values": [],
+            "obligations": [
+              {
+                "item_id": 1,
+                "title": "Rent",
+                "due_date": "2026-11-03",
+                "original_amount": "5000.00",
+                "allocated_amount": "0.00",
+                "remaining_amount": "5000.00",
+                "timeline_event_id": "obligation:1"
+              }
+            ],
+            "milestone_id": null,
+            "milestone_due_date": null,
+            "milestone_target": null,
+            "goal_id": null,
+            "goal_name": null,
+            "current_saved": null,
+            "target_amount": null,
+            "remaining_amount": null,
+            "target_date": null,
+            "required_monthly": null,
+            "estimated_monthly_capacity": null,
+            "affordability": null
+          }
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_priority_goal_overview",
+        "evidence_type": "estimate",
+        "source": "goal_planning.overview",
+        "label": "Existing capacity and commitment constraints",
+        "value": {
+          "capacity": {
+            "as_of_date": "2026-11-01",
+            "observation_start": "2026-08-01",
+            "observation_end": "2026-10-31",
+            "status": "insufficient_data",
+            "conservative_monthly_capacity": null,
+            "scenario_monthly_capacity": null,
+            "trusted_cash": "100000.00",
+            "protected_reserve": null,
+            "upcoming_obligations": "5000.00",
+            "overdue_obligations": "0.00",
+            "reported_earmarks": "0.00",
+            "conservative_income": null,
+            "protected_expenses": null,
+            "health_coverage": null,
+            "health_as_of_date": null,
+            "explanations": [
+              "Confirm that recorded expense schedules include known commitments before planning."
+            ],
+            "limitations": [
+              "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+              "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+              "Reported goal savings are reserved against cash, never added as extra money.",
+              "All recorded spending is protected; no essential spending is assumed discretionary.",
+              "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+              "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+              "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+              "Financial-health context is unavailable; it does not determine goal feasibility."
+            ]
+          },
+          "goals": [
+            {
+              "goal_id": 1,
+              "name": "Laptop",
+              "priority": 3,
+              "goal_status": "active",
+              "target_amount": "10000.00",
+              "remaining_amount": "10000.00",
+              "proposed_monthly": "0.00",
+              "accepted_monthly": "0.00",
+              "feasibility": "insufficient_data",
+              "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+            }
+          ],
+          "total_target_amount": "10000.00",
+          "total_remaining_amount": "10000.00",
+          "total_planned_monthly": "0.00",
+          "total_proposed_monthly": "0.00",
+          "capacity_utilization": null,
+          "over_capacity": false,
+          "upcoming_milestones": [],
+          "missed_milestones": []
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_priority_policy",
+        "evidence_type": "interpretation",
+        "source": "financial_prioritization",
+        "label": "Produced priority order and dependencies",
+        "value": {
+          "policy_version": "ai-16b-v1",
+          "priorities": [
+            {
+              "priority_id": "priority:capacity",
+              "category": "capacity_review",
+              "level": "high",
+              "title": "Establish goal planning inputs",
+              "reason": "capacity_unavailable",
+              "source_action_ids": [],
+              "evidence_ids": [
+                "ev_priority_goal_overview"
+              ],
+              "evidence_quality": "estimated",
+              "blocking_priority_ids": [],
+              "blocking_factors": [],
+              "assumptions": [],
+              "limitations": [
+                "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+                "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+                "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+                "All recorded spending is protected; no essential spending is assumed discretionary.",
+                "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+                "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+                "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+                "Confirm that recorded expense schedules include known commitments before planning.",
+                "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+                "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+                "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+                "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+                "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+                "Financial-health context is unavailable; it does not determine goal feasibility.",
+                "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+                "Goal savings are self-reported; score changes do not establish causation.",
+                "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+                "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+                "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+                "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+                "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+                "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+                "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+                "Reported done means the user reported completion; no financial action has been verified.",
+                "Reported goal savings are reserved against cash, never added as extra money.",
+                "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+                "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+                "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+                "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+                "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+              ]
+            },
+            {
+              "priority_id": "priority:obligation_pressure",
+              "category": "obligation_pressure",
+              "level": "medium",
+              "title": "Prepare for remaining commitments",
+              "reason": "known_obligations",
+              "source_action_ids": [
+                "upcoming_obligations:1"
+              ],
+              "evidence_ids": [
+                "ev_plan_policy",
+                "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d"
+              ],
+              "evidence_quality": "derived",
+              "blocking_priority_ids": [],
+              "blocking_factors": [],
+              "assumptions": [],
+              "limitations": [
+                "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+                "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+                "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+                "All recorded spending is protected; no essential spending is assumed discretionary.",
+                "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+                "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+                "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+                "Confirm that recorded expense schedules include known commitments before planning.",
+                "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+                "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+                "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+                "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+                "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+                "Financial-health context is unavailable; it does not determine goal feasibility.",
+                "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+                "Goal savings are self-reported; score changes do not establish causation.",
+                "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+                "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+                "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+                "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+                "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+                "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+                "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+                "Reported done means the user reported completion; no financial action has been verified.",
+                "Reported goal savings are reserved against cash, never added as extra money.",
+                "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+                "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+                "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+                "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+                "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+              ]
+            },
+            {
+              "priority_id": "priority:goal:1",
+              "category": "goal_review",
+              "level": "medium",
+              "title": "Review an active goal",
+              "reason": "active_goal",
+              "source_action_ids": [
+                "plan:goal:1"
+              ],
+              "evidence_ids": [
+                "ev_plan_goal_1",
+                "ev_plan_policy",
+                "ev_priority_goal_overview"
+              ],
+              "evidence_quality": "estimated",
+              "blocking_priority_ids": [
+                "priority:capacity",
+                "priority:obligation_pressure"
+              ],
+              "blocking_factors": [
+                "goal_capacity_unknown"
+              ],
+              "assumptions": [],
+              "limitations": [
+                "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+                "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+                "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+                "All recorded spending is protected; no essential spending is assumed discretionary.",
+                "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+                "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+                "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+                "Confirm that recorded expense schedules include known commitments before planning.",
+                "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+                "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+                "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+                "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+                "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+                "Financial-health context is unavailable; it does not determine goal feasibility.",
+                "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+                "Goal savings are self-reported; score changes do not establish causation.",
+                "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+                "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+                "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+                "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+                "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+                "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+                "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+                "Reported done means the user reported completion; no financial action has been verified.",
+                "Reported goal savings are reserved against cash, never added as extra money.",
+                "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+                "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+                "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+                "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+                "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+              ]
+            }
+          ],
+          "conflicts": [
+            {
+              "preceding_priority_id": "priority:capacity",
+              "deferred_priority_id": "priority:goal:1",
+              "kind": "funding_constraint",
+              "reason": "resolve_capacity"
+            },
+            {
+              "preceding_priority_id": "priority:obligation_pressure",
+              "deferred_priority_id": "priority:goal:1",
+              "kind": "review_precedence",
+              "reason": "protect_obligations"
+            }
+          ]
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      }
+    ],
+    "goal_planning": {
+      "capacity": {
+        "as_of_date": "2026-11-01",
+        "observation_start": "2026-08-01",
+        "observation_end": "2026-10-31",
+        "status": "insufficient_data",
+        "conservative_monthly_capacity": null,
+        "scenario_monthly_capacity": null,
+        "trusted_cash": "100000.00",
+        "protected_reserve": null,
+        "upcoming_obligations": "5000.00",
+        "overdue_obligations": "0.00",
+        "reported_earmarks": "0.00",
+        "conservative_income": null,
+        "protected_expenses": null,
+        "health_coverage": null,
+        "health_as_of_date": null,
+        "explanations": [
+          "Confirm that recorded expense schedules include known commitments before planning."
+        ],
+        "limitations": [
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility."
+        ]
+      },
+      "goals": [
+        {
+          "goal_id": 1,
+          "name": "Laptop",
+          "priority": 3,
+          "goal_status": "active",
+          "target_amount": "10000.00",
+          "remaining_amount": "10000.00",
+          "proposed_monthly": "0.00",
+          "accepted_monthly": "0.00",
+          "feasibility": "insufficient_data",
+          "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+        }
+      ],
+      "total_target_amount": "10000.00",
+      "total_remaining_amount": "10000.00",
+      "total_planned_monthly": "0.00",
+      "total_proposed_monthly": "0.00",
+      "capacity_utilization": null,
+      "over_capacity": false,
+      "upcoming_milestones": [],
+      "missed_milestones": []
+    },
+    "warnings": [
+      {
+        "code": "UNKNOWN_PLANNING_CAPACITY",
+        "message": "Planning capacity is unavailable; no funded goal allocation is established."
+      }
+    ],
+    "limitations": [
+      "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+      "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+      "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+      "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+      "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+      "Reported done means the user reported completion; no financial action has been verified.",
+      "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+      "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+      "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+      "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+      "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+      "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+      "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+      "Goal savings are self-reported; score changes do not establish causation.",
+      "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+      "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+      "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+      "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+      "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+      "Reported goal savings are reserved against cash, never added as extra money.",
+      "All recorded spending is protected; no essential spending is assumed discretionary.",
+      "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+      "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+      "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+      "Financial-health context is unavailable; it does not determine goal feasibility.",
+      "Confirm that recorded expense schedules include known commitments before planning.",
+      "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+      "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+      "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+      "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot.",
+      "Priority dependencies govern review and optional funding; they do not authorize delaying bills or cancelling accepted commitments.",
+      "Review precedence is not proof of a funding deficit; conflicts do not create, transfer or reallocate money.",
+      "The input must be assembled for one authenticated user; this pure service cannot verify tenant ownership.",
+      "Only signals retained by AI-16A are available; omitted recommendations are not reconstructed."
+    ]
+  },
+  "execution_plan": {
+    "policy_version": "ai-16c-v1",
+    "source_decision_version": "ai-16b-v1",
+    "as_of_date": "2026-11-01",
+    "planning_horizon": {
+      "kind": "coaching_horizon",
+      "start": "2026-11-01",
+      "end": "2026-12-01",
+      "is_complete": false,
+      "label": "next 30 days inclusive"
+    },
+    "data_status": "partial",
+    "steps": [
+      {
+        "step_id": "step_1_priority:capacity",
+        "priority_id": "priority:capacity",
+        "sequence": 1,
+        "kind": "review_capacity",
+        "level": "high",
+        "title": "Review goal capacity",
+        "description": "Review available goal capacity and resolve any capacity uncertainty before adding optional commitments.",
+        "source_action_ids": [],
+        "evidence_ids": [
+          "ev_priority_goal_overview"
+        ],
+        "blocking_priority_ids": [],
+        "blocking_factors": [],
+        "state": "ready",
+        "requires_user_confirmation": true,
+        "assumptions": [],
+        "limitations": [
+          "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+          "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+          "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+          "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+          "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+          "Confirm that recorded expense schedules include known commitments before planning.",
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+          "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility.",
+          "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+          "Goal savings are self-reported; score changes do not establish causation.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+          "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+          "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+          "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+          "Reported done means the user reported completion; no financial action has been verified.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+          "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+          "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+        ]
+      },
+      {
+        "step_id": "step_2_priority:obligation_pressure",
+        "priority_id": "priority:obligation_pressure",
+        "sequence": 2,
+        "kind": "review_obligations",
+        "level": "medium",
+        "title": "Review upcoming obligations",
+        "description": "Review known obligations and their existing commitments before changing optional plans.",
+        "source_action_ids": [
+          "upcoming_obligations:1"
+        ],
+        "evidence_ids": [
+          "ev_plan_policy",
+          "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d"
+        ],
+        "blocking_priority_ids": [],
+        "blocking_factors": [],
+        "state": "ready",
+        "requires_user_confirmation": true,
+        "assumptions": [],
+        "limitations": [
+          "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+          "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+          "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+          "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+          "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+          "Confirm that recorded expense schedules include known commitments before planning.",
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+          "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility.",
+          "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+          "Goal savings are self-reported; score changes do not establish causation.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+          "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+          "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+          "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+          "Reported done means the user reported completion; no financial action has been verified.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+          "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+          "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+        ]
+      },
+      {
+        "step_id": "step_3_priority:goal:1",
+        "priority_id": "priority:goal:1",
+        "sequence": 3,
+        "kind": "review_goal",
+        "level": "medium",
+        "title": "Review goal plan",
+        "description": "Review the existing goal plan and its feasibility using the preserved planning evidence.",
+        "source_action_ids": [
+          "plan:goal:1"
+        ],
+        "evidence_ids": [
+          "ev_plan_goal_1",
+          "ev_plan_policy",
+          "ev_priority_goal_overview"
+        ],
+        "blocking_priority_ids": [
+          "priority:capacity",
+          "priority:obligation_pressure"
+        ],
+        "blocking_factors": [
+          "goal_capacity_unknown"
+        ],
+        "state": "blocked",
+        "requires_user_confirmation": true,
+        "assumptions": [],
+        "limitations": [
+          "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+          "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+          "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+          "All recorded spending is protected; no essential spending is assumed discretionary.",
+          "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+          "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+          "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+          "Confirm that recorded expense schedules include known commitments before planning.",
+          "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+          "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+          "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+          "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+          "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+          "Financial-health context is unavailable; it does not determine goal feasibility.",
+          "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+          "Goal savings are self-reported; score changes do not establish causation.",
+          "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+          "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+          "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+          "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+          "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+          "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+          "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+          "Reported done means the user reported completion; no financial action has been verified.",
+          "Reported goal savings are reserved against cash, never added as extra money.",
+          "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+          "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+          "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+          "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+          "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "ev_plan_goal_1",
+        "evidence_type": "estimate",
+        "source": "goal_planning.overview",
+        "label": "Existing shared-pool goal proposal",
+        "value": {
+          "goal": {
+            "goal_id": 1,
+            "name": "Laptop",
+            "priority": 3,
+            "goal_status": "active",
+            "target_amount": "10000.00",
+            "remaining_amount": "10000.00",
+            "proposed_monthly": "0.00",
+            "accepted_monthly": "0.00",
+            "feasibility": "insufficient_data",
+            "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+          },
+          "capacity": {
+            "as_of_date": "2026-11-01",
+            "observation_start": "2026-08-01",
+            "observation_end": "2026-10-31",
+            "status": "insufficient_data",
+            "conservative_monthly_capacity": null,
+            "scenario_monthly_capacity": null,
+            "trusted_cash": "100000.00",
+            "protected_reserve": null,
+            "upcoming_obligations": "5000.00",
+            "overdue_obligations": "0.00",
+            "reported_earmarks": "0.00",
+            "conservative_income": null,
+            "protected_expenses": null,
+            "health_coverage": null,
+            "health_as_of_date": null,
+            "explanations": [
+              "Confirm that recorded expense schedules include known commitments before planning."
+            ],
+            "limitations": [
+              "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+              "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+              "Reported goal savings are reserved against cash, never added as extra money.",
+              "All recorded spending is protected; no essential spending is assumed discretionary.",
+              "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+              "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+              "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+              "Financial-health context is unavailable; it does not determine goal feasibility."
+            ]
+          }
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_plan_policy",
+        "evidence_type": "interpretation",
+        "source": "financial_planner",
+        "label": "Versioned priority interpretation",
+        "value": {
+          "planner_version": "ai-16a-v1",
+          "ordered_action_ids": [
+            "upcoming_obligations:1",
+            "plan:goal:1"
+          ]
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d",
+        "evidence_type": "derived_fact",
+        "source": "scheduled_cashflow",
+        "label": "Prepare for remaining commitments",
+        "value": {
+          "amount": "5000.00",
+          "evidence": {
+            "period": {
+              "kind": "coaching_horizon",
+              "start": "2026-11-01",
+              "end": "2026-12-01",
+              "is_complete": false,
+              "label": "next 30 days inclusive"
+            },
+            "comparison_period": null,
+            "starting_balance": "100000.00",
+            "balance_source": null,
+            "scheduled_expense_reserve": "5000.00",
+            "uncertain_income": null,
+            "minimum_projected_balance": null,
+            "projected_end_balance": null,
+            "cash_after_known_obligations": null,
+            "safety_threshold": null,
+            "runway_status": null,
+            "runway_mode": null,
+            "first_shortfall_date": null,
+            "first_shortfall_period": null,
+            "category": null,
+            "observed_value": null,
+            "reference_value": null,
+            "percentage_change": null,
+            "monthly_values": [],
+            "obligations": [
+              {
+                "item_id": 1,
+                "title": "Rent",
+                "due_date": "2026-11-03",
+                "original_amount": "5000.00",
+                "allocated_amount": "0.00",
+                "remaining_amount": "5000.00",
+                "timeline_event_id": "obligation:1"
+              }
+            ],
+            "milestone_id": null,
+            "milestone_due_date": null,
+            "milestone_target": null,
+            "goal_id": null,
+            "goal_name": null,
+            "current_saved": null,
+            "target_amount": null,
+            "remaining_amount": null,
+            "target_date": null,
+            "required_monthly": null,
+            "estimated_monthly_capacity": null,
+            "affordability": null
+          }
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_priority_goal_overview",
+        "evidence_type": "estimate",
+        "source": "goal_planning.overview",
+        "label": "Existing capacity and commitment constraints",
+        "value": {
+          "capacity": {
+            "as_of_date": "2026-11-01",
+            "observation_start": "2026-08-01",
+            "observation_end": "2026-10-31",
+            "status": "insufficient_data",
+            "conservative_monthly_capacity": null,
+            "scenario_monthly_capacity": null,
+            "trusted_cash": "100000.00",
+            "protected_reserve": null,
+            "upcoming_obligations": "5000.00",
+            "overdue_obligations": "0.00",
+            "reported_earmarks": "0.00",
+            "conservative_income": null,
+            "protected_expenses": null,
+            "health_coverage": null,
+            "health_as_of_date": null,
+            "explanations": [
+              "Confirm that recorded expense schedules include known commitments before planning."
+            ],
+            "limitations": [
+              "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+              "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+              "Reported goal savings are reserved against cash, never added as extra money.",
+              "All recorded spending is protected; no essential spending is assumed discretionary.",
+              "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+              "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+              "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+              "Financial-health context is unavailable; it does not determine goal feasibility."
+            ]
+          },
+          "goals": [
+            {
+              "goal_id": 1,
+              "name": "Laptop",
+              "priority": 3,
+              "goal_status": "active",
+              "target_amount": "10000.00",
+              "remaining_amount": "10000.00",
+              "proposed_monthly": "0.00",
+              "accepted_monthly": "0.00",
+              "feasibility": "insufficient_data",
+              "explanation": "Required financial inputs or verified completion evidence are unavailable; no allocation is recommended."
+            }
+          ],
+          "total_target_amount": "10000.00",
+          "total_remaining_amount": "10000.00",
+          "total_planned_monthly": "0.00",
+          "total_proposed_monthly": "0.00",
+          "capacity_utilization": null,
+          "over_capacity": false,
+          "upcoming_milestones": [],
+          "missed_milestones": []
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      },
+      {
+        "evidence_id": "ev_priority_policy",
+        "evidence_type": "interpretation",
+        "source": "financial_prioritization",
+        "label": "Produced priority order and dependencies",
+        "value": {
+          "policy_version": "ai-16b-v1",
+          "priorities": [
+            {
+              "priority_id": "priority:capacity",
+              "category": "capacity_review",
+              "level": "high",
+              "title": "Establish goal planning inputs",
+              "reason": "capacity_unavailable",
+              "source_action_ids": [],
+              "evidence_ids": [
+                "ev_priority_goal_overview"
+              ],
+              "evidence_quality": "estimated",
+              "blocking_priority_ids": [],
+              "blocking_factors": [],
+              "assumptions": [],
+              "limitations": [
+                "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+                "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+                "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+                "All recorded spending is protected; no essential spending is assumed discretionary.",
+                "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+                "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+                "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+                "Confirm that recorded expense schedules include known commitments before planning.",
+                "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+                "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+                "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+                "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+                "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+                "Financial-health context is unavailable; it does not determine goal feasibility.",
+                "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+                "Goal savings are self-reported; score changes do not establish causation.",
+                "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+                "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+                "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+                "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+                "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+                "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+                "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+                "Reported done means the user reported completion; no financial action has been verified.",
+                "Reported goal savings are reserved against cash, never added as extra money.",
+                "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+                "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+                "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+                "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+                "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+              ]
+            },
+            {
+              "priority_id": "priority:obligation_pressure",
+              "category": "obligation_pressure",
+              "level": "medium",
+              "title": "Prepare for remaining commitments",
+              "reason": "known_obligations",
+              "source_action_ids": [
+                "upcoming_obligations:1"
+              ],
+              "evidence_ids": [
+                "ev_plan_policy",
+                "ev_plan_recommendation_31fb052fb02744a64d8e26a80d3866a6b114f5f005e31d939c296959da7ae87d"
+              ],
+              "evidence_quality": "derived",
+              "blocking_priority_ids": [],
+              "blocking_factors": [],
+              "assumptions": [],
+              "limitations": [
+                "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+                "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+                "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+                "All recorded spending is protected; no essential spending is assumed discretionary.",
+                "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+                "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+                "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+                "Confirm that recorded expense schedules include known commitments before planning.",
+                "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+                "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+                "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+                "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+                "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+                "Financial-health context is unavailable; it does not determine goal feasibility.",
+                "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+                "Goal savings are self-reported; score changes do not establish causation.",
+                "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+                "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+                "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+                "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+                "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+                "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+                "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+                "Reported done means the user reported completion; no financial action has been verified.",
+                "Reported goal savings are reserved against cash, never added as extra money.",
+                "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+                "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+                "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+                "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+                "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+              ]
+            },
+            {
+              "priority_id": "priority:goal:1",
+              "category": "goal_review",
+              "level": "medium",
+              "title": "Review an active goal",
+              "reason": "active_goal",
+              "source_action_ids": [
+                "plan:goal:1"
+              ],
+              "evidence_ids": [
+                "ev_plan_goal_1",
+                "ev_plan_policy",
+                "ev_priority_goal_overview"
+              ],
+              "evidence_quality": "estimated",
+              "blocking_priority_ids": [
+                "priority:capacity",
+                "priority:obligation_pressure"
+              ],
+              "blocking_factors": [
+                "goal_capacity_unknown"
+              ],
+              "assumptions": [],
+              "limitations": [
+                "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+                "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+                "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+                "All recorded spending is protected; no essential spending is assumed discretionary.",
+                "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+                "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+                "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+                "Confirm that recorded expense schedules include known commitments before planning.",
+                "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+                "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+                "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+                "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+                "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+                "Financial-health context is unavailable; it does not determine goal feasibility.",
+                "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+                "Goal savings are self-reported; score changes do not establish causation.",
+                "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+                "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+                "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+                "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+                "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+                "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+                "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+                "Reported done means the user reported completion; no financial action has been verified.",
+                "Reported goal savings are reserved against cash, never added as extra money.",
+                "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+                "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+                "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+                "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+                "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot."
+              ]
+            }
+          ],
+          "conflicts": [
+            {
+              "preceding_priority_id": "priority:capacity",
+              "deferred_priority_id": "priority:goal:1",
+              "kind": "funding_constraint",
+              "reason": "resolve_capacity"
+            },
+            {
+              "preceding_priority_id": "priority:obligation_pressure",
+              "deferred_priority_id": "priority:goal:1",
+              "kind": "review_precedence",
+              "reason": "protect_obligations"
+            }
+          ]
+        },
+        "unit": null,
+        "as_of_date": "2026-11-01",
+        "observed_at": null,
+        "confidence": null
+      }
+    ],
+    "warnings": [
+      {
+        "code": "UNKNOWN_PLANNING_CAPACITY",
+        "message": "Planning capacity is unavailable; no funded goal allocation is established."
+      }
+    ],
+    "limitations": [
+      "Account balances may be stale or incomplete; a derived balance is not a live bank balance.",
+      "Recorded history may be incomplete; complete-month coverage does not prove all transactions were imported.",
+      "Scheduled income is uncertain and is excluded from available cash and recommendation amounts.",
+      "Only explicitly classified transfers are excluded; unclassified transfers or duplicate imports may still distort history.",
+      "Additional unassigned savings are not suggested while active goals may claim the same cash.",
+      "Reported done means the user reported completion; no financial action has been verified.",
+      "Planning decisions are interpretations of supplied engine outputs, not executed payments or guarantees.",
+      "Goal allocations share the existing AI-15P capacity; action amounts are not additional monthly savings.",
+      "Emergency reserve review does not establish essential expenses, a reserve target or a funding timeline.",
+      "Debt interest, essential spending classification and long-term investment rules are unavailable; none are inferred.",
+      "Confirmed allocations are payment metadata, not additional transactions; suggestions have no accounting effect.",
+      "Application-specific diagnostic; not a credit score or universal measure of financial health.",
+      "Observed BDT records and schedules may be incomplete; unknown information is never treated as healthy.",
+      "Goal savings are self-reported; score changes do not establish causation.",
+      "No recorded overdue dates means no observed overdue pressure, not proof that all bills are known.",
+      "Runway and upcoming-obligation components share known commitments for distinct cash-resilience and commitment-pressure views; their correlation is a model limitation.",
+      "Action completion, coaching, alerts and notification counts do not change scores; they can repeat the same underlying signal.",
+      "Planning is an estimate from recorded BDT data, not a guarantee or a transfer.",
+      "Reported savings and contributions are unverified; feasibility conservatively funds the full target.",
+      "Reported goal savings are reserved against cash, never added as extra money.",
+      "All recorded spending is protected; no essential spending is assumed discretionary.",
+      "Income and expense changes are hypothetical; allocations cannot exceed recorded capacity.",
+      "Debt goals track reported allocations, not lender-confirmed repayment or interest schedules.",
+      "Expense-reduction goals track an earmarked savings target, not verified spending reductions.",
+      "Financial-health context is unavailable; it does not determine goal feasibility.",
+      "Confirm that recorded expense schedules include known commitments before planning.",
+      "Review only: no payment, transfer, allocation or goal change has been executed. Use existing explicit mutation endpoints with user confirmation.",
+      "Coaching source selection retains five actions or all critical actions; this review is not an exhaustive inventory of financial issues.",
+      "As-of dates select financial windows over current records, not a reconstruction of historical account, goal or feedback versions.",
+      "Source services perform separate reads in the request transaction; this response does not establish an atomic ledger snapshot.",
+      "Priority dependencies govern review and optional funding; they do not authorize delaying bills or cancelling accepted commitments.",
+      "Review precedence is not proof of a funding deficit; conflicts do not create, transfer or reallocate money.",
+      "The input must be assembled for one authenticated user; this pure service cannot verify tenant ownership.",
+      "Only signals retained by AI-16A are available; omitted recommendations are not reconstructed."
+    ]
+  }
+}

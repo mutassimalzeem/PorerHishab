@@ -260,6 +260,10 @@ export const api = {
     request<void>(`/finance/coaching/${encodeURIComponent(id)}/feedback`, {
       method: "DELETE",
     }),
+  financialReview: (schedulesConfirmed = false) =>
+    request<ApiSchemas["FinancialReview"]>(
+      `/finance/review?schedules_confirmed=${schedulesConfirmed}`,
+    ),
   actionPlan: () =>
     request<ApiSchemas["CoachingActionPlan"]>("/finance/action-plan"),
   coachingEffectiveness: () =>

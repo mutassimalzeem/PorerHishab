@@ -102,6 +102,7 @@ def ask_financial_coach(
             route=route,
             question=message_text,
             purchase_amount=route.extracted_amount,
+            schedules_confirmed=payload.schedules_confirmed,
         )
 
         # 5. Fast-path: clarification required or unknown intent

@@ -1,6 +1,6 @@
 import { CoachingEffectiveness } from "../components/CoachingEffectiveness";
 import { ActionOutcomes } from "../components/ActionOutcomes";
-import { ActionPlan } from "../components/ActionPlan";
+import { FinancialReview } from "../components/FinancialReview";
 import { FinancialCoaching } from "../components/FinancialCoaching";
 import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel, digits } from "../lib/locale";
@@ -36,7 +36,7 @@ export function Insights() {
           "A few grounded observations, with the evidence behind each one.",
         )}
       />
-      <ActionPlan revision={planRevision} />
+      <FinancialReview revision={planRevision} />
       <ActionOutcomes revision={planRevision} />
       <CoachingEffectiveness revision={planRevision} />
       <FinancialCoaching

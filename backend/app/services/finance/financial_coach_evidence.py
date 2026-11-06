@@ -45,6 +45,9 @@ class EvidencePackage:
     period_end: date | None = None
     requires_clarification: bool = False
     clarification_prompt: str | None = None
+    # Canonical AI-17B review used only for the narrow review-explanation path.
+    # The assembler builds it server-side; clients never supply this context.
+    review: Any | None = None
 
     def get_evidence_by_id(self, evidence_id: str) -> CoachEvidence | None:
         for ev in self.evidence:
@@ -154,6 +157,7 @@ class FinancialCoachEvidenceAssembler:
         explicit_end_date: date | None = None,
         purchase_amount: Decimal | None = None,
         starting_balance: Decimal | None = None,
+        schedules_confirmed: bool = False,
     ) -> EvidencePackage:
         """Route to appropriate intent assembler."""
         if route.requires_clarification or route.intent == CoachIntent.UNKNOWN:
@@ -168,6 +172,7 @@ class FinancialCoachEvidenceAssembler:
             CoachIntent.SCENARIO_COMPARISON: self._assemble_scenario_comparison,
             CoachIntent.ALERT_EXPLANATION: self._assemble_alert_explanation,
             CoachIntent.FINANCIAL_HEALTH: self._assemble_financial_health,
+            CoachIntent.FINANCIAL_REVIEW: self._assemble_financial_review,
             CoachIntent.GENERAL_FINANCE: self._assemble_general_finance,
         }
 
@@ -179,6 +184,7 @@ class FinancialCoachEvidenceAssembler:
             explicit_end_date=explicit_end_date,
             purchase_amount=purchase_amount or route.extracted_amount,
             starting_balance=starting_balance,
+            schedules_confirmed=schedules_confirmed,
         )
 
     # -------------------------------------------------------------------------
@@ -1143,6 +1149,192 @@ class FinancialCoachEvidenceAssembler:
         )
 
     # -------------------------------------------------------------------------
+    # Intent: FINANCIAL_REVIEW
+    # -------------------------------------------------------------------------
+    def _assemble_financial_review(
+        self,
+        route: IntentRoute,
+        question: str,
+        schedules_confirmed: bool = False,
+        **kwargs: Any,
+    ) -> EvidencePackage:
+        """Explain the canonical AI-17B review for this authenticated owner.
+
+        The review service owns dates, priorities, amounts and blockers. This
+        assembler only projects that result into the existing evidence contract;
+        it does not calculate financial values or accept client evidence.
+        """
+        from app.services.finance.financial_review import financial_review
+
+        review = financial_review(
+            self.db,
+            self.user_id,
+            as_of=self.as_of,
+            schedules_confirmed=schedules_confirmed,
+        )
+        day = review.decisions.as_of_date
+        if day != self.as_of:
+            raise ValueError("Review date must match the server-controlled context")
+        evidence_list: list[CoachEvidence] = [
+            item.model_copy(deep=True) for item in review.decisions.evidence
+        ]
+
+        def add(
+            evidence_id: str,
+            evidence_type: EvidenceType,
+            source: str,
+            label: str,
+            value: Any,
+            unit: str | None = None,
+        ) -> None:
+            evidence_list.append(
+                CoachEvidence(
+                    evidence_id=evidence_id,
+                    evidence_type=evidence_type,
+                    source=source,
+                    label=label,
+                    value=value,
+                    unit=unit,
+                    as_of_date=day,
+                    observed_at=self.now_utc,
+                    confidence=Decimal("0.90"),
+                )
+            )
+
+        add(
+            "ev_review_source",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Canonical review source context",
+            {"evidence": [e.model_dump(mode="json") for e in review.decisions.evidence],
+             "capacity": review.plan.goal_planning.capacity.model_dump(mode="json") if review.plan.goal_planning else None,
+             "schedules_confirmed": review.schedules_confirmed, "data_status": review.plan.data_status},
+        )
+        add(
+            "ev_review_plan",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Read-only financial plan review",
+            {
+                "status": review.status,
+                "requires_user_confirmation": review.requires_user_confirmation,
+                "schedules_confirmed": review.schedules_confirmed,
+                "data_status": review.plan.data_status,
+                "planner_version": review.plan.planner_version,
+            },
+        )
+        add(
+            "ev_review_horizon",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Review reporting horizon",
+            {
+                "kind": review.plan.planning_horizon.kind,
+                "start": str(review.plan.planning_horizon.start),
+                "end": str(review.plan.planning_horizon.end),
+                "is_complete": review.plan.planning_horizon.is_complete,
+                "label": review.plan.planning_horizon.label,
+            },
+        )
+        add(
+            "ev_review_priorities",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Ordered financial review priorities",
+            [item.model_dump(mode="python") for item in review.decisions.priorities],
+        )
+        add(
+            "ev_review_execution_steps",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Financial review steps and blockers",
+            [item.model_dump(mode="python") for item in review.execution_plan.steps],
+        )
+        add(
+            "ev_review_warnings",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Financial review warnings",
+            [item.model_dump(mode="python") for item in review.plan.warnings],
+        )
+        add(
+            "ev_review_limitations",
+            EvidenceType.INTERPRETATION,
+            "financial_review",
+            "Financial review limitations",
+            list(review.plan.limitations),
+        )
+
+        capacity = (
+            review.plan.goal_planning.capacity
+            if review.plan.goal_planning is not None
+            else None
+        )
+        missing_data: list[str] = []
+        if review.plan.data_status != "sufficient":
+            missing_data.append("complete_financial_review")
+        if capacity is None:
+            missing_data.extend(["planning_capacity", "trusted_cash"])
+        else:
+            if capacity.conservative_monthly_capacity is None:
+                missing_data.append("planning_capacity")
+                add(
+                    "ev_review_capacity_status",
+                    EvidenceType.INTERPRETATION,
+                    "goal_planning.capacity",
+                    "Planning capacity status",
+                    {"status": capacity.status, "capacity_available": False},
+                )
+            else:
+                # Projection of an existing engine value; no new arithmetic.
+                add(
+                    "ev_review_conservative_monthly_capacity",
+                    EvidenceType.ESTIMATE,
+                    "goal_planning.capacity",
+                    "Estimated conservative monthly savings capacity",
+                    capacity.conservative_monthly_capacity,
+                    "BDT",
+                )
+            if capacity.trusted_cash is None:
+                missing_data.append("trusted_cash")
+                add(
+                    "ev_review_trusted_cash_status",
+                    EvidenceType.INTERPRETATION,
+                    "account_position",
+                    "Trusted cash status",
+                    {"available": False},
+                )
+            else:
+                add(
+                    "ev_review_trusted_cash",
+                    EvidenceType.DERIVED_FACT,
+                    "account_position",
+                    "Trusted cash",
+                    capacity.trusted_cash,
+                    "BDT",
+                )
+
+        limitations = list(
+            dict.fromkeys(
+                [
+                    *review.plan.limitations,
+                    *review.decisions.limitations,
+                    *review.execution_plan.limitations,
+                ]
+            )
+        )
+        return EvidencePackage(
+            intent=CoachIntent.FINANCIAL_REVIEW,
+            as_of_date=day,
+            evidence=evidence_list,
+            limitations=limitations,
+            missing_data=missing_data,
+            period_start=review.plan.planning_horizon.start,
+            period_end=review.plan.planning_horizon.end,
+            review=review,
+        )
+
+    # -------------------------------------------------------------------------
     # Intent: GENERAL_FINANCE
     # -------------------------------------------------------------------------
     def _assemble_general_finance(self, route: IntentRoute, question: str, **kwargs: Any) -> EvidencePackage:
@@ -1201,6 +1393,7 @@ def assemble_financial_evidence(
     explicit_end_date: date | None = None,
     purchase_amount: Decimal | None = None,
     starting_balance: Decimal | None = None,
+    schedules_confirmed: bool = False,
 ) -> EvidencePackage:
     """Convenience functional interface for deterministic evidence assembly."""
     assembler = FinancialCoachEvidenceAssembler(db, user_id, as_of)
@@ -1211,4 +1404,5 @@ def assemble_financial_evidence(
         explicit_end_date=explicit_end_date,
         purchase_amount=purchase_amount,
         starting_balance=starting_balance,
+        schedules_confirmed=schedules_confirmed,
     )
