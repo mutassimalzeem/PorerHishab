@@ -1,5 +1,7 @@
+import re
 from decimal import Decimal, InvalidOperation
-from datetime import date
+from datetime import date, datetime
+from dataclasses import dataclass
 
 import pandas as pd
 
@@ -12,7 +14,9 @@ from app.services.categorization.service import categorize_transaction
 REQUIRED_COLUMNS = {"date", "amount"}
 
 
-def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
+def normalize_transactions(
+    df: pd.DataFrame, *, errors: list[dict] | None = None
+) -> pd.DataFrame:
     """
     Normalize raw transaction data into PorerHishab's internal format.
     """
@@ -24,16 +28,17 @@ def normalize_transactions(df: pd.DataFrame) -> pd.DataFrame:
             f"Missing required columns: {sorted(missing)}"
         )
 
-    normalized["date"] = pd.to_datetime(
-        normalized["date"],
-        errors="coerce",
-    ).dt.date
-
+    # CSV dates must be ISO calendar dates; never guess day/month ordering.
+    normalized["date"] = normalized["date"].apply(_parse_date)
     normalized["amount"] = normalized["amount"].apply(_parse_amount)
-
-    normalized = normalized.dropna(
-        subset=["date", "amount"]
-    )
+    if errors is not None:
+        for row_number, (_, row) in enumerate(normalized.iterrows(), start=2):
+            for field in ("date", "amount"):
+                if pd.isna(row[field]):
+                    errors.append({"row": row_number, "field": field,
+                                   "message": ("Invalid or missing date: use YYYY-MM-DD (1900 or later)" if field == "date" else
+                                               "Invalid or missing amount: use whole cents, at most 12 integer digits, and valid comma grouping.")})
+    normalized = normalized.dropna(subset=["date", "amount"])
 
     for column in ["description", "merchant", "normalized_merchant", "category"]:
         if column not in normalized.columns:
@@ -101,22 +106,41 @@ def categorize_transactions(df: pd.DataFrame, *, user_id=None, db=None) -> pd.Da
     return result
 
 
+@dataclass
+class TransactionImportResult:
+    rows_received: int
+    transactions: list[Transaction]
+    errors: list[dict]
+
+    @property
+    def rows_persisted(self) -> int:
+        return len(self.transactions)
+
+    @property
+    def rows_rejected(self) -> int:
+        return self.rows_received - self.rows_persisted
+
+
 def save_transactions(
     df: pd.DataFrame,
     user_id: int,
-) -> int:
+    *,
+    detailed: bool = False,
+) -> int | TransactionImportResult:
     """
     Normalize, categorize, and persist transactions.
 
-    Returns the number of transactions created.
+    Returns a count, or (for the upload endpoint) the actual persisted records.
+    CSV has no deduplication key: repeated uploads append duplicate records.
     """
     if user_id is None:
         raise ValueError("user_id is required.")
 
-    normalized = normalize_transactions(df)
+    errors: list[dict] = []
+    normalized = normalize_transactions(df, errors=errors)
 
     if normalized.empty:
-        return 0
+        return TransactionImportResult(len(df), [], errors) if detailed else 0
 
     db = SessionLocal()
 
@@ -143,13 +167,29 @@ def save_transactions(
             for _, row in normalized.iterrows()
         ]
 
-        create_transactions(db, transactions)
-        return len(transactions)
+        persisted = create_transactions(db, transactions)
+        return TransactionImportResult(len(df), persisted, errors) if detailed else len(persisted)
     except Exception:
         db.rollback()
         raise
     finally:
         db.close()
+
+
+def _parse_date(value) -> date | None:
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, datetime):
+        value = value.date()
+    if isinstance(value, date):
+        return value if value.year >= 1900 else None
+    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value.strip()):
+        return None
+    try:
+        parsed = date.fromisoformat(value.strip())
+        return parsed if parsed.year >= 1900 else None
+    except ValueError:
+        return None
 
 
 def _parse_amount(value) -> Decimal | None:
@@ -159,7 +199,17 @@ def _parse_amount(value) -> Decimal | None:
     if pd.isna(value):
         return None
 
+    # Numeric(14, 2) is the persistence policy. Reject fractional cents and
+    # overflow before the database can silently round or truncate an amount.
+    raw = str(value).strip()
+    if not re.fullmatch(r"[+-]?(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\.[0-9]+)?", raw):
+        return None
     try:
-        return Decimal(str(value).replace(",", "").strip())
+        amount = Decimal(raw.replace(",", ""))
+        if not amount.is_finite() or abs(amount) >= Decimal("1000000000000"):
+            return None
+        if amount != amount.quantize(Decimal("0.01")):
+            return None
+        return amount
     except (InvalidOperation, ValueError):
         return None

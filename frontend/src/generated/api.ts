@@ -20,7 +20,8 @@ export interface ApiSchemas {
   "BudgetBaselineCategory": { "category": string; "monthly_average": string; "months_observed": number; };
   "BudgetBaselineInsight": { "months_observed": number; "monthly_total_baseline": string; "categories": (ApiSchemas["BudgetBaselineCategory"])[]; };
   "BudgetForecast": { "months_ahead": number; "forecast": string; "historical_average": string; "recent_average": string; "confidence": string; "months_observed": number; "categories": (ApiSchemas["CategoryForecast"])[]; };
-  "CSVUploadResponse": { "filename": string; "records": number; "total_income": number; "total_expenses": number; "balance": number; "preview": ({ [key: string]: unknown; })[]; };
+  "CSVRowError": { "row": number; "field": string; "message": string; };
+  "CSVUploadResponse": { "filename": string; "records": number; "rows_received": number; "rows_persisted": number; "rows_rejected": number; "rows_skipped": number; "errors": (ApiSchemas["CSVRowError"])[]; "total_income": number; "total_expenses": number; "balance": number; "preview": ({ [key: string]: unknown; })[]; };
   "CashflowForecast": { "starting_balance": string; "forecast_anchor_date": string; "history_start_month": (string | null); "history_end_month": (string | null); "historical_months_count": number; "months_with_activity": number; "average_monthly_income": string; "average_monthly_expenses": string; "average_monthly_net": string; "months_ahead": number; "forecast_start_month": string; "projected_months": (ApiSchemas["CashflowMonth"])[]; "cash_depletion_date": (string | null); "status": "healthy" | "break_even" | "at_risk" | "insufficient_data"; "assumptions": (string)[]; };
   "CashflowMonth": { "month": string; "projected_income": string; "projected_expenses": string; "projected_net": string; "projected_balance": string; };
   "CashflowPoint": { "date": string; "income": string; "expenses": string; "net": string; "running_balance": string; };

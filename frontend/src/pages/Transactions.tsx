@@ -126,8 +126,13 @@ export function Transactions() {
           setBusy(true);
           setError(null);
           try {
-            await api.upload(chosen);
-            setNotice("CSV processed. Review your transactions below.");
+            const result = await api.upload(chosen);
+            setNotice(
+              `${result.rows_persisted} of ${result.rows_received} rows imported; ${result.rows_rejected} rejected. ` +
+                result.errors
+                  .map((error) => `Row ${error.row}: ${error.message}`)
+                  .join("; "),
+            );
             refresh();
           } catch (e) {
             setError(errorMessage(e));

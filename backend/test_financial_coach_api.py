@@ -218,3 +218,30 @@ def test_conversations_listing_and_deletion(test_setup):
     # Verify c1 is gone
     check_del = client.get(f"/coach/conversations/{c1}", headers=headers)
     assert check_del.status_code == 404
+
+
+@pytest.mark.parametrize("field", ["answer", "summary", "claim", "action"])
+def test_semantic_repairs_are_persisted(test_setup, monkeypatch, field):
+    from app.schemas.financial_coach import CoachResponse, CoachClaim, CoachAction
+    from app.services.finance.financial_coach_generator import FinancialCoachGenerator
+    wrong = "Your available cash is 2500 BDT."
+    def stub(self, package, question, **kwargs):
+        response = CoachResponse(intent=package.intent, answer="Recorded expenses are 2500 BDT.")
+        if field == "answer": response.answer = wrong
+        if field == "summary": response.summary = wrong
+        if field == "claim": response.claims = [CoachClaim(claim_id="bad", text=wrong, evidence_ids=["ev_spending_total_expenses"])]
+        if field == "action": response.actions = [CoachAction(action_id="bad", title="Review", description=wrong, evidence_ids=["ev_spending_total_expenses"])]
+        return response
+    monkeypatch.setattr(FinancialCoachGenerator, "generate_response", stub)
+    from app.services.intelligence.periods import today_dhaka
+    session = test_setup["session"]
+    for tx in session.query(Transaction).all():
+        tx.date = today_dhaka()
+    session.commit()
+    response = test_setup["client"].post("/coach/ask", headers=test_setup["headers1"],
+                                        json={"message": "How much did I spend this month?"})
+    assert response.status_code == 200, response.text
+    assert wrong not in response.text
+    saved = session.query(CoachMessage).filter(CoachMessage.role == "assistant").all()
+    assert saved
+    assert all(wrong not in (m.content or "") for m in saved)
