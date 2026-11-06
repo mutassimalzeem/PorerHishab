@@ -1,3 +1,4 @@
+from decimal import Decimal
 from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, Form, Query
 import pandas as pd
 import io
@@ -119,9 +120,20 @@ class RefreshTokenResponse(BaseModel):
     token_type: str
 
 
+class CSVRowError(BaseModel):
+    row: int
+    field: str
+    message: str
+
+
 class CSVUploadResponse(BaseModel):
     filename: str
     records: int
+    rows_received: int
+    rows_persisted: int
+    rows_rejected: int
+    rows_skipped: int
+    errors: List[CSVRowError]
     total_income: float
     total_expenses: float
     balance: float
@@ -274,32 +286,38 @@ async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_c
         if 'amount' not in df.columns:
             raise HTTPException(status_code=400, detail="CSV must include an 'amount' column")
 
-        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
-
         # (optional) normalize strings to stripped python str
         for col in ["description", "merchant", "category"]:
             if col in df.columns:
                 df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
 
-        # 4) Save per-user
-        save_transactions(df, user_id=current.id)
-
-        # 5) Summary (safe—no pd.NA remains)
-        total_income = float(df[df["amount"] > 0]["amount"].sum() or 0.0)
-        total_expenses = float(df[df["amount"] < 0]["amount"].sum() or 0.0)
-        balance = total_income + total_expenses
-
-        preview = df.head(10).to_dict(orient="records")
+        # Persistence returns its actual committed/refreshed records. Counts,
+        # preview and Decimal totals are all derived from that same result.
+        result = save_transactions(df, user_id=current.id, detailed=True)
+        amounts = [row.amount for row in result.transactions]
+        total_income = sum((value for value in amounts if value > 0), Decimal("0.00"))
+        total_expenses = sum((value for value in amounts if value < 0), Decimal("0.00"))
+        preview_fields = ("date", "amount", "description", "merchant", "category", "normalized_merchant")
         return {
             "filename": file.filename,
-            "records": int(len(df)),
-            "total_income": total_income,
-            "total_expenses": total_expenses,
-            "balance": balance,
-            "preview": preview
+            "records": result.rows_persisted,
+            "rows_received": result.rows_received,
+            "rows_persisted": result.rows_persisted,
+            "rows_rejected": result.rows_rejected,
+            "rows_skipped": 0,
+            "errors": result.errors,
+            "total_income": float(total_income),
+            "total_expenses": float(total_expenses),
+            "balance": float(total_income + total_expenses),
+            "preview": [{field: getattr(row, field) for field in preview_fields}
+                        for row in result.transactions[:10]],
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing error: {e}")
+    except HTTPException:
+        raise
+    except (ValueError, pd.errors.ParserError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid CSV: {e}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="CSV persistence failed")
 
 
 @app.get("/categories/summary")

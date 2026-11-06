@@ -143,10 +143,15 @@ def test_auth_and_csv_routes_publish_explicit_response_contracts():
         "token_type",
     }
     assert set(schemas["CSVUploadResponse"]["properties"]) == {
-    "filename",
-    "records",
-    "total_income",
-    "total_expenses",
-    "balance",
-    "preview",
+        "filename",
+        "records",
+        "total_income",
+        "total_expenses",
+        "balance",
+        "preview",
+        "rows_received",
+        "rows_persisted",
+        "rows_rejected",
+        "rows_skipped",
+        "errors",
     }

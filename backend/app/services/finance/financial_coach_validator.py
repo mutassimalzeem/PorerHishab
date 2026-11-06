@@ -8,6 +8,7 @@ No LLM is used for validation; all checks are deterministic.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -24,6 +25,8 @@ from app.schemas.financial_coach import (
 )
 from app.services.finance.financial_coach_evidence import EvidencePackage
 from app.services.finance.financial_coach_generator import DeterministicFallbackGenerator
+
+from app.services.finance.financial_coach_semantics import unsupported_financial_text
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +52,8 @@ BENGALI_DIGITS = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
 # Regex to detect explicit BDT / currency amounts without mistaking ordinary numbers
 # (e.g. dates like 2026, counts like 12 transactions, percentages like 15%, durations like 3 months)
 CURRENCY_NUMBER_PATTERN = re.compile(
-    r"(?:৳|bdt|taka|tk|টাকা)\.?\s*([0-9০-৯]+(?:,[0-9০-৯]{3})*(?:\.[0-9০-৯]{1,2})?)"
-    r"|([0-9০-৯]+(?:,[0-9০-৯]{3})*(?:\.[0-9০-৯]{1,2})?)\s*(?:৳|bdt|taka|tk|টাকা)",
+    r"(?:৳|bdt|taka|tk|টাকা)\.?\s*([+-]?[0-9০-৯]+(?:,[0-9০-৯]{3})*(?:\.[0-9০-৯]{1,2})?)"
+    r"|([+-]?[0-9০-৯]+(?:,[0-9০-৯]{3})*(?:\.[0-9০-৯]{1,2})?)\s*(?:৳|bdt|taka|tk|টাকা)",
     re.IGNORECASE,
 )
 
@@ -168,6 +171,45 @@ class FinancialCoachValidator:
         self.valid_evidence_numbers = _extract_all_evidence_numbers(package.evidence)
         self.missing_data_keys = set(package.missing_data)
 
+    def _safe_fallback(self, response: CoachResponse) -> CoachResponse:
+        fallback = DeterministicFallbackGenerator.generate(self.package, "fallback", self.language)
+        # Validate every fallback surface with its own references, even when the
+        # amount happens to exist elsewhere in the package.
+        fallback.claims = [claim for claim in fallback.claims
+            if claim.evidence_ids and set(claim.evidence_ids) <= self.valid_evidence_ids
+            and not unsupported_financial_text(claim.text,
+                [ev for ev in self.package.evidence if ev.evidence_id in claim.evidence_ids], self.package.as_of_date)]
+        fallback.actions = [action for action in fallback.actions
+            if set(action.evidence_ids) <= self.valid_evidence_ids
+            and not unsupported_financial_text(action.title + " " + action.description,
+                [ev for ev in self.package.evidence if ev.evidence_id in action.evidence_ids], self.package.as_of_date)]
+        for action in fallback.actions:
+            action.action_type = "personalized" if action.evidence_ids else "general_guidance"
+        if unsupported_financial_text(fallback.answer, self.package.evidence, self.package.as_of_date):
+            from app.services.finance.financial_coach_semantics import financial_facts
+            lines = ["Required information is unavailable; recorded amounts do not establish available cash."]
+            if self.language == "bn":
+                lines = ["প্রয়োজনীয় তথ্য অনুপলব্ধ; নথিভুক্ত অঙ্ক থেকে ব্যবহারযোগ্য নগদ জানা যায় না।"]
+            for fact in financial_facts(self.package.evidence):
+                ev = fact.evidence
+                # Fixed metric names, not free-form producer labels, describe the
+                # amount. Category data remains explicitly quoted metadata.
+                category = f" for category {json.dumps(fact.category, ensure_ascii=False)}" if fact.category else ""
+                line = (f"{fact.metric.replace('_', ' ')}{category}: {fact.value} {ev.unit or 'BDT'} "
+                        f"({ev.evidence_type.value}; as of {ev.as_of_date}).")
+                if not unsupported_financial_text(line, [ev], self.package.as_of_date):
+                    lines.append(line)
+            fallback.answer = "\n".join(lines)
+        if fallback.summary and unsupported_financial_text(fallback.summary, self.package.evidence, self.package.as_of_date):
+            fallback.summary = None
+        fallback.warnings = [warning for warning in fallback.warnings
+            if not unsupported_financial_text(warning.message, self.package.evidence, self.package.as_of_date)]
+        fallback.limitations = [text for text in fallback.limitations
+            if not unsupported_financial_text(text, self.package.evidence, self.package.as_of_date)]
+        fallback.evidence = [ev.model_copy(deep=True) for ev in self.package.evidence]
+        fallback.conversation_id = response.conversation_id
+        return fallback
+
     def validate(self, response: CoachResponse) -> tuple[CoachResponse, ValidationReport]:
         """Validate response against evidence; return sanitized response and report.
 
@@ -184,9 +226,7 @@ class FinancialCoachValidator:
         ):
             issues.append("Answer or summary claims to have executed a financial transaction or payment.")
             logger.warning("Validation failure: execution language detected.")
-            fallback = DeterministicFallbackGenerator.generate(
-                self.package, "fallback", self.language
-            )
+            fallback = self._safe_fallback(response)
             fallback.conversation_id = response.conversation_id
             fallback.warnings.append(
                 CoachWarning(
@@ -202,6 +242,11 @@ class FinancialCoachValidator:
 
         # Clone response to prevent unexpected mutations to caller objects
         resp = response.model_copy(deep=True)
+        resp.evidence = [ev.model_copy(deep=True) for ev in self.package.evidence]
+        resp.warnings = [warning for warning in resp.warnings
+            if not unsupported_financial_text(warning.message, self.package.evidence, self.package.as_of_date)]
+        resp.limitations = [text for text in resp.limitations
+            if not unsupported_financial_text(text, self.package.evidence, self.package.as_of_date)]
 
         # 2. Prohibited guarantee phrasing in answer
         if GUARANTEE_PATTERN.search(resp.answer):
@@ -211,9 +256,7 @@ class FinancialCoachValidator:
             if GUARANTEE_PATTERN.search(repaired_answer):
                 # Unrepairable guarantee language: fall back to safe deterministic response
                 issues.append("Guarantee language could not be safely repaired; reverting to deterministic fallback.")
-                fallback = DeterministicFallbackGenerator.generate(
-                    self.package, "fallback", self.language
-                )
+                fallback = self._safe_fallback(response)
                 fallback.conversation_id = resp.conversation_id
                 fallback.warnings.append(
                     CoachWarning(
@@ -244,6 +287,37 @@ class FinancialCoachValidator:
                 resp.summary = repaired_sum
             report.repaired = True
 
+        # Semantic checks use only the evidence referenced by each item.
+        for claim in list(resp.claims):
+            relevant = [ev for ev in self.package.evidence if ev.evidence_id in claim.evidence_ids]
+            if unsupported_financial_text(claim.text, relevant, self.package.as_of_date):
+                resp.claims.remove(claim)
+                report.dropped_claims_count += 1
+                issues.append(f"Claim '{claim.claim_id}' has unsupported financial meaning.")
+        for action in list(resp.actions):
+            relevant = [ev for ev in self.package.evidence if ev.evidence_id in action.evidence_ids]
+            if unsupported_financial_text(action.title + " " + action.description, relevant, self.package.as_of_date):
+                resp.actions.remove(action)
+                report.dropped_actions_count += 1
+                issues.append(f"Action '{action.action_id}' has unsupported financial meaning.")
+        if unsupported_financial_text(resp.answer, self.package.evidence, self.package.as_of_date):
+            return self._safe_fallback(resp), ValidationReport(
+                is_valid=False, repaired=True,
+                issues=issues + ["Answer has unsupported financial meaning."],
+                dropped_claims_count=report.dropped_claims_count,
+                dropped_actions_count=report.dropped_actions_count,
+            )
+        if resp.summary and unsupported_financial_text(resp.summary, self.package.evidence, self.package.as_of_date):
+            resp.summary = None
+            report.repaired = True
+            issues.append("Summary has unsupported financial meaning.")
+        if response.claims and not resp.claims:
+            return self._safe_fallback(resp), ValidationReport(
+                is_valid=False, repaired=True, issues=issues,
+                dropped_claims_count=report.dropped_claims_count,
+                dropped_actions_count=report.dropped_actions_count,
+            )
+
         # 4. Numerical grounding for explicit BDT amounts in answer
         answer_amounts = _extract_text_amounts(resp.answer)
         for amt in answer_amounts:
@@ -257,9 +331,7 @@ class FinancialCoachValidator:
                 )
                 logger.warning("Validation failure: unsupported amount %s BDT in answer.", amt)
                 # An unsupported financial assertion in the primary answer cannot be safely guessed
-                fallback = DeterministicFallbackGenerator.generate(
-                    self.package, "fallback", self.language
-                )
+                fallback = self._safe_fallback(response)
                 fallback.conversation_id = resp.conversation_id
                 fallback.warnings.extend(resp.warnings)
                 return fallback, ValidationReport(
@@ -420,9 +492,7 @@ class FinancialCoachValidator:
         # 8. Check claim drop threshold
         if len(resp.claims) > 0 and len(valid_claims) == 0:
             issues.append("All claims failed evidence grounding; falling back to deterministic answer.")
-            fallback = DeterministicFallbackGenerator.generate(
-                self.package, "fallback", self.language
-            )
+            fallback = self._safe_fallback(response)
             fallback.conversation_id = resp.conversation_id
             fallback.warnings.extend(resp.warnings)
             return fallback, ValidationReport(
