@@ -21,6 +21,8 @@ class NotificationDelivery(Base):
     __tablename__ = "notification_deliveries"
 
     __table_args__ = (
+        UniqueConstraint("user_id", "alert_id", "channel", "notification_event", "occurrence_count",
+                         name="uq_notification_deliveries_occurrence"),
         UniqueConstraint(
             "idempotency_key",
             name="uq_notification_deliveries_idempotency_key",
@@ -42,6 +44,7 @@ class NotificationDelivery(Base):
         Index("ix_notification_deliveries_digest_id", "digest_id"),
         Index("ix_notification_deliveries_user_status", "user_id", "status"),
         Index("ix_notification_deliveries_claim", "status", "next_attempt_at"),
+        Index("ix_notification_deliveries_lease", "status", "lease_expires_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -82,6 +85,9 @@ class NotificationDelivery(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+    claim_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

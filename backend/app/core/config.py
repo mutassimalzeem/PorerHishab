@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     EMAIL_SENDER_ADDRESS: str = "notifications@porerhishab.com"
     EMAIL_SENDER_NAME: str = "PorerHishab"
     FRONTEND_BASE_URL: str = "http://localhost:5173"
+    NOTIFICATION_LEASE_SECONDS: int = 120
+    NOTIFICATION_BATCH_SIZE: int = 20
+    NOTIFICATION_POLL_SECONDS: float = 5
+    NOTIFICATION_RETRY_MAX_DELAY_SECONDS: int = 3600
+    NOTIFICATION_RETRY_JITTER_SECONDS: float = 10
+    SMTP_TIMEOUT_SECONDS: float = 10
     NOTIFICATION_MAX_RETRIES: int = 3
     NOTIFICATION_RETRY_BACKOFF_SECONDS: list[int] = [60, 300, 900]
 

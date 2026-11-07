@@ -26,6 +26,7 @@ class EmailSendResult:
     error_message: str | None = None
     is_transient: bool = False
     failure_category: str | None = None
+    retry_after_seconds: float | None = None
 
 
 class EmailSender(ABC):
@@ -116,37 +117,28 @@ class SmtpEmailSender(EmailSender):
                     server.starttls()
                 if self.username and self.password:
                     server.login(self.username, self.password)
-                server.send_message(msg)
+                refused = server.send_message(msg)
+                if refused:
+                    codes = [value[0] for value in refused.values()]
+                    transient = all(400 <= code < 500 for code in codes)
+                    return EmailSendResult(False, "smtp", "SMTP recipient refused",
+                                           transient, "transient" if transient else "invalid_recipient")
             return EmailSendResult(success=True, provider="smtp")
 
-        except (
-            socket.timeout,
-            smtplib.SMTPConnectError,
-            smtplib.SMTPServerDisconnected,
-            smtplib.SMTPResponseException,
-            ConnectionRefusedError,
-            OSError,
-        ) as err:
-            return EmailSendResult(
-                success=False,
-                provider="smtp",
-                error_message=str(err),
-                is_transient=True,
-                failure_category="transient",
-            )
-        except (
-            smtplib.SMTPRecipientsRefused,
-            smtplib.SMTPAuthenticationError,
-            smtplib.SMTPDataError,
-            smtplib.SMTPException,
-        ) as err:
-            return EmailSendResult(
-                success=False,
-                provider="smtp",
-                error_message=str(err),
-                is_transient=False,
-                failure_category="permanent",
-            )
+        except smtplib.SMTPRecipientsRefused as err:
+            codes = [value[0] for value in err.recipients.values()]
+            transient = bool(codes) and all(400 <= code < 500 for code in codes)
+            return EmailSendResult(False, "smtp", "SMTP recipient refused", transient,
+                                   "transient" if transient else "invalid_recipient")
+        except smtplib.SMTPResponseException as err:
+            transient = 400 <= err.smtp_code < 500
+            return EmailSendResult(False, "smtp", "SMTP request rejected", transient,
+                                   "transient" if transient else "permanent")
+        except (socket.timeout, smtplib.SMTPServerDisconnected, OSError):
+            return EmailSendResult(False, "smtp", "SMTP transport outcome unknown", True, "transient")
+        except smtplib.SMTPException:
+            return EmailSendResult(False, "smtp", "SMTP permanent failure", False, "permanent")
+
 
 
 def get_email_sender() -> EmailSender:
@@ -159,5 +151,8 @@ def get_email_sender() -> EmailSender:
             username=settings.SMTP_USERNAME,
             password=settings.SMTP_PASSWORD,
             use_tls=settings.SMTP_USE_TLS,
+            timeout=settings.SMTP_TIMEOUT_SECONDS,
         )
-    return TestEmailSender()
+    if backend == "test":
+        return TestEmailSender()
+    raise ValueError("Unsupported email backend")

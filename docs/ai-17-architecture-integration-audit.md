@@ -284,15 +284,34 @@ audit history; legacy clients without request keys do not gain replay guarantees
 
 **Proof test:** Two users, known ingestion, review order/blockers/evidence, one explicit supported report/mutation, refresh and later outcome/effectiveness; assert both UI and real API ownership.
 
-### G11 — P2: delivery automation is bounded and request-triggered
+### G11 - P2: closed by AI-17G notification delivery automation
 
-**Evidence:** `backend/app/api/financial_alerts.py:39` evaluates/schedules dispatch on POST; `api/notification_preferences.py:201` does so for digest evaluation. `services/notifications/dispatcher.py:430` claims/handles one batch of 20. Claim/retry functions exist (`:169`, `:210`), but no inspected checked-in periodic all-user evaluation/retry-drain worker was found. `frontend/src/pages/Alerts.tsx:83` triggers evaluation explicitly.
+**Original finding:** Alert/digest POST routes scheduled one request-triggered batch;
+no checked-in periodic retry-drain worker or restart recovery was demonstrated.
 
-**Impact:** Manual/request-driven operation exists; continuous proactive delivery, restart recovery and eventual draining beyond one batch are not demonstrated. A scheduler outside the repository could exist; it was not inspected.
+**Implementation evidence:** Existing outbox and API states are preserved.
+`services/notifications/worker.py` supplies a standalone, bounded polling process.
+`dispatcher.py` claims due retries and expired processing rows with PostgreSQL
+SKIP LOCKED, leases and UUID fencing; provider I/O runs outside transactions.
+The f17g00000001 migration adds lease fields/index and corrects legacy uniqueness
+to include the alert occurrence. SMTP outcomes are normalized and sanitized.
+Current opt-out, consent, quiet hours and active-source eligibility are rechecked.
 
-**Smallest fix:** Document trigger semantics. If automatic delivery becomes required, reuse existing eligibility/claim/idempotency/dispatcher functions with a minimal scheduled entry point/bounded loop before adding a distributed queue.
+**Proof:** `backend/test_notification_automation.py` covers concurrent claims and
+sends, stale-worker rejection (including acceptance after lease loss), abandoned
+claims, more than 20 deliveries drained across batches, scheduled retry, repeated
+events/rollback, digest consent, resolved/dismissed sources, owner isolation and
+migration compatibility. `scripts/check_notification_delivery_e2e.py` exercises
+JWT/FastAPI/PostgreSQL/worker/test-provider acceptance, retry success and permanent
+failure. The real-stack React browser test reads those persisted history results.
+All 60 focused notification tests and all three real-stack browser tests passed.
 
-**Proof test:** More than 20 eligible items, future retries, restart after claim, disabled preferences, duplicate events and resolved alerts under the actual trigger design. Assert eventual processing/no duplicate send.
+**Limits:** Operators must deploy the separate worker; financial alert evaluation
+and digest creation remain on existing triggers. SMTP has no provider idempotency
+guarantee, so ambiguous acceptance can duplicate email; no exactly-once claim is
+made. See [AI-17G delivery documentation](ai-17g-notification-delivery.md) for
+deployment, monitoring, retry settings, migration downgrade limits and privacy.
+
 
 ## 6. Duplication and Architectural Risks
 

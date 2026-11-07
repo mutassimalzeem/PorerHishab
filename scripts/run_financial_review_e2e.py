@@ -61,6 +61,8 @@ def main():
                 time.sleep(1)
         else:
             raise RuntimeError("FastAPI readiness timed out")
+        run([sys.executable, "scripts/check_notification_delivery_e2e.py"],
+            extra_env={"NOTIFICATION_DELIVERY_ENABLED": "true", "EMAIL_BACKEND": "test"})
         subprocess.run(["npm.cmd" if os.name == "nt" else "npm", "exec", "--", "playwright", "test",
                         "--config", "playwright.real-api.config.ts"], cwd=ROOT / "frontend", env=env, check=True)
     finally:
