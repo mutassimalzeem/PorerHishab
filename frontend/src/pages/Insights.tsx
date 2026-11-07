@@ -36,7 +36,10 @@ export function Insights() {
           "A few grounded observations, with the evidence behind each one.",
         )}
       />
-      <FinancialReview revision={planRevision} />
+      <FinancialReview
+        revision={planRevision}
+        onFeedback={() => setPlanRevision((value) => value + 1)}
+      />
 
       <div id="action-outcomes">
         <ActionOutcomes revision={planRevision} />

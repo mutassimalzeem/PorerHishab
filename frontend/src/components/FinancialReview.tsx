@@ -1,4 +1,9 @@
-import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useResource } from "../lib/useResource";
@@ -93,13 +98,16 @@ function ReviewExplanation({ review }: { review: Review }) {
 function ReviewContents({
   review,
   setRefresh,
+  onFeedback,
 }: {
   review: Review;
   setRefresh: Dispatch<SetStateAction<number>>;
+  onFeedback?: () => void;
 }) {
   const [explain, setExplain] = useState(false);
   const refreshAfterFeedback = async () => {
     setRefresh((prev) => prev + 1);
+    onFeedback?.();
   };
   const { plan, decisions, execution_plan: execution } = review;
   const priorities = new Map(
@@ -259,7 +267,13 @@ function ReviewContents({
   );
 }
 
-export function FinancialReview({ revision = 0 }: { revision?: number }) {
+export function FinancialReview({
+  revision = 0,
+  onFeedback,
+}: {
+  revision?: number;
+  onFeedback?: () => void;
+}) {
   useLanguage();
   const [confirmed, setConfirmed] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -282,7 +296,9 @@ export function FinancialReview({ revision = 0 }: { revision?: number }) {
       </button>
       <ResourceView resource={resource}>
         {(review) => (
-          <ReviewContents setRefresh={setRefresh}
+          <ReviewContents
+            setRefresh={setRefresh}
+            onFeedback={onFeedback}
             key={`${revision}:${refresh}:${confirmed}`}
             review={review}
           />
