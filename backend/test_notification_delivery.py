@@ -416,7 +416,7 @@ def test_retry_delay_bounded():
     assert delay1 == timedelta(seconds=60)
     assert delay2 == timedelta(seconds=300)
     assert delay3 == timedelta(seconds=900)
-    assert delay_large == timedelta(seconds=900)
+    assert delay_large == timedelta(seconds=settings.NOTIFICATION_RETRY_MAX_DELAY_SECONDS)
 
 
 # ============================================================================

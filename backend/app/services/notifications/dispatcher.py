@@ -11,7 +11,10 @@ Provides:
 """
 from datetime import datetime, timedelta, timezone
 import logging
-from sqlalchemy import select
+from hashlib import sha256
+import random
+from uuid import uuid4
+from sqlalchemy import select, or_, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -61,11 +64,11 @@ def get_or_create_user_preferences(
     )
     if pref is None:
         pref = NotificationPreference(user_id=user_id)
-        db.add(pref)
         try:
-            db.flush()
+            with db.begin_nested():
+                db.add(pref)
+                db.flush()
         except IntegrityError:
-            db.rollback()
             pref = (
                 db.query(NotificationPreference)
                 .filter(NotificationPreference.user_id == user_id)
@@ -139,12 +142,12 @@ def enqueue_single_delivery(
         failure_reason=failure_reason,
         metadata_={},
     )
-    db.add(delivery)
     try:
-        db.flush()
+        with db.begin_nested():
+            db.add(delivery)
+            db.flush()
         return delivery
     except IntegrityError:
-        db.rollback()
         # Another concurrent worker created this exact record; fetch it
         existing = (
             db.query(NotificationDelivery)
@@ -170,271 +173,243 @@ def claim_pending_deliveries(
     db: Session,
     limit: int = 10,
     user_id: int | None = None,
+    delivery_id: int | None = None,
 ) -> list[NotificationDelivery]:
-    """Claim pending or retryable deliveries atomically using row-level locking.
-
-    Uses SELECT FOR UPDATE SKIP LOCKED on PostgreSQL to prevent competing workers
-    from attempting or double-incrementing deliveries simultaneously.
-    """
+    """Commit a bounded claim before any provider I/O; PostgreSQL workers skip locks."""
+    if not settings.NOTIFICATION_DELIVERY_ENABLED:
+        return []
     now = datetime.now(timezone.utc)
-
-    # Check dialect for SKIP LOCKED support
-    is_postgres = db.bind is not None and db.bind.dialect.name == "postgresql"
-
-    stmt = select(NotificationDelivery).where(
+    due = and_(
         NotificationDelivery.status.in_(["PENDING", "FAILED"]),
-        (NotificationDelivery.next_attempt_at.is_(None))
-        | (NotificationDelivery.next_attempt_at <= now),
+        or_(NotificationDelivery.next_attempt_at.is_(None),
+            NotificationDelivery.next_attempt_at <= now),
     )
+    abandoned = and_(
+        NotificationDelivery.status == "PROCESSING",
+        or_(NotificationDelivery.lease_expires_at.is_(None),
+            NotificationDelivery.lease_expires_at <= now),
+    )
+    stmt = select(NotificationDelivery).where(or_(due, abandoned))
     if user_id is not None:
         stmt = stmt.where(NotificationDelivery.user_id == user_id)
-
-    stmt = stmt.order_by(NotificationDelivery.id.asc()).limit(limit)
-
-    if is_postgres:
+    if delivery_id is not None:
+        stmt = stmt.where(NotificationDelivery.id == delivery_id)
+    stmt = stmt.order_by(NotificationDelivery.id).limit(max(1, min(limit, 100)))
+    if db.get_bind().dialect.name == "postgresql":
         stmt = stmt.with_for_update(skip_locked=True)
-
-    claimed: list[NotificationDelivery] = db.execute(stmt).scalars().all()
-
-    for item in claimed:
+    rows = db.execute(stmt.execution_options(populate_existing=True)).scalars().all()
+    claimed = []
+    for item in rows:
+        if item.attempt_count >= item.max_attempts:
+            item.status = "DEAD_LETTER"
+            item.failed_at = now
+            item.failure_category = "permanent"
+            item.failure_reason = "Delivery attempt limit exhausted; prior outcome may be unknown"
+            item.claim_token = None
+            item.lease_expires_at = None
+            _update_digest(db, item, now)
+            continue
         item.status = "PROCESSING"
+        item.claim_token = str(uuid4())
+        item._worker_token = item.claim_token
+        item.lease_expires_at = now + timedelta(seconds=settings.NOTIFICATION_LEASE_SECONDS)
         item.last_attempt_at = now
         item.attempt_count += 1
-
-    if claimed:
-        db.commit()
-
+        claimed.append(item)
+    db.commit()
+    # Load all values before caller starts processing other items with this session.
+    for item in claimed:
+        db.refresh(item)
+    db.commit()
     return claimed
 
 
-def compute_retry_delay(attempt_count: int) -> timedelta:
-    """Compute deterministic backoff delay for retries."""
-    backoffs = settings.NOTIFICATION_RETRY_BACKOFF_SECONDS
-    idx = min(max(0, attempt_count - 1), len(backoffs) - 1)
-    return timedelta(seconds=backoffs[idx])
+def compute_retry_delay(attempt_count: int, retry_after_seconds: float | None = None,
+                        *, jitter: bool = False) -> timedelta:
+    """Exponential delay with optional legacy staged floors, cap, jitter and Retry-After."""
+    backoffs = settings.NOTIFICATION_RETRY_BACKOFF_SECONDS or [60]
+    exponent = min(max(0, attempt_count - 1), 30)
+    floor = backoffs[min(exponent, len(backoffs) - 1)]
+    delay = max(floor, max(1, backoffs[0]) * (2 ** exponent))
+    if jitter:
+        delay += random.uniform(0, max(0, settings.NOTIFICATION_RETRY_JITTER_SECONDS))
+    delay = min(max(0, settings.NOTIFICATION_RETRY_MAX_DELAY_SECONDS), delay)
+    # A provider's minimum wait takes precedence over the local backoff cap.
+    return timedelta(seconds=max(delay, retry_after_seconds or 0))
 
 
-def process_single_delivery(
-    db: Session,
-    delivery: NotificationDelivery,
-) -> bool:
-    """Process a single claimed delivery record."""
-    now = datetime.now(timezone.utc)
-    logger.info(
-        "Processing notification delivery id=%s channel=%s event=%s attempt=%s",
-        delivery.id,
-        delivery.channel,
-        delivery.notification_event,
-        delivery.attempt_count,
-    )
+def _update_digest(db: Session, delivery: NotificationDelivery, now: datetime) -> None:
+    if delivery.digest_id is None:
+        return
+    from app.models.notification_digest import NotificationDigest
+    digest = db.query(NotificationDigest).filter_by(
+        id=delivery.digest_id, user_id=delivery.user_id).first()
+    if digest is None:
+        return
+    if delivery.status == "SENT":
+        digest.status, digest.sent_at, digest.failure_reason = "SENT", now, None
+    elif delivery.status in ("DEAD_LETTER", "SUPPRESSED"):
+        digest.status, digest.failed_at = "FAILED", now
+        digest.failure_reason = delivery.failure_reason
+    else:
+        digest.status = "PENDING"
 
-    # Handle Daily Digest Delivery
-    if delivery.notification_event == "DAILY_DIGEST" or delivery.digest_id is not None:
-        from app.models.notification_digest import NotificationDigest
-        from app.services.notifications.email_content import build_privacy_safe_digest_email
 
-        digest = (
-            db.query(NotificationDigest)
-            .filter(NotificationDigest.id == delivery.digest_id)
-            .first()
-        )
-        if not digest:
-            delivery.status = "DEAD_LETTER"
-            delivery.failed_at = now
-            delivery.failure_category = "permanent"
-            delivery.failure_reason = "Underlying digest not found"
-            db.commit()
-            return False
-
-        user = db.query(User).filter(User.id == delivery.user_id).first()
-        if not user or not user.email:
-            delivery.status = "DEAD_LETTER"
-            delivery.failed_at = now
-            delivery.failure_category = "invalid_recipient"
-            delivery.failure_reason = "User email address missing or unavailable"
-            digest.status = "FAILED"
-            digest.failed_at = now
-            digest.failure_reason = delivery.failure_reason
-            db.commit()
-            return False
-
-        email_sender = get_email_sender()
-        email_msg = build_privacy_safe_digest_email(
-            digest,
-            digest.items,
-            user.email,
-        )
-        result = email_sender.send(email_msg)
-
-        if result.success:
-            delivery.status = "SENT"
-            delivery.delivered_at = now
-            delivery.provider = result.provider
-            delivery.failure_category = None
-            delivery.failure_reason = None
-
-            digest.status = "SENT"
-            digest.sent_at = now
-            digest.failure_reason = None
-            db.commit()
-            return True
-        else:
-            delivery.provider = result.provider
-            delivery.failure_reason = result.error_message
-            delivery.failure_category = result.failure_category
-
-            if result.is_transient and delivery.attempt_count < delivery.max_attempts:
-                delivery.status = "FAILED"
-                delivery.next_attempt_at = now + compute_retry_delay(delivery.attempt_count)
-                digest.status = "PENDING"
-            else:
-                delivery.status = "DEAD_LETTER"
-                delivery.failed_at = now
-                digest.status = "FAILED"
-                digest.failed_at = now
-                digest.failure_reason = result.error_message
-
-            db.commit()
-            return False
-
-    # Handle Alert Delivery
-    alert = (
-        db.query(FinancialAlert)
-        .filter(FinancialAlert.id == delivery.alert_id)
-        .first()
-    )
-    if not alert:
-        delivery.status = "DEAD_LETTER"
-        delivery.failed_at = now
-        delivery.failure_category = "permanent"
-        delivery.failure_reason = "Underlying alert not found"
-        db.commit()
-        return False
+def _prepare_message(db: Session, delivery: NotificationDelivery, now: datetime):
+    """Return a privacy-safe message or a suppression/failure without provider I/O."""
+    from app.services.notifications.eligibility import calculate_quiet_hours_window, SEVERITY_ORDER
+    from app.models.notification_digest import NotificationDigest
+    from app.services.notifications.email_content import build_privacy_safe_digest_email
 
     pref = get_or_create_user_preferences(db, delivery.user_id)
+    if delivery.digest_id is not None:
+        digest = db.query(NotificationDigest).filter_by(
+            id=delivery.digest_id, user_id=delivery.user_id).first()
+        if digest is None:
+            return None, "DEAD_LETTER", "permanent", None
+        if (delivery.channel != "email" or not pref.email_enabled or not pref.email_consent
+                or not pref.daily_digest_enabled or pref.frequency_mode == "off"):
+            return None, "SUPPRESSED", "no_consent", None
+        # Do not send a stale summary after its source alerts cease to be eligible.
+        sources = [
+            db.query(FinancialAlert).filter_by(
+                id=item.alert_id, user_id=delivery.user_id, status="active").first()
+            for item in digest.items
+        ]
+        minimum = SEVERITY_ORDER.get((pref.email_min_severity or "warning").lower(), 30)
+        if not sources or any(
+            alert is None or SEVERITY_ORDER.get(alert.severity.lower(), 10) < minimum
+            for alert in sources
+        ):
+            return None, "SUPPRESSED", "permanent", None
+        if pref.quiet_hours_enabled:
+            quiet, until = calculate_quiet_hours_window(
+                now, pref.quiet_hours_start, pref.quiet_hours_end, pref.timezone)
+            if quiet:
+                return None, "PENDING", "quiet_hours", until
+        user = db.query(User).filter_by(id=delivery.user_id).first()
+        if user is None or not user.email:
+            return None, "DEAD_LETTER", "invalid_recipient", None
+        return build_privacy_safe_digest_email(digest, digest.items, user.email), None, None, None
 
-    # Re-verify eligibility at delivery time (in case user changed preferences)
+    alert = db.query(FinancialAlert).filter_by(
+        id=delivery.alert_id, user_id=delivery.user_id).first()
+    if alert is None:
+        return None, "DEAD_LETTER", "permanent", None
+    if alert.status != "active":
+        return None, "SUPPRESSED", "permanent", None
     eligibility = evaluate_eligibility(
-        pref,
-        channel=delivery.channel,
-        alert_severity=alert.severity,
-        notification_event=delivery.notification_event,
-        now_utc=now,
-    )
-
+        pref, channel=delivery.channel, alert_severity=alert.severity,
+        notification_event=delivery.notification_event, now_utc=now)
     if not eligibility.is_eligible:
         if eligibility.reason == EligibilityReason.QUIET_HOURS:
-            delivery.status = "PENDING"
-            delivery.next_attempt_at = eligibility.next_eligible_at
-            delivery.failure_reason = "Quiet hours active at send time"
-            db.commit()
-            return False
-        else:
-            delivery.status = "SUPPRESSED"
-            delivery.failure_category = eligibility.reason.value.lower()
-            delivery.failure_reason = f"Suppressed: {eligibility.reason.value}"
-            db.commit()
-            return False
-
-    # Dispatch to channel
+            return None, "PENDING", "quiet_hours", eligibility.next_eligible_at
+        return None, "SUPPRESSED", "channel_disabled", None
     if delivery.channel == "in_app":
-        delivery.status = "SENT"
-        delivery.delivered_at = now
-        delivery.provider = "in_app"
-        delivery.failure_category = None
-        delivery.failure_reason = None
-        db.commit()
-        return True
+        return None, "SENT", None, None
+    user = db.query(User).filter_by(id=delivery.user_id).first()
+    if user is None or not user.email:
+        return None, "DEAD_LETTER", "invalid_recipient", None
+    return build_privacy_safe_alert_email(alert, user.email), None, None, None
 
-    elif delivery.channel == "email":
-        user = db.query(User).filter(User.id == delivery.user_id).first()
-        if not user or not user.email:
-            delivery.status = "DEAD_LETTER"
-            delivery.failed_at = now
-            delivery.failure_category = "invalid_recipient"
-            delivery.failure_reason = "User email address missing or unavailable"
-            db.commit()
-            return False
 
-        email_sender = get_email_sender()
-        email_msg = build_privacy_safe_alert_email(alert, user.email)
-        result = email_sender.send(email_msg)
-
-        if result.success:
-            delivery.status = "SENT"
-            delivery.delivered_at = now
-            delivery.provider = result.provider
-            delivery.failure_category = None
-            delivery.failure_reason = None
-            db.commit()
-            return True
-        else:
-            delivery.provider = result.provider
-            delivery.failure_reason = result.error_message
-            delivery.failure_category = result.failure_category
-
-            if result.is_transient and delivery.attempt_count < delivery.max_attempts:
-                delivery.status = "FAILED"
-                delivery.next_attempt_at = now + compute_retry_delay(delivery.attempt_count)
-            else:
-                delivery.status = "DEAD_LETTER"
-                delivery.failed_at = now
-
-            db.commit()
-            return False
-
-    else:
-        delivery.status = "DEAD_LETTER"
-        delivery.failed_at = now
-        delivery.failure_category = "permanent"
-        delivery.failure_reason = f"Unsupported channel: {delivery.channel}"
-        db.commit()
+def process_single_delivery(db: Session, delivery: NotificationDelivery) -> bool:
+    """Only a live claim can send and finalize; never hold a transaction over I/O."""
+    from app.services.notifications.email_sender import EmailSendResult
+    identity, token = delivery.id, getattr(delivery, "_worker_token", None)
+    if delivery.status != "PROCESSING" or not token:
         return False
+    now = datetime.now(timezone.utc)
+    current = db.query(NotificationDelivery).filter(
+        NotificationDelivery.id == identity, NotificationDelivery.claim_token == token,
+        NotificationDelivery.status == "PROCESSING",
+        NotificationDelivery.lease_expires_at > now,
+    ).populate_existing().first()
+    if current is None:
+        db.rollback()
+        return False
+    message, status, category, next_at = _prepare_message(db, current, now)
+    key = current.idempotency_key
+    db.commit()
+    # commit expires ORM objects. Do not access them here: it would start a transaction.
+    result = None
+    if message is not None:
+        message.headers["Message-ID"] = "<" + sha256(key.encode()).hexdigest() + "@notifications.porerhishab>"
+        message.headers["X-Idempotency-Key"] = key
+        try:
+            result = get_email_sender().send(message)
+        except (TimeoutError, ConnectionError, OSError):
+            result = EmailSendResult(False, "adapter", is_transient=True, failure_category="transient")
+        except Exception:
+            # Unknown adapter errors are retained as safe failure categories, never raw text.
+            logger.error("notification_provider_exception delivery_id=%s", identity)
+            result = EmailSendResult(False, "adapter", is_transient=False, failure_category="provider_error")
+
+    now = datetime.now(timezone.utc)
+    # Lock only the short completion transaction, and fence against reclaimed/expired workers.
+    current = db.execute(select(NotificationDelivery).where(
+        NotificationDelivery.id == identity, NotificationDelivery.claim_token == token,
+        NotificationDelivery.status == "PROCESSING",
+        NotificationDelivery.lease_expires_at > now,
+    ).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if current is None or current.lease_expires_at <= now:
+        db.rollback()
+        return False
+    if result is not None:
+        current.provider = result.provider if result.provider in ("test", "smtp", "adapter") else "adapter"
+        category = result.failure_category if result.failure_category in (
+            "transient", "permanent", "invalid_recipient", "rate_limited", "provider_error"
+        ) else "provider_error"
+        if result.success:
+            status, category = "SENT", None
+        elif result.is_transient and current.attempt_count < current.max_attempts:
+            status = "FAILED"
+            next_at = now + compute_retry_delay(
+                current.attempt_count, result.retry_after_seconds, jitter=True)
+        else:
+            status = "DEAD_LETTER"
+    current.status = status
+    current.next_attempt_at = next_at
+    current.failure_category = category
+    current.failure_reason = None if category is None else "Notification delivery: " + category
+    current.claim_token = None
+    current.lease_expires_at = None
+    if status == "SENT":
+        current.delivered_at = now
+        if message is None:
+            current.provider = "in_app"
+    elif status == "DEAD_LETTER":
+        current.failed_at = now
+    elif status in ("PENDING", "SUPPRESSED"):
+        # Eligibility checks are not provider attempts.
+        current.attempt_count = max(0, current.attempt_count - 1)
+    _update_digest(db, current, now)
+    db.commit()
+    db.refresh(delivery)
+    db.commit()
+    logger.info("notification_delivery_result delivery_id=%s status=%s", identity, status)
+    return status == "SENT"
 
 
 def process_delivery_by_id(delivery_id: int) -> bool:
-    """Worker task helper that creates an independent database session."""
-    db: Session = SessionLocal()
-    try:
-        delivery = (
-            db.query(NotificationDelivery)
-            .filter(NotificationDelivery.id == delivery_id)
-            .first()
-        )
-        if not delivery:
-            return False
-
-        if delivery.status in ("PENDING", "FAILED"):
-            delivery.status = "PROCESSING"
-            delivery.last_attempt_at = datetime.now(timezone.utc)
-            delivery.attempt_count += 1
-            db.commit()
-
-        return process_single_delivery(db, delivery)
-    finally:
-        db.close()
+    """Use the same atomic eligibility/claim path as periodic and request workers."""
+    with SessionLocal() as db:
+        rows = claim_pending_deliveries(db, limit=1, delivery_id=delivery_id)
+        return bool(rows and process_single_delivery(db, rows[0]))
 
 
-def process_claimed_deliveries(
-    db: Session,
-    claimed: list[NotificationDelivery],
-) -> int:
-    """Process a list of already-claimed deliveries."""
-    sent_count = 0
-    for delivery in claimed:
-        if process_single_delivery(db, delivery):
-            sent_count += 1
-    return sent_count
+def process_claimed_deliveries(db: Session, claimed: list[NotificationDelivery]) -> int:
+    return sum(process_single_delivery(db, delivery) for delivery in claimed)
 
 
 def dispatch_pending_user_deliveries(user_id: int) -> int:
-    """Worker task that dispatches pending notifications for a specific user using its own session."""
-    db: Session = SessionLocal()
-    try:
-        claimed = claim_pending_deliveries(db, limit=20, user_id=user_id)
-        return process_claimed_deliveries(db, claimed)
-    except Exception as e:
-        logger.error("Error processing pending user deliveries for user_id=%s: %s", user_id, e)
-        return 0
-    finally:
-        db.close()
+    """Optional request wakeup; durable periodic worker is the recovery path."""
+    with SessionLocal() as db:
+        try:
+            claimed = claim_pending_deliveries(db, limit=20, user_id=user_id)
+            return process_claimed_deliveries(db, claimed)
+        except Exception:
+            db.rollback()
+            logger.error("notification_dispatch_failed user_id=%s", user_id)
+            raise

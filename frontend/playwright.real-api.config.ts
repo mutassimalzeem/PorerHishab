@@ -5,6 +5,7 @@ export default defineConfig({
   testMatch: [
     "financial-review-real-api.spec.ts",
     "coach-recovery-real-api.spec.ts",
+    "notification-delivery-real-api.spec.ts",
   ],
   workers: 1,
   timeout: 60000,

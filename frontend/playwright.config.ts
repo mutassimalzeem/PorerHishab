@@ -4,6 +4,7 @@ export default defineConfig({
   testIgnore: [
     "**/financial-review-real-api.spec.ts",
     "**/coach-recovery-real-api.spec.ts",
+    "**/notification-delivery-real-api.spec.ts",
   ],
   fullyParallel: true,
   workers: 2,
