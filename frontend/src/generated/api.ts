@@ -269,6 +269,8 @@ export interface ApiOperations {
   "GET /finance/timeline": { query: { "start_date"?: (string | null); "end_date"?: (string | null); "include_estimates"?: boolean; }; body: unknown; response: ApiSchemas["FinancialTimeline"]; };
   "GET /forecast/budget": { query: { "months_ahead"?: number; }; body: unknown; response: ApiSchemas["BudgetForecast"]; };
   "GET /forecast/cashflow": { query: { "starting_balance": (number | string); "months_ahead"?: number; }; body: unknown; response: ApiSchemas["CashflowForecast"]; };
+  "GET /health/live": { query: Record<string, unknown>; body: unknown; response: unknown; };
+  "GET /health/ready": { query: Record<string, unknown>; body: unknown; response: unknown; };
   "GET /insights/ai": { query: { "start_date"?: (string | null); "end_date"?: (string | null); }; body: unknown; response: ApiSchemas["FinancialInsights"]; };
   "GET /insights/budget-baseline": { query: { "start_date"?: (string | null); "end_date"?: (string | null); }; body: unknown; response: ApiSchemas["BudgetBaselineInsight"]; };
   "GET /insights/cashflow": { query: { "start_date"?: (string | null); "end_date"?: (string | null); }; body: unknown; response: (ApiSchemas["CashflowPoint"])[]; };

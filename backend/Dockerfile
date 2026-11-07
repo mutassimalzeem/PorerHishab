@@ -14,6 +14,9 @@ COPY alembic.ini ./alembic.ini
 ENV PYTHONPATH=/app/backend \
     PYTHONUNBUFFERED=1
 
+RUN useradd --create-home --uid 10001 appuser
+USER appuser
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

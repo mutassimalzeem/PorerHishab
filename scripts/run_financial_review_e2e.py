@@ -22,7 +22,8 @@ def main():
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", port))
     env = {**os.environ, "DATABASE_URL": "postgresql+psycopg2://review_e2e:review_e2e@127.0.0.1:55439/porerhishab_review_e2e",
-           "REVIEW_E2E_DISPOSABLE": "1", "AI_EXTERNAL_ENABLED": "false", "OPENAI_KEY": "",
+           "REVIEW_E2E_DISPOSABLE": "1", "APP_ENV": "test",
+           "CORS_ORIGINS": '["http://localhost:5173","http://127.0.0.1:5173","http://127.0.0.1:5179"]', "AI_EXTERNAL_ENABLED": "false", "OPENAI_KEY": "",
            "SECRET_KEY": "disposable-review-access", "REFRESH_SECRET_KEY": "disposable-review-refresh",
            "PEPPER": "disposable-review-pepper", "NOTIFICATION_DELIVERY_ENABLED": "false"}
     name = "porerhishab-review-e2e-" + uuid.uuid4().hex[:12]
