@@ -260,6 +260,11 @@ export function ActionOutcomes({ revision = 0 }: { revision?: number }) {
           "Outcome observations compare recorded evidence before and after you reported acting. They do not prove that an action caused a change.",
         )}
       </p>
+      <p className="source">
+        {t(
+          "Pending means the follow-up period is still developing. Insufficient evidence means there is not enough comparable information. Neither status means your action failed."
+        )}
+      </p>
       <ResourceView
         resource={resource}
         label={t("Reading reported action outcomes...")}

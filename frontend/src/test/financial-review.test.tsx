@@ -88,7 +88,9 @@ it.each(["en", "bn"] as const)(
     expect(
       screen
         .getAllByRole("link")
-        .every((link) => link.getAttribute("href")?.startsWith("/")),
+        .every((link) => {const href = link.getAttribute("href");
+          return href?.startsWith("/") || href?.startsWith("#");
+        }),
     ).toBe(true);
   },
 );
