@@ -46,6 +46,18 @@ def main():
             db.add(ScheduledCashflowItem(user_id=user.id, title="Synthetic rent", kind="expense",
                                         amount=Decimal("9000"), due_date=date(2026, 11, 10), status="scheduled"))
         db.commit()
+        # A committed receipt whose worker disappeared. No test-only API hook:
+        # this uses the same persistence service and a deliberately expired lease.
+        from app.schemas.financial_coach import CoachRequest
+        from app.services.finance.financial_coach_persistence import claim_turn, get_turn
+        owner = db.query(User).filter_by(email="review@example.com").one()
+        key = "17f00000-0000-4000-8000-000000000001"
+        if get_turn(db, owner.id, key) is None:
+            turn, _ = claim_turn(db, owner.id, CoachRequest(request_id=key, message="Where did my money go this month?"), "en")
+            turn.lease_expires_at = datetime(2000, 1, 1, tzinfo=timezone.utc)
+            from app.models.financial_coach import CoachConversation
+            db.query(CoachConversation).filter_by(id=turn.conversation_id, user_id=owner.id).one().title = "Interrupted coach question"
+            db.commit()
 
 
 if __name__ == "__main__":

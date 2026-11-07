@@ -7,11 +7,16 @@ import sys
 import time
 import urllib.request
 import uuid
+import argparse
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--backend-tests", nargs="*", default=None,
+                        help="Also run selected backend tests (no paths means the full backend suite).")
+    args = parser.parse_args()
     # Fail before creating resources if a fixed test port is already occupied.
     for port in [55439, 8019, 5179]:
         with socket.socket() as sock:
@@ -23,8 +28,8 @@ def main():
     name = "porerhishab-review-e2e-" + uuid.uuid4().hex[:12]
     backend = None
 
-    def run(args, **kwargs):
-        subprocess.run(args, cwd=ROOT, env=env, check=True, **kwargs)
+    def run(args, extra_env=None):
+        subprocess.run(args, cwd=ROOT, env={**env, **(extra_env or {})}, check=True)
 
     try:
         run(["docker", "run", "--detach", "--rm", "--name", name,
@@ -39,6 +44,9 @@ def main():
         else:
             raise RuntimeError("PostgreSQL readiness timed out")
         run([sys.executable, "-m", "alembic", "upgrade", "head"])
+        if args.backend_tests is not None:
+            run([sys.executable, "-m", "pytest", *(args.backend_tests or ["backend"]), "-q", "--tb=short"],
+                extra_env={"NOTIFICATION_DELIVERY_ENABLED": "true", "EMAIL_BACKEND": "test"})
         run([sys.executable, "scripts/seed_financial_review_e2e.py"])
         run([sys.executable, "scripts/seed_financial_review_e2e.py"])
         backend = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",

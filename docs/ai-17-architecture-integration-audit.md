@@ -251,6 +251,21 @@ The first labels an expense number as cash; the second asserts unsupported cash 
 
 ### G09 — P2: conversation truncation and partial-commit recovery
 
+**AI-17F resolution:** Owner-scoped UUID receipts, expiring/fenced processing
+leases, atomic assistant completion and canonical replay now cover partial
+failures and lost responses. Detail opens at the newest bounded window with an
+older-message cursor; the existing UI pages both messages and conversation lists.
+`backend/test_coach_recovery.py` covers receipt rollback, generation failure,
+post-completion failure, replay, isolation, legacy records and >100-message/>10-chat
+retrieval. `backend/test_coach_recovery_postgres.py` proves concurrent receipt and
+expired-lease claims, fencing, and migration preservation on PostgreSQL.
+`frontend/src/test/financial-coach-chat.test.tsx` covers retry/status/pagination,
+and `frontend/e2e/coach-recovery-real-api.spec.ts` exercises an interrupted receipt
+and lost-response recovery with actual login, React, FastAPI and PostgreSQL.
+Local full-suite and real-stack results are recorded in
+`docs/ai-17f-conversation-recovery.md`. The original finding below is retained as
+audit history; legacy clients without request keys do not gain replay guarantees.
+
 **Evidence:** `backend/app/api/financial_coach.py:210` limits detail to 100 messages. `financial_coach_persistence.py:220` orders oldest-first before limiting; detail has no cursor. Conversation list supports pagination (`api/financial_coach.py:170`), but `frontend/src/components/FinancialCoach.tsx:87` fetches ten without pagination controls. Persistence commits at `financial_coach_persistence.py:49`, `:151`, `:204`; route rollback cannot undo earlier commits (`api/financial_coach.py:155`).
 
 **Impact:** Long conversations reopen without newest turns. Failed requests can leave conversations/unanswered user turns. Retry reuse is partly intentional (`financial_coach_persistence.py:129`), so full atomic rollback is not guaranteed. Failed first-turn responses may not give the client its new conversation ID; this is not request-key idempotence.

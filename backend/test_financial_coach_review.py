@@ -274,7 +274,7 @@ def test_review_explanation_does_not_write_financial_tables(data, client):
     financial_tables = [
         table
         for table in Base.metadata.sorted_tables
-        if table.name not in {"coach_conversations", "coach_messages"}
+        if table.name not in {"coach_conversations", "coach_messages", "coach_turns"}
     ]
 
     def snapshot():

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -71,7 +71,10 @@ class CoachMessage(Base):
 
     __table_args__ = (
         Index("ix_coach_messages_conversation_created", "conversation_id", "created_at"),
+        UniqueConstraint("user_id", "request_id", "role", name="uq_coach_message_request_role"),
     )
+
+    request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -151,3 +154,30 @@ class CoachMessage(Base):
         "CoachConversation",
         back_populates="messages",
     )
+
+
+class CoachTurn(Base):
+    """Durable request receipt, lease and canonical completion; no financial writes."""
+
+    __tablename__ = "coach_turns"
+    __table_args__ = (
+        UniqueConstraint("user_id", "request_id", name="uq_coach_turn_owner_request"),
+        CheckConstraint("state IN ('processing', 'failed', 'completed')", name="ck_coach_turn_state"),
+        Index("ix_coach_turn_conversation", "conversation_id", "id"),
+        Index("uq_coach_turn_processing", "conversation_id", unique=True,
+              postgresql_where=text("state = 'processing'"),
+              sqlite_where=text("state = 'processing'")),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("coach_conversations.id", ondelete="CASCADE"), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str] = mapped_column(String(2), nullable=False)
+    schedules_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    state: Mapped[str] = mapped_column(String(12), nullable=False)
+    lease_token: Mapped[str] = mapped_column(String(36), nullable=False)
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    response_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

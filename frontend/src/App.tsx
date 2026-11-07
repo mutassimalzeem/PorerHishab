@@ -266,7 +266,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
             <Route path="/scenarios" element={<Scenarios />} />
             <Route path="/health" element={<FinancialHealth />} />
             <Route path="/insights" element={<Insights />} />
-            <Route path="/ask" element={<Ask />} />
+            <Route path="/ask" element={<Ask ownerId={user.id} />} />
             <Route
               path="/settings"
               element={<Settings user={user} onLogout={onLogout} />}

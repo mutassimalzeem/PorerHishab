@@ -2,7 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "financial-review-real-api.spec.ts",
+  testMatch: [
+    "financial-review-real-api.spec.ts",
+    "coach-recovery-real-api.spec.ts",
+  ],
   workers: 1,
   timeout: 60000,
   reporter: "list",

@@ -4,6 +4,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
+from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -26,6 +28,8 @@ class CoachIntent(str, Enum):
 
 class CoachRequest(BaseModel):
     """Input received from the frontend."""
+
+    request_id: UUID | None = None
 
     message: str = Field(
         min_length=1,
@@ -140,6 +144,8 @@ class CoachResponse(BaseModel):
     """
 
     conversation_id: str | None = None
+    request_id: str | None = None
+    recorded_at: datetime | None = None
 
     intent: CoachIntent
 
@@ -179,6 +185,10 @@ class CoachMessageRead(BaseModel):
     warnings_json: list[dict[str, Any]] | None = None
     limitations_json: list[str] | None = None
     created_at: datetime
+    request_id: str | None = None
+    turn_status: Literal["processing", "failed", "completed", "interrupted"] | None = None
+    retry_safe: bool = False
+    response: CoachResponse | None = None
 
 
 class CoachConversationDetail(BaseModel):
@@ -187,6 +197,20 @@ class CoachConversationDetail(BaseModel):
     created_at: datetime
     updated_at: datetime
     messages: list[CoachMessageRead] = Field(default_factory=list)
+    has_more: bool = False
+    next_before_id: int | None = None
+
+
+class CoachTurnRead(BaseModel):
+    request_id: str
+    conversation_id: str
+    message: str
+    language: str
+    schedules_confirmed: bool
+    status: Literal["processing", "failed", "completed", "interrupted"]
+    retry_safe: bool
+    retry_after_seconds: int = 0
+    response: CoachResponse | None = None
 
 
 class CoachConversationPage(BaseModel):
