@@ -225,3 +225,15 @@ containers were removed by the runner. No real email was sent.
 The five unrelated untracked user paths remain preserved. This branch starts at
 origin/main 539483b; the user's direct request authorizes committing, pushing and
 raising a PR despite the older no-PR restriction in the pasted task brief.
+
+
+## AI-18A deployment alignment
+
+The concrete production deployment is now provided by docker-compose.prod.yml.
+It reuses backend/Dockerfile for separate api and worker services, plus an explicit
+one-off migration service and private PostgreSQL 16. The worker is started only
+after migrations and API readiness. Notification delivery defaults to disabled;
+do not enable real SMTP during AI-18A. See
+[AI-18A production foundations](ai-18a-production-foundations.md) for protected
+environment configuration, exact deployment commands, shutdown grace, health
+semantics and the disposable production smoke test.

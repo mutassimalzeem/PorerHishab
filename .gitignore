@@ -26,6 +26,8 @@ data/chroma
 
 # Environment variables
 .env
+.env.production
+.env.prod
 
 # System files
 .DS_Store

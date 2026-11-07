@@ -1,0 +1,10 @@
+**
+!backend/
+!backend/**
+!alembic/
+!alembic/**
+!alembic.ini
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.env*
+backend/data/

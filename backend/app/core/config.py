@@ -1,4 +1,7 @@
 from pathlib import Path
+from typing import Literal
+from urllib.parse import urlsplit
+from pydantic import AnyHttpUrl, model_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,6 +12,50 @@ ENV_FILE = REPO_ROOT / ".env"
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+
+    APP_ENV: Literal["development", "test", "production"] = "development"
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    CORS_ALLOW_CREDENTIALS: bool = True
+    SECRET_KEY: str = ""
+    REFRESH_SECRET_KEY: str = ""
+    PEPPER: str = ""
+
+    @model_validator(mode="after")
+    def validate_deployment(self):
+        for origin in self.CORS_ORIGINS:
+            if origin == "*":
+                if self.CORS_ALLOW_CREDENTIALS or self.APP_ENV == "production":
+                    raise ValueError("Wildcard CORS is forbidden with credentials or in production")
+                continue
+            try:
+                AnyHttpUrl(origin)
+                parsed = urlsplit(origin)
+                port = parsed.port
+                valid = (
+                    parsed.scheme in ("http", "https") and parsed.hostname
+                    and parsed.netloc and not parsed.username and not parsed.password
+                    and not parsed.path and not parsed.query and not parsed.fragment
+                    and not any(c.isspace() for c in origin) and "*" not in origin and "\\" not in origin
+                    and (port is None or 1 <= port <= 65535)
+                    and origin == parsed.scheme + "://" + parsed.netloc
+                )
+            except ValueError:
+                valid = False
+            if not valid:
+                raise ValueError("CORS_ORIGINS must contain HTTP(S) origins without paths or credentials")
+        if self.APP_ENV == "production":
+            if "CORS_ORIGINS" not in self.model_fields_set or not self.CORS_ORIGINS:
+                raise ValueError("Production requires explicit nonempty CORS_ORIGINS")
+            if not self.DATABASE_URL.startswith(("postgresql://", "postgresql+psycopg2://")):
+                raise ValueError("Production requires PostgreSQL")
+            secrets = [self.SECRET_KEY, self.REFRESH_SECRET_KEY, self.PEPPER]
+            if any(len(value) < 32 or "change-me" in value.lower() for value in secrets) or len(set(secrets)) != 3:
+                raise ValueError("Production requires three distinct secrets of at least 32 characters")
+            if self.NOTIFICATION_DELIVERY_ENABLED and (
+                self.EMAIL_BACKEND != "smtp" or self.SMTP_HOST in ("localhost", "127.0.0.1", "")
+            ):
+                raise ValueError("Production delivery requires an explicitly configured SMTP provider")
+        return self
 
     OPENAI_KEY: str | None = None
     # Any OpenAI-compatible endpoint (e.g. https://aihub.071129.xyz/v1).
@@ -53,7 +100,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE),
                                       env_file_encoding="utf-8",
-                                      extra="ignore")
+                                      extra="ignore", hide_input_in_errors=True)
 
 
 settings = Settings()

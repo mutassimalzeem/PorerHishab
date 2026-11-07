@@ -1,0 +1,84 @@
+# Always supply --env-file /protected/path/production.env.
+# This file is separate from the development Compose configuration.
+x-application: &application
+  image: ${APP_IMAGE:-porerhishab-backend:production}
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  env_file:
+    - ${PRODUCTION_ENV_FILE:?Set PRODUCTION_ENV_FILE to the protected absolute env file path}
+  environment:
+    APP_ENV: production
+    DATABASE_URL: ${DATABASE_URL:?Set the shared PostgreSQL URL}
+    CORS_ORIGINS: ${CORS_ORIGINS:?Set a JSON array of frontend origins}
+    SECRET_KEY: ${SECRET_KEY:?Set a strong access-token secret}
+    REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:?Set a different refresh-token secret}
+    PEPPER: ${PEPPER:?Set a different password pepper}
+    NOTIFICATION_DELIVERY_ENABLED: ${NOTIFICATION_DELIVERY_ENABLED:-false}
+    EMAIL_BACKEND: ${EMAIL_BACKEND:-test}
+    AI_EXTERNAL_ENABLED: ${AI_EXTERNAL_ENABLED:-false}
+  networks: [database, application]
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-porerhishab}
+      POSTGRES_USER: ${POSTGRES_USER:-porerhishab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set the PostgreSQL password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  migrate:
+    <<: *application
+    profiles: [tools]
+    restart: "no"
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *application
+    restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5).close()"]
+      interval: 10s
+      timeout: 6s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    <<: *application
+    restart: unless-stopped
+    command: ["python", "-m", "app.services.notifications.worker"]
+    stop_grace_period: 150s
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+
+networks:
+  database:
+    internal: true
+  application:

@@ -3,6 +3,8 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, 
 import pandas as pd
 import io
 from app.core.database import get_db
+from app.core.config import settings
+from app.api.health import router as health_router
 from app.api.auth import (
     create_access_token,
     create_refresh_token,
@@ -60,6 +62,7 @@ app = FastAPI(
     ),
 )
 
+app.include_router(health_router)
 app.include_router(insights_router)
 app.include_router(transactions_router)
 app.include_router(chat_router)
@@ -67,8 +70,8 @@ app.include_router(chat_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "*"],  # tighten in prod
-    allow_credentials=True,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
