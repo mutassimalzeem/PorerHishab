@@ -19,6 +19,11 @@ export const bn = {
   "Reporting horizon": "\u09aa\u09cd\u09b0\u09a4\u09bf\u09ac\u09c7\u09a6\u09a8\u09c7\u09b0 \u09b8\u09ae\u09af\u09bc\u09b8\u09c0\u09ae\u09be",
   "Days until target": "\u09b2\u0995\u09cd\u09b7\u09cd\u09af\u09c7\u09b0 \u0986\u0997 \u09aa\u09b0\u09cd\u09af\u09a8\u09cd\u09a4 \u09a6\u09bf\u09a8",
   "Accepted commitment": "গৃহীত প্রতিশ্রুতি",
+  "You can report what you did for a supported recommendation. This records your report; it does not verify a financial action.":
+    "আপনি একটি সমর্থিত পরামর্শে কী করেছেন তা জানাতে পারেন। এটি আপনার রিপোর্ট রেকর্ড করে; এটি কোনো আর্থিক কাজ যাচাই করে না।",
+  "Track reported outcomes": "রিপোর্ট করা ফলাফল দেখুন",
+  "Pending means the follow-up period is still developing. Insufficient evidence means there is not enough comparable information. Neither status means your action failed.":
+    "অপেক্ষমাণ থাকার অর্থ পরবর্তী সময়কাল এখনও চলমান। যথেষ্ট প্রমাণ না থাকার অর্থ তুলনা করার মতো তথ্য নেই। কোনো অবস্থাই আপনার কাজ ব্যর্থ হওয়া বোঝায় না।",
   "Feasibility": "সম্ভাব্যতা",
   "What if?": "যদি এমন হয়?",
   "Test assumptions without changing your real finances.": "প্রকৃত আর্থিক তথ্য পরিবর্তন না করে বিকল্প যাচাই করুন।",

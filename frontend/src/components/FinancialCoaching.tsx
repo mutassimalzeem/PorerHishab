@@ -154,7 +154,7 @@ const recordedLabels = {
   not_relevant: "Not relevant",
   snoozed: "Snoozed",
 } as const;
-function FeedbackControls({
+export function FeedbackControls({
   id,
   refresh,
   restore = false,

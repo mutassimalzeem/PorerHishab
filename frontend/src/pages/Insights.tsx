@@ -37,8 +37,13 @@ export function Insights() {
         )}
       />
       <FinancialReview revision={planRevision} />
-      <ActionOutcomes revision={planRevision} />
+
+      <div id="action-outcomes">
+        <ActionOutcomes revision={planRevision} />
+      </div>
+
       <CoachingEffectiveness revision={planRevision} />
+
       <FinancialCoaching
         onFeedback={() => setPlanRevision((value) => value + 1)}
       />

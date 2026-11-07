@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useResource } from "../lib/useResource";
@@ -7,6 +7,7 @@ import { t, uiLabel } from "../lib/locale";
 import { date } from "../lib/format";
 import type { ApiSchemas } from "../generated/api";
 import { Amount, Evidence, Notes, ResourceView, Section } from "./ui";
+import { FinancialReviewFeedback } from "./FinancialReviewFeedback";
 
 function stable(value: unknown): string {
   return JSON.stringify(value, (key, item) =>
@@ -89,8 +90,17 @@ function ReviewExplanation({ review }: { review: Review }) {
   );
 }
 
-function ReviewContents({ review }: { review: Review }) {
+function ReviewContents({
+  review,
+  setRefresh,
+}: {
+  review: Review;
+  setRefresh: Dispatch<SetStateAction<number>>;
+}) {
   const [explain, setExplain] = useState(false);
+  const refreshAfterFeedback = async () => {
+    setRefresh((prev) => prev + 1);
+  };
   const { plan, decisions, execution_plan: execution } = review;
   const priorities = new Map(
     (decisions.priorities ?? []).map((p) => [p.priority_id, p]),
@@ -220,6 +230,10 @@ function ReviewContents({ review }: { review: Review }) {
                 assumptions={step.assumptions}
                 limitations={step.limitations}
               />
+              <FinancialReviewFeedback
+                sourceActionIds={step.source_action_ids ?? []}
+                refresh={refreshAfterFeedback}
+              />
             </article>
           </li>
         ))}
@@ -268,7 +282,7 @@ export function FinancialReview({ revision = 0 }: { revision?: number }) {
       </button>
       <ResourceView resource={resource}>
         {(review) => (
-          <ReviewContents
+          <ReviewContents setRefresh={setRefresh}
             key={`${revision}:${refresh}:${confirmed}`}
             review={review}
           />

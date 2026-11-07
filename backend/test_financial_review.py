@@ -192,3 +192,114 @@ def test_feedback_visible_inputs_are_preserved(data):
     assert after.decisions.warnings == after.plan.warnings
     assert set(after.plan.limitations) <= set(after.decisions.limitations)
     assert set(after.decisions.limitations) <= set(after.execution_plan.limitations)
+
+
+def test_financial_review_recommendation_to_reported_outcome(
+    data, client, monkeypatch
+):
+    """A review-linked coaching recommendation can be reported and observed."""
+    from app.services.finance.coaching import financial_coaching
+
+    db, users = data
+    user = users[0]
+
+    # Keep all services on the same deterministic Dhaka date.
+    monkeypatch.setattr(
+        "app.services.finance.coaching.today_dhaka", lambda: DAY
+    )
+    monkeypatch.setattr(
+        "app.services.finance.action_outcome.today_dhaka", lambda: DAY
+    )
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            dt = datetime(DAY.year, DAY.month, DAY.day, 12, tzinfo=timezone.utc)
+            return dt if tz is not None else dt.replace(tzinfo=None)
+
+    monkeypatch.setattr(
+        "app.services.finance.coaching_feedback.datetime", FrozenDatetime
+    )
+
+    seed(db, user, cash="0")
+
+    # Fetch the real financial review through the authenticated API.
+    review_response = client.get(
+        f"/finance/review?as_of={DAY}&schedules_confirmed=true"
+    )
+    assert review_response.status_code == 200, review_response.text
+    review_body = review_response.json()
+
+    review_source_ids = {
+        source_id
+        for step in review_body["execution_plan"]["steps"]
+        for source_id in step["source_action_ids"]
+    }
+    assert review_source_ids
+
+    # Only IDs that also exist as current coaching recommendations are valid
+    # feedback targets. This excludes synthetic plan:* identifiers.
+    current_recommendation_ids = {
+        rec.id
+        for rec in financial_coaching(db, user.id, as_of=DAY).recommendations
+    }
+    valid_review_recommendation_ids = review_source_ids & current_recommendation_ids
+    assert valid_review_recommendation_ids, (
+        f"Expected review execution steps to contain a valid current coaching "
+        f"recommendation ID, got review_source_ids={review_source_ids} and "
+        f"current_recommendation_ids={current_recommendation_ids}"
+    )
+
+    # Synthetic plan identifiers must never be accepted as feedback targets.
+    for synthetic_id in [s for s in review_source_ids if s.startswith("plan:")]:
+        rejected = client.put(
+            f"/finance/coaching/{synthetic_id}/feedback",
+            json={"status": "acted_on"},
+        )
+        assert rejected.status_code == 404
+
+    target_id = next(iter(valid_review_recommendation_ids))
+
+    # Before feedback, this recommendation has no reported outcome.
+    before = client.get(
+        f"/finance/action-outcomes?recommendation_id={target_id}"
+    )
+    assert before.status_code == 404
+
+    # The authenticated user explicitly reports acting on the recommendation.
+    feedback = client.put(
+        f"/finance/coaching/{target_id}/feedback",
+        json={"status": "acted_on"},
+    )
+    assert feedback.status_code == 200, feedback.text
+    assert feedback.json()["status"] == "acted_on"
+    assert feedback.json()["recommendation_id"] == target_id
+
+    # The report is now visible through the existing feedback endpoint.
+    history = client.get("/finance/coaching/feedback")
+    assert history.status_code == 200
+    assert any(
+        row["recommendation_id"] == target_id
+        and row["status"] == "acted_on"
+        for row in history.json()
+    )
+
+    # The outcome endpoint derives an observation from recorded evidence.
+    response = client.get(
+        f"/finance/action-outcomes?recommendation_id={target_id}"
+    )
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["summary"]["tracked"] == 1
+    assert len(report["items"]) == 1
+
+    outcome = report["items"][0]
+    assert outcome["recommendation_id"] == target_id
+    assert outcome["causal_claim"] is False
+    assert outcome["status"] in {
+        "pending",
+        "insufficient_data",
+        "improved",
+        "unchanged",
+        "worsened",
+    }
