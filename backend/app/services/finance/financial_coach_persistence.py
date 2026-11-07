@@ -7,15 +7,19 @@ Strictly enforces single-tenant isolation: queries and mutations must verify own
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
+from uuid import uuid4
+import math
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_, exists
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.financial_coach import CoachConversation, CoachMessage
-from app.schemas.financial_coach import CoachResponse
+from app.models.financial_coach import CoachConversation, CoachMessage, CoachTurn
+from app.schemas.financial_coach import CoachResponse, CoachTurnRead
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +100,7 @@ def delete_conversation(
         return False
 
     # Explicitly delete all associated messages for strict cleanup
+    db.query(CoachTurn).filter_by(conversation_id=conversation_id, user_id=user_id).delete(synchronize_session=False)
     db.query(CoachMessage).filter(
         CoachMessage.conversation_id == conversation_id,
         CoachMessage.user_id == user_id,
@@ -158,6 +163,7 @@ def append_assistant_message(
     user_id: int,
     conversation_id: str,
     response: CoachResponse,
+    *, request_id: str | None = None, commit: bool = True,
 ) -> CoachMessage:
     """Append the coach's structured answer and evidence to the conversation."""
     conv = get_conversation(db, user_id, conversation_id)
@@ -186,6 +192,7 @@ def append_assistant_message(
     warnings_data = [w.model_dump(mode="json") for w in response.warnings]
 
     msg = CoachMessage(
+        request_id=request_id,
         conversation_id=conversation_id,
         user_id=user_id,
         role="assistant",
@@ -201,8 +208,11 @@ def append_assistant_message(
         created_at=now,
     )
     db.add(msg)
-    db.commit()
-    db.refresh(msg)
+    if commit:
+        db.commit()
+        db.refresh(msg)
+    else:
+        db.flush()
     return msg
 
 
@@ -211,22 +221,28 @@ def get_conversation_messages(
     user_id: int,
     conversation_id: str,
     limit: int = 50,
+    before_id: int | None = None,
 ) -> list[CoachMessage]:
     """Retrieve chronological messages for an owned conversation."""
     conv = get_conversation(db, user_id, conversation_id)
     if not conv:
         return []
 
-    return (
+    query = (
         db.query(CoachMessage)
         .filter(
             CoachMessage.conversation_id == conversation_id,
             CoachMessage.user_id == user_id,
         )
-        .order_by(CoachMessage.created_at.asc(), CoachMessage.id.asc())
+    )
+    if before_id is not None:
+        query = query.filter(CoachMessage.id < before_id)
+    messages = (
+        query.order_by(CoachMessage.id.desc())
         .limit(min(max(1, limit), 200))
         .all()
     )
+    return list(reversed(messages))
 
 
 def get_recent_history_context(
@@ -246,8 +262,12 @@ def get_recent_history_context(
         .filter(
             CoachMessage.conversation_id == conversation_id,
             CoachMessage.user_id == user_id,
+            or_(CoachMessage.request_id.is_(None), exists().where(
+                CoachTurn.user_id == user_id,
+                CoachTurn.request_id == CoachMessage.request_id,
+                CoachTurn.state == "completed")),
         )
-        .order_by(CoachMessage.created_at.desc(), CoachMessage.id.desc())
+        .order_by(CoachMessage.id.desc())
         .limit(min(max(1, limit), 20))
         .all()
     )
@@ -259,3 +279,143 @@ def get_recent_history_context(
         {"role": m.role, "content": m.content}
         for m in recent_msgs
     ]
+
+
+LEASE_SECONDS = 120
+
+
+def get_turn(db, user_id, request_id):
+    return db.query(CoachTurn).filter_by(user_id=user_id, request_id=str(request_id)).populate_existing().first()
+
+
+def turn_view(db, user_id, turn, now=None, latest_id=None):
+    now = now or datetime.now(timezone.utc)
+    expiry = turn.lease_expires_at
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    interrupted = turn.state == "processing" and expiry <= now
+    latest = latest_id if latest_id is not None else db.query(func.max(CoachTurn.id)).filter_by(user_id=user_id, conversation_id=turn.conversation_id).scalar()
+    return CoachTurnRead(
+        request_id=turn.request_id, conversation_id=turn.conversation_id,
+        message=turn.message, language=turn.language, schedules_confirmed=turn.schedules_confirmed,
+        status="interrupted" if interrupted else turn.state,
+        retry_safe=latest == turn.id and (turn.state == "failed" or interrupted),
+        retry_after_seconds=max(0, math.ceil((expiry - now).total_seconds())) if turn.state == "processing" else 0,
+        response=CoachResponse.model_validate(turn.response_json) if turn.state == "completed" else None,
+    )
+
+
+def _busy():
+    raise HTTPException(409, "A coaching turn is still processing. Check its status before retrying.")
+
+
+def claim_turn(db, user_id, payload, language):
+    """Short committed receipt/claim; SQL uniqueness and lease fencing survive retries."""
+    key = str(payload.request_id or uuid4())
+    now = datetime.now(timezone.utc)
+    token = str(uuid4())
+    turn = get_turn(db, user_id, key)
+    if turn:
+        if (turn.message != payload.message.strip() or turn.language != language
+                or turn.schedules_confirmed != payload.schedules_confirmed
+                or (payload.conversation_id and payload.conversation_id != turn.conversation_id)):
+            raise HTTPException(409, "Request identifier was already used for a different question or context.")
+        if turn.state == "completed":
+            return turn, None
+        db.query(CoachConversation).filter_by(id=turn.conversation_id, user_id=user_id).with_for_update().first()
+        turn = get_turn(db, user_id, key)
+        if turn.state == "completed":
+            return turn, None
+        view = turn_view(db, user_id, turn, now)
+        if not view.retry_safe:
+            if view.status in {"failed", "interrupted"}:
+                raise HTTPException(409, "This request was superseded by a newer question. Start a new turn instead.")
+            _busy()
+        changed = db.query(CoachTurn).filter(
+            CoachTurn.id == turn.id, CoachTurn.user_id == user_id,
+            or_(CoachTurn.state == "failed", and_(CoachTurn.state == "processing", CoachTurn.lease_expires_at <= now)),
+        ).update({"state": "processing", "lease_token": token,
+                  "lease_expires_at": now + timedelta(seconds=LEASE_SECONDS), "updated_at": now}, synchronize_session=False)
+        if not changed:
+            db.rollback()
+            _busy()
+        conv = get_conversation(db, user_id, turn.conversation_id)
+        conv.updated_at = now
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            _busy()
+        return get_turn(db, user_id, key), token
+
+    # Lock only during receipt; never while generating. Partial unique index is
+    # the final guard for concurrent keys in the same conversation.
+    if payload.conversation_id:
+        conv = db.query(CoachConversation).filter_by(id=payload.conversation_id, user_id=user_id).with_for_update().first()
+        if not conv:
+            raise HTTPException(404, "Conversation not found or access denied.")
+        processing = db.query(CoachTurn).filter_by(conversation_id=conv.id, user_id=user_id, state="processing").first()
+        if processing:
+            # Only the original key may reclaim an interrupted turn.
+            _busy()
+    else:
+        conv = CoachConversation(user_id=user_id, title=payload.message.strip()[:60], created_at=now, updated_at=now)
+        db.add(conv)
+        db.flush()
+    conv.updated_at = now
+    turn = CoachTurn(user_id=user_id, request_id=key, conversation_id=conv.id,
+                     message=payload.message.strip(), language=language, schedules_confirmed=payload.schedules_confirmed,
+                     state="processing", lease_token=token, lease_expires_at=now + timedelta(seconds=LEASE_SECONDS),
+                     created_at=now, updated_at=now)
+    db.add(turn)
+    db.add(CoachMessage(user_id=user_id, conversation_id=conv.id, request_id=key,
+                        role="user", content=turn.message, created_at=now))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # A simultaneous receipt won. Resolve it using the same owner-scoped key.
+        if get_turn(db, user_id, key):
+            return claim_turn(db, user_id, payload.model_copy(update={"request_id": key}), language)
+        _busy()
+    return get_turn(db, user_id, key), token
+
+
+def complete_turn(db, user_id, request_id, token, response):
+    now = datetime.now(timezone.utc)
+    receipt = get_turn(db, user_id, request_id)
+    if receipt is None:
+        db.rollback()
+        raise HTTPException(404, "Coaching request not found.")
+    db.query(CoachConversation).filter_by(id=receipt.conversation_id, user_id=user_id).with_for_update().first()
+    changed = db.query(CoachTurn).filter_by(user_id=user_id, request_id=request_id,
+                                           state="processing", lease_token=token).update(
+        {"state": "completed", "updated_at": now}, synchronize_session=False)
+    if not changed:
+        db.rollback()
+        _busy()
+    turn = get_turn(db, user_id, request_id)
+    response.conversation_id = turn.conversation_id
+    response.request_id = request_id
+    response.recorded_at = now
+    append_assistant_message(db, user_id, turn.conversation_id, response, request_id=request_id, commit=False)
+    turn.response_json = response.model_dump(mode="json")
+    db.commit()
+    return response
+
+
+def fail_turn(db, user_id, request_id, token):
+    db.rollback()
+    now = datetime.now(timezone.utc)
+    receipt = get_turn(db, user_id, request_id)
+    if receipt is None:
+        db.rollback()
+        return
+    db.query(CoachConversation).filter_by(id=receipt.conversation_id, user_id=user_id).with_for_update().first()
+    changed = db.query(CoachTurn).filter_by(user_id=user_id, request_id=request_id,
+                                           state="processing", lease_token=token).update(
+        {"state": "failed", "updated_at": now}, synchronize_session=False)
+    if changed:
+        turn = get_turn(db, user_id, request_id)
+        get_conversation(db, user_id, turn.conversation_id).updated_at = now
+    db.commit()

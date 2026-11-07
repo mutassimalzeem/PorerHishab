@@ -1,16 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { FinancialCoach } from "../components/FinancialCoach";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { setLanguage } from "../lib/locale";
-import type { CoachResponse, CoachConversationPage, CoachConversationDetail } from "../domain";
+import type {
+  CoachResponse,
+  CoachConversationPage,
+  CoachConversationDetail,
+} from "../domain";
 
 const mockResponse: CoachResponse = {
   conversation_id: "conv_test_123",
   intent: "spending_analysis",
-  answer: "In October, your total spending was 18,500 BDT across 12 transactions.",
+  answer:
+    "In October, your total spending was 18,500 BDT across 12 transactions.",
   summary: "Total spending was 18,500 BDT.",
   claims: [
     {
@@ -58,20 +63,212 @@ const mockEmptyConversations: CoachConversationPage = {
 };
 
 beforeEach(() => {
+  sessionStorage.clear();
   vi.restoreAllMocks();
   setLanguage("en");
   vi.spyOn(api, "coachConversations").mockResolvedValue(mockEmptyConversations);
+  vi.spyOn(api, "coachRequestStatus").mockRejectedValue(
+    new ApiError(404, "Request not received"),
+  );
 });
 
-function renderCoach() {
+function renderCoach(ownerId?: number) {
   render(
     <MemoryRouter>
-      <FinancialCoach />
+      <FinancialCoach ownerId={ownerId} />
     </MemoryRouter>,
   );
 }
 
 describe("FinancialCoach frontend component", () => {
+  it("recovers a persisted answer after a lost response without submitting another turn", async () => {
+    const ask = vi
+      .spyOn(api, "coachAsk")
+      .mockRejectedValue(new Error("Lost response"));
+    vi.mocked(api.coachRequestStatus).mockImplementation(async (key) => ({
+      request_id: key,
+      conversation_id: "conv_test_123",
+      message: "Lost question",
+      language: "en",
+      schedules_confirmed: false,
+      status: "completed",
+      retry_safe: false,
+      response: { ...mockResponse, request_id: key },
+    }));
+    renderCoach();
+    await userEvent.type(
+      screen.getByLabelText("Ask your financial coach"),
+      "Lost question",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send question" }),
+    );
+    expect(await screen.findByText(mockResponse.answer)).toBeInTheDocument();
+    expect(screen.getAllByText("Lost question")).toHaveLength(1);
+    expect(screen.getAllByText(mockResponse.answer)).toHaveLength(1);
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Try again")).not.toBeInTheDocument();
+  });
+
+  it("offers status checks rather than retry while the server is still processing", async () => {
+    vi.spyOn(api, "coachAsk").mockRejectedValue(new Error("Timeout"));
+    const status = vi
+      .mocked(api.coachRequestStatus)
+      .mockImplementation(async (key) => ({
+        request_id: key,
+        conversation_id: "conv_test_123",
+        message: "Processing question",
+        language: "en",
+        schedules_confirmed: false,
+        status: "processing",
+        retry_safe: false,
+        retry_after_seconds: 30,
+      }));
+    renderCoach();
+    await userEvent.type(
+      screen.getByLabelText("Ask your financial coach"),
+      "Processing question",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send question" }),
+    );
+    await screen.findByText("Still processing");
+    expect(screen.queryByText("Try again")).not.toBeInTheDocument();
+    status.mockImplementation(async (key) => ({
+      request_id: key,
+      conversation_id: "conv_test_123",
+      message: "Processing question",
+      language: "en",
+      schedules_confirmed: false,
+      status: "completed",
+      retry_safe: false,
+      response: mockResponse,
+    }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Check request status" }),
+    );
+    expect(await screen.findByText(mockResponse.answer)).toBeInTheDocument();
+  });
+
+  it("does not offer retry when neither the response nor server status is known", async () => {
+    vi.spyOn(api, "coachAsk").mockRejectedValue(new Error("Timeout"));
+    vi.mocked(api.coachRequestStatus).mockRejectedValue(
+      new Error("Status unavailable"),
+    );
+    renderCoach();
+    await userEvent.type(
+      screen.getByLabelText("Ask your financial coach"),
+      "Unknown question",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send question" }),
+    );
+    expect(await screen.findByText("Status unknown")).toBeInTheDocument();
+    expect(screen.queryByText("Try again")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Check request status" }),
+    ).toBeEnabled();
+  });
+
+  it("restores the owner selection and loads earlier messages chronologically", async () => {
+    sessionStorage.setItem(
+      "porerhishab.coach.99",
+      JSON.stringify({ conversationId: "conv_old" }),
+    );
+    const detail: CoachConversationDetail = {
+      id: "conv_old",
+      title: "History",
+      created_at: "2026-11-01",
+      updated_at: "2026-11-01",
+      has_more: true,
+      next_before_id: 3,
+      messages: [
+        {
+          id: 3,
+          conversation_id: "conv_old",
+          role: "user",
+          content: "Newer question",
+          created_at: "2026-11-01",
+        },
+        {
+          id: 4,
+          conversation_id: "conv_old",
+          role: "assistant",
+          content: "Newer answer",
+          created_at: "2026-11-01",
+        },
+      ],
+    };
+    const load = vi
+      .spyOn(api, "coachConversationDetail")
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({
+        ...detail,
+        has_more: false,
+        next_before_id: 1,
+        messages: [
+          {
+            id: 1,
+            conversation_id: "conv_old",
+            role: "user",
+            content: "Older question",
+            created_at: "2026-10-01",
+          },
+          {
+            id: 2,
+            conversation_id: "conv_old",
+            role: "assistant",
+            content: "Older answer",
+            created_at: "2026-10-01",
+          },
+        ],
+      });
+    renderCoach(99);
+    expect(await screen.findByText("Newer answer")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Load older messages" }),
+    );
+    await screen.findByText("Older answer");
+    expect(load).toHaveBeenLastCalledWith("conv_old", 3);
+    const rows = screen.getByRole("log").querySelectorAll(".coach-answer-text");
+    expect([...rows].map((r) => r.textContent)).toEqual([
+      "Older question",
+      "Older answer",
+      "Newer question",
+      "Newer answer",
+    ]);
+  });
+
+  it("loads conversations beyond the initial ten", async () => {
+    const items = Array.from({ length: 11 }, (_, i) => ({
+      id: `conv_${i}`,
+      title: `Thread ${i}`,
+      created_at: "2026-11-01",
+      updated_at: "2026-11-01",
+    }));
+    const list = vi
+      .mocked(api.coachConversations)
+      .mockResolvedValueOnce({
+        items: items.slice(0, 10),
+        total: 11,
+        limit: 10,
+        offset: 0,
+      })
+      .mockResolvedValueOnce({
+        items: items.slice(10),
+        total: 11,
+        limit: 10,
+        offset: 10,
+      });
+    renderCoach();
+    await userEvent.click(screen.getByRole("button", { name: "Saved chats" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Load more conversations" }),
+    );
+    await screen.findByText("Thread 10");
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(10, 10));
+  });
+
   it("renders empty state with starters and input field", async () => {
     renderCoach();
     expect(
@@ -110,7 +307,11 @@ describe("FinancialCoach frontend component", () => {
     await userEvent.click(sendBtn);
 
     expect(askSpy).toHaveBeenCalledWith(
-      { message: "How much did I spend?", conversation_id: undefined },
+      {
+        message: "How much did I spend?",
+        conversation_id: undefined,
+        request_id: expect.any(String),
+      },
       "en",
     );
 
@@ -167,6 +368,9 @@ describe("FinancialCoach frontend component", () => {
     await userEvent.click(retryBtn);
 
     expect(askSpy).toHaveBeenCalledTimes(2);
+    expect(askSpy.mock.calls[0][0].request_id).toBe(
+      askSpy.mock.calls[1][0].request_id,
+    );
     expect(
       await screen.findByText(
         "In October, your total spending was 18,500 BDT across 12 transactions.",
@@ -190,7 +394,9 @@ describe("FinancialCoach frontend component", () => {
       "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
     );
     await userEvent.type(textarea, "How is my budget?");
-    await userEvent.click(screen.getByRole("button", { name: "Send question" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send question" }),
+    );
 
     // First failure
     expect(await screen.findByRole("alert")).toBeInTheDocument();
@@ -259,7 +465,9 @@ describe("FinancialCoach frontend component", () => {
       limit: 10,
       offset: 0,
     };
-    vi.spyOn(api, "coachConversations").mockResolvedValue(mockConversationsList);
+    vi.spyOn(api, "coachConversations").mockResolvedValue(
+      mockConversationsList,
+    );
 
     const mockDetail: CoachConversationDetail = {
       id: "conv_archived_99",
@@ -285,7 +493,9 @@ describe("FinancialCoach frontend component", () => {
       "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
     );
     await userEvent.type(textarea, "Pending question in thread 1");
-    await userEvent.click(screen.getByRole("button", { name: "Send question" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send question" }),
+    );
 
     // While request is pending, switch to archived chat
     const historyBtn = screen.getByRole("button", { name: "Saved chats" });
@@ -318,7 +528,9 @@ describe("FinancialCoach frontend component", () => {
       "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
     );
     await userEvent.type(textarea, "Hello coach");
-    await userEvent.click(screen.getByRole("button", { name: "Send question" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send question" }),
+    );
 
     expect(
       await screen.findByText(
@@ -340,14 +552,8 @@ describe("FinancialCoach frontend component", () => {
     setLanguage("bn");
     renderCoach();
 
-    expect(
-      screen.getByText("পরের হিসাব আর্থিক কোচ"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("নতুন আলোচনা"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("আপনি কী জানতে চান?"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("পরের হিসাব আর্থিক কোচ")).toBeInTheDocument();
+    expect(screen.getByText("নতুন আলোচনা")).toBeInTheDocument();
+    expect(screen.getByText("আপনি কী জানতে চান?")).toBeInTheDocument();
   });
 });

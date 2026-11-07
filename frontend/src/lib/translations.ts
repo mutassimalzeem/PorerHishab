@@ -1,5 +1,14 @@
 // Frontend-owned copy only. Backend prose and user records retain their original language.
 export const bn = {
+  "Load more conversations": "আরও আলোচনা দেখুন",
+  "Load older messages": "আগের বার্তাগুলো দেখুন",
+  "Check request status": "অনুরোধের অবস্থা দেখুন",
+  "Still processing": "এখনও প্রক্রিয়াধীন",
+  "Status unknown": "অবস্থা জানা যায়নি",
+  "The question is incomplete. No completed answer is available.":
+    "প্রশ্নটি অসম্পূর্ণ। কোনো সম্পূর্ণ উত্তর পাওয়া যায়নি।",
+  "Saved answers describe records at the time they were generated. Ask a new question for current finances.":
+    "সংরক্ষিত উত্তরগুলো তৈরি করার সময়কার রেকর্ডের ওপর ভিত্তি করে দেওয়া। বর্তমান আর্থিক অবস্থার জন্য নতুন প্রশ্ন করুন।",
   "Conservative monthly capacity": "\u09b8\u09a4\u09b0\u09cd\u0995 \u09ae\u09be\u09b8\u09bf\u0995 \u09b8\u099e\u09cd\u099a\u09af\u09bc \u09b8\u09be\u09ae\u09b0\u09cd\u09a5\u09cd\u09af",
   "Goal is not feasible under current assumptions": "\u09ac\u09b0\u09cd\u09a4\u09ae\u09be\u09a8 \u0985\u09a8\u09c1\u09ae\u09be\u09a8\u09c7 \u09b2\u0995\u09cd\u09b7\u09cd\u09af \u0985\u09b0\u09cd\u099c\u09a8 \u09b8\u09ae\u09cd\u09ad\u09ac \u09a8\u09af\u09bc",
   "Prerequisites": "\u09aa\u09c2\u09b0\u09cd\u09ac\u09b6\u09b0\u09cd\u09a4",

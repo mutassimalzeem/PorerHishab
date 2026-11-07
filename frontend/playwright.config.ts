@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "**/financial-review-real-api.spec.ts",
+  testIgnore: [
+    "**/financial-review-real-api.spec.ts",
+    "**/coach-recovery-real-api.spec.ts",
+  ],
   fullyParallel: true,
   workers: 2,
   reporter: "list",

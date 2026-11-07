@@ -423,8 +423,14 @@ export const api = {
     request<CoachConversationPage>(
       `/coach/conversations${query({ limit, offset })}`,
     ),
-  coachConversationDetail: (id: string) =>
-    request<CoachConversationDetail>(`/coach/conversations/${id}`),
+  coachConversationDetail: (id: string, before_id?: number) =>
+    request<CoachConversationDetail>(
+      `/coach/conversations/${id}${query({ before_id })}`,
+    ),
+  coachRequestStatus: (id: string) =>
+    request<import("../generated/api").ApiSchemas["CoachTurnRead"]>(
+      `/coach/requests/${encodeURIComponent(id)}`,
+    ),
   coachDeleteConversation: (id: string) =>
     request<void>(`/coach/conversations/${id}`, { method: "DELETE" }),
   userDigests: (limit: number = 10) =>

@@ -24,7 +24,7 @@ const starters = [
   "How much can I save this month?",
 ];
 
-export function Ask() {
+export function Ask({ ownerId }: { ownerId?: number }) {
   useLanguage();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -72,7 +72,7 @@ export function Ask() {
 
       {/* AI-15S Interactive Financial Coach */}
       <section aria-label={t("PorerHishab Financial Coach")}>
-        <FinancialCoach />
+        <FinancialCoach key={ownerId} ownerId={ownerId} />
       </section>
 
       {/* Grounded Direct Query Calculator */}

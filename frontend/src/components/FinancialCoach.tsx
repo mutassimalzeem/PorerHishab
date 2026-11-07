@@ -14,32 +14,9 @@ import {
 } from "lucide-react";
 import { useLanguage } from "../lib/useLanguage";
 import { t, uiLabel } from "../lib/locale";
-import { api } from "../lib/api";
-import { errorMessage, money } from "../lib/format";
+import { useCoachRecovery } from "../lib/useCoachRecovery";
+import { money } from "../lib/format";
 import { ErrorNotice } from "./ui";
-import type {
-  CoachAction,
-  CoachClaim,
-  CoachConversationSummary,
-  CoachEvidence,
-  CoachResponse,
-  CoachWarning,
-} from "../domain";
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  status?: "pending" | "failed" | "success";
-  intent?: string;
-  summary?: string | null;
-  claims?: CoachClaim[];
-  evidence?: CoachEvidence[];
-  actions?: CoachAction[];
-  warnings?: CoachWarning[];
-  limitations?: string[];
-  isClarification?: boolean;
-}
 
 const STARTERS = [
   "Where did my money go this month?",
@@ -50,198 +27,47 @@ const STARTERS = [
   "How healthy are my finances?",
 ];
 
-export function FinancialCoach() {
+export function FinancialCoach({ ownerId }: { ownerId?: number }) {
   const { language } = useLanguage();
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const recovery = useCoachRecovery(language, ownerId);
+  const {
+    conversationId,
+    messages,
+    busy,
+    error,
+    conversations,
+    selectConversation,
+  } = recovery;
   const [inputQuestion, setInputQuestion] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastQuestion, setLastQuestion] = useState<string>("");
-  const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({});
-  const [conversations, setConversations] = useState<CoachConversationSummary[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-
+  const [expandedEvidence, setExpandedEvidence] = useState<
+    Record<string, boolean>
+  >({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const busyRef = useRef(false);
-  const activeRequestIdRef = useRef<number>(0);
 
-  // Load user's conversations list on mount
   useEffect(() => {
-    loadConversations();
-  }, []);
-
-  // Scroll to bottom when messages update
-  useEffect(() => {
-    if (
-      messagesEndRef.current &&
-      typeof messagesEndRef.current.scrollIntoView === "function"
-    ) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, busy]);
 
-  async function loadConversations() {
-    try {
-      const page = await api.coachConversations(10);
-      setConversations(page.items);
-    } catch {
-      // Non-critical; history can be retried
-    }
-  }
-
-  async function selectConversation(id: string) {
-    activeRequestIdRef.current++;
-    busyRef.current = false;
-    setBusy(true);
-    setError(null);
-    try {
-      const detail = await api.coachConversationDetail(id);
-      setConversationId(detail.id);
-      const loaded: ChatMessage[] = (detail.messages || []).map((m) => ({
-        id: `msg_${m.id}`,
-        role: m.role as "user" | "assistant",
-        text: m.content,
-        status: "success",
-        intent: m.intent || undefined,
-        summary: m.summary || null,
-        claims: m.claims_json as CoachClaim[] | undefined,
-        actions: m.actions_json as CoachAction[] | undefined,
-        evidence: m.evidence_json as CoachEvidence[] | undefined,
-        warnings: m.warnings_json as CoachWarning[] | undefined,
-        limitations: m.limitations_json || [],
-      }));
-      setMessages(loaded);
-      setShowHistory(false);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function startNewConversation() {
-    activeRequestIdRef.current++;
-    busyRef.current = false;
-    setBusy(false);
-    setConversationId(null);
-    setMessages([]);
+  async function handleSubmit(e?: FormEvent) {
+    e?.preventDefault();
+    if (busy || !inputQuestion.trim()) return;
+    const question = inputQuestion;
     setInputQuestion("");
-    setError(null);
-    setShowHistory(false);
-    textareaRef.current?.focus();
+    await recovery.submit(question);
   }
-
-  async function handleSubmit(e?: FormEvent, overrideQuestion?: string) {
-    if (e) e.preventDefault();
-    if (busy || busyRef.current) return;
-    const q = (overrideQuestion ?? inputQuestion).trim();
-    if (!q) return;
-
-    busyRef.current = true;
-    setBusy(true);
-    setError(null);
-    setLastQuestion(q);
-
-    const isRetry = Boolean(overrideQuestion);
-    let targetMsgId: string;
-
-    if (isRetry) {
-      // Find the last user message to update instead of appending duplicate
-      const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-      if (lastUserMsg) {
-        targetMsgId = lastUserMsg.id;
-        setMessages((prev) =>
-          prev.map((m) => (m.id === targetMsgId ? { ...m, status: "pending" as const } : m)),
-        );
-      } else {
-        targetMsgId = `user_${Date.now()}`;
-        setMessages((prev) => [
-          ...prev,
-          { id: targetMsgId, role: "user", text: q, status: "pending" as const },
-        ]);
-      }
-    } else {
-      targetMsgId = `user_${Date.now()}`;
-      setMessages((prev) => [
-        ...prev,
-        { id: targetMsgId, role: "user", text: q, status: "pending" as const },
-      ]);
-      setInputQuestion("");
-    }
-
-    const currentReqId = ++activeRequestIdRef.current;
-
-    try {
-      const resp: CoachResponse = await api.coachAsk(
-        {
-          message: q,
-          conversation_id: conversationId || undefined,
-        },
-        language === "bn" ? "bn" : "en",
-      );
-
-      // If user switched conversations while request was in-flight, discard
-      if (currentReqId !== activeRequestIdRef.current) {
-        return;
-      }
-
-      if (resp.conversation_id && resp.conversation_id !== conversationId) {
-        setConversationId(resp.conversation_id);
-        loadConversations();
-      }
-
-      // Mark the user message as successfully submitted
-      setMessages((prev) =>
-        prev.map((m) => (m.id === targetMsgId ? { ...m, status: "success" as const } : m)),
-      );
-
-      const asstMessage: ChatMessage = {
-        id: `asst_${Date.now()}`,
-        role: "assistant",
-        text: resp.answer,
-        status: "success",
-        intent: resp.intent,
-        summary: resp.summary,
-        claims: resp.claims,
-        evidence: resp.evidence,
-        actions: resp.actions,
-        warnings: resp.warnings,
-        limitations: resp.limitations,
-        isClarification:
-          resp.intent === "unknown" ||
-          (resp.warnings || []).some((w) => w.code === "CLARIFICATION_REQUIRED"),
-      };
-
-      setMessages((prev) => [...prev, asstMessage]);
-    } catch (err) {
-      if (currentReqId !== activeRequestIdRef.current) {
-        return;
-      }
-      // Mark the user message as failed
-      setMessages((prev) =>
-        prev.map((m) => (m.id === targetMsgId ? { ...m, status: "failed" as const } : m)),
-      );
-      setError(errorMessage(err));
-    } finally {
-      if (currentReqId === activeRequestIdRef.current) {
-        busyRef.current = false;
-        setBusy(false);
-      }
-    }
-  }
-
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     }
   }
-
-  function retryLast() {
-    if (!lastQuestion) return;
-    handleSubmit(undefined, lastQuestion);
+  function startNewConversation() {
+    recovery.startNewConversation();
+    setInputQuestion("");
+    setShowHistory(false);
+    textareaRef.current?.focus();
   }
 
   function toggleEvidence(msgId: string) {
@@ -304,7 +130,11 @@ export function FinancialCoach() {
 
       {/* Conversations Drawer */}
       {showHistory && (
-        <div className="coach-history-drawer" role="region" aria-label={t("Saved chats")}>
+        <div
+          className="coach-history-drawer"
+          role="region"
+          aria-label={t("Saved chats")}
+        >
           <div className="coach-history-header">
             <h4>{t("Recent conversations")}</h4>
           </div>
@@ -317,7 +147,10 @@ export function FinancialCoach() {
                 <button
                   type="button"
                   className={`coach-history-item ${c.id === conversationId ? "active" : ""}`}
-                  onClick={() => selectConversation(c.id)}
+                  onClick={() => {
+                    void selectConversation(c.id);
+                    setShowHistory(false);
+                  }}
                 >
                   <span className="coach-history-title">{c.title}</span>
                   <span className="coach-history-date">
@@ -327,6 +160,15 @@ export function FinancialCoach() {
               </li>
             ))}
           </ul>
+          {recovery.moreConversations && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void recovery.loadMoreConversations()}
+            >
+              {t("Load more conversations")}
+            </button>
+          )}
         </div>
       )}
 
@@ -367,6 +209,22 @@ export function FinancialCoach() {
           </div>
         )}
 
+        {recovery.hasMore && (
+          <button
+            type="button"
+            disabled={busy || (!!recovery.pending && !recovery.retrySafe)}
+            onClick={() => void recovery.loadOlder()}
+          >
+            {t("Load older messages")}
+          </button>
+        )}
+        {messages.some((m) => m.role === "assistant") && (
+          <p className="source">
+            {t(
+              "Saved answers describe records at the time they were generated. Ask a new question for current finances.",
+            )}
+          </p>
+        )}
         {messages.map((m) => (
           <div
             key={m.id}
@@ -380,12 +238,29 @@ export function FinancialCoach() {
               )}
             </div>
 
-            <div className={`coach-bubble ${m.role === "user" ? "user-bubble" : "asst-bubble"} ${m.status === "failed" ? "msg-failed" : ""}`}>
+            <div
+              className={`coach-bubble ${m.role === "user" ? "user-bubble" : "asst-bubble"} ${m.status === "failed" ? "msg-failed" : ""}`}
+            >
               {/* Message Role Label */}
               <div className="coach-bubble-author">
-                <strong>{m.role === "user" ? t("You") : t("Financial Coach")}</strong>
+                <strong>
+                  {m.role === "user" ? t("You") : t("Financial Coach")}
+                </strong>
+                {m.status === "pending" && (
+                  <span role="status">{t("Still processing")}</span>
+                )}
+                {m.status === "unknown" && (
+                  <span role="status">{t("Status unknown")}</span>
+                )}
                 {m.status === "failed" && (
-                  <span className="coach-status-tag failed" style={{ marginLeft: "8px", color: "var(--danger, #e53e3e)", fontSize: "0.75rem" }}>
+                  <span
+                    className="coach-status-tag failed"
+                    style={{
+                      marginLeft: "8px",
+                      color: "var(--danger, #e53e3e)",
+                      fontSize: "0.75rem",
+                    }}
+                  >
                     ({t("Failed")})
                   </span>
                 )}
@@ -421,7 +296,9 @@ export function FinancialCoach() {
               {m.actions && m.actions.length > 0 && (
                 <div className="coach-actions-box">
                   <div className="coach-actions-header">
-                    <span className="coach-actions-title">{t("Suggested Next Steps")}</span>
+                    <span className="coach-actions-title">
+                      {t("Suggested Next Steps")}
+                    </span>
                     <small className="coach-disclaimer-sub">
                       {t("(Suggestions for review; not executed transactions)")}
                     </small>
@@ -429,7 +306,9 @@ export function FinancialCoach() {
                   <div className="coach-action-items">
                     {m.actions.map((act) => (
                       <div key={act.action_id} className="coach-action-card">
-                        <div className="coach-action-badge">P{act.priority}</div>
+                        <div className="coach-action-badge">
+                          P{act.priority}
+                        </div>
                         <div className="coach-action-info">
                           <strong>{act.title}</strong>
                           <p>{act.description}</p>
@@ -463,9 +342,14 @@ export function FinancialCoach() {
                   {expandedEvidence[m.id] && (
                     <div className="coach-evidence-grid">
                       {m.evidence.map((ev) => (
-                        <div key={ev.evidence_id} className="coach-evidence-card">
+                        <div
+                          key={ev.evidence_id}
+                          className="coach-evidence-card"
+                        >
                           <div className="coach-evidence-meta">
-                            <span className="coach-evidence-label">{ev.label}</span>
+                            <span className="coach-evidence-label">
+                              {ev.label}
+                            </span>
                             <span
                               className={`coach-type-tag ${ev.evidence_type.toLowerCase()}`}
                             >
@@ -476,10 +360,14 @@ export function FinancialCoach() {
                           </div>
                           <div className="coach-evidence-val">
                             <strong>{formatEvidenceValue(ev.value)}</strong>
-                            {ev.unit && <small className="unit">{ev.unit}</small>}
+                            {ev.unit && (
+                              <small className="unit">{ev.unit}</small>
+                            )}
                           </div>
                           <div className="coach-evidence-source">
-                            <small>{t("Source")}: {ev.source}</small>
+                            <small>
+                              {t("Source")}: {ev.source}
+                            </small>
                           </div>
                         </div>
                       ))}
@@ -508,7 +396,10 @@ export function FinancialCoach() {
             <div className="coach-avatar">
               <Bot size={18} aria-hidden="true" />
             </div>
-            <div className="coach-bubble asst-bubble coach-loading-bubble" role="status">
+            <div
+              className="coach-bubble asst-bubble coach-loading-bubble"
+              role="status"
+            >
               <span className="coach-loading-spinner" aria-hidden="true" />
               <span>{t("Analyzing records and verifying evidence...")}</span>
             </div>
@@ -521,10 +412,22 @@ export function FinancialCoach() {
       {/* Error Notice */}
       {error && (
         <div className="coach-error-bar">
-          <ErrorNotice message={error} retry={retryLast} />
+          <ErrorNotice
+            message={error}
+            retry={
+              recovery.retrySafe && !busy
+                ? () => void recovery.submit("", true)
+                : undefined
+            }
+          />
         </div>
       )}
 
+      {recovery.pending && !busy && (
+        <button type="button" onClick={() => void recovery.checkStatus()}>
+          {t("Check request status")}
+        </button>
+      )}
       {/* Input Form */}
       <form className="coach-input-form" onSubmit={handleSubmit}>
         <div className="coach-input-wrap">
@@ -536,7 +439,7 @@ export function FinancialCoach() {
             onKeyDown={handleKeyDown}
             rows={2}
             maxLength={1000}
-            disabled={busy}
+            disabled={busy || (!!recovery.pending && !recovery.retrySafe)}
             placeholder={t(
               "Ask about spending, cashflow, purchases, or goals... (Press Enter to send)",
             )}
@@ -545,7 +448,11 @@ export function FinancialCoach() {
           <button
             type="submit"
             className="primary coach-send-btn"
-            disabled={busy || !inputQuestion.trim()}
+            disabled={
+              busy ||
+              (!!recovery.pending && !recovery.retrySafe) ||
+              !inputQuestion.trim()
+            }
             aria-label={t("Send question")}
           >
             <span>{busy ? t("Checking...") : t("Send")}</span>
