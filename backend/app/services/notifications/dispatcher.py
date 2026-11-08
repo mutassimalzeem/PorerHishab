@@ -356,7 +356,7 @@ def process_single_delivery(db: Session, delivery: NotificationDelivery) -> bool
         NotificationDelivery.lease_expires_at > now,
     ).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
     now = datetime.now(timezone.utc)
-    if current is None or current.lease_expires_at.replace(tzinfo=timezone.utc) <= now:
+    if current is None or current.lease_expires_at.replace(tzinfo=current.lease_expires_at.tzinfo or timezone.utc) <= now:
         db.rollback()
         return False
     if result is not None:
