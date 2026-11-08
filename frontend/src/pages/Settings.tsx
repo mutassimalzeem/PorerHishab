@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { api } from "../lib/api";
+import { errorMessage } from "../lib/format";
 import { LanguageSwitcher } from "../lib/Language";
 import { useLanguage } from "../lib/useLanguage";
 import { t } from "../lib/locale";
@@ -13,6 +16,30 @@ export function Settings({
   onLogout: () => void;
 }) {
   useLanguage();
+  const [verified, setVerified] = useState(Boolean(user.email_verified));
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  async function verifyEmail(check = false) {
+    setVerificationBusy(true);
+    try {
+      if (check) {
+        const current = await api.me();
+        setVerified(Boolean(current.email_verified));
+        setVerificationMessage(
+          current.email_verified
+            ? "Your email is verified."
+            : "Your email is not verified yet.",
+        );
+      } else {
+        const response = await api.requestEmailVerification();
+        setVerificationMessage(response.message);
+      }
+    } catch (cause) {
+      setVerificationMessage(errorMessage(cause));
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
   return (
     <>
       <PageHeading
@@ -49,7 +76,7 @@ export function Settings({
           </dl>
           <p className="muted">
             {t(
-              "Profile editing and password reset are not available through the current API.",
+              "Profile editing is not available. You can reset your password from the sign-in screen.",
             )}{" "}
           </p>
         </Section>
@@ -59,6 +86,31 @@ export function Settings({
           )}
         </p>
 
+        <Section title="Email verification">
+          {verified ? (
+            <p>Your email address is verified.</p>
+          ) : (
+            <>
+              <p>
+                Verify your email before enabling email notifications. After
+                following the link, return here and check your status.
+              </p>
+              <button
+                disabled={verificationBusy}
+                onClick={() => void verifyEmail()}
+              >
+                Send verification link
+              </button>
+              <button
+                disabled={verificationBusy}
+                onClick={() => void verifyEmail(true)}
+              >
+                Check verification status
+              </button>
+            </>
+          )}
+          {verificationMessage && <p role="status">{verificationMessage}</p>}
+        </Section>
         <NotificationPreferences />
 
         <Section title={t("Data & assumptions")}>

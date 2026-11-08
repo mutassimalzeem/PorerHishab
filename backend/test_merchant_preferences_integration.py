@@ -167,7 +167,7 @@ def test_merchant_without_preference_uses_existing_pipeline(
     )
     if method == "llm":
         llm.assert_called_once_with(
-            merchant=merchant, normalized_merchant=None, description=None, amount=None
+            merchant=merchant, normalized_merchant=None, description=None, amount=None, budget=None
         )
         assert result.confidence == 0.87
     else:

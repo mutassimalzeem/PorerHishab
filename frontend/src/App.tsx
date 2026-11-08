@@ -31,6 +31,7 @@ import type { Tokens, User } from "./domain";
 import { api, setSession } from "./lib/api";
 import { date, errorMessage, today } from "./lib/format";
 import { Auth } from "./pages/Auth";
+import { AccountRecovery } from "./pages/AccountRecovery";
 import { Dashboard } from "./pages/Dashboard";
 import { Alerts } from "./pages/Alerts";
 import { Accounts } from "./pages/Accounts";
@@ -350,6 +351,18 @@ export default function App() {
     setSession(null);
     setUser(null);
     setError(null);
+  }
+  const recoveryPath = window.location.pathname.slice(1);
+  if (
+    recoveryPath === "verify-email" ||
+    recoveryPath === "reset-password" ||
+    recoveryPath === "forgot-password"
+  ) {
+    return (
+      <BrowserRouter>
+        <AccountRecovery mode={recoveryPath} />
+      </BrowserRouter>
+    );
   }
   return (
     <BrowserRouter>

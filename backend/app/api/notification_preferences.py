@@ -1,7 +1,7 @@
 """Authenticated API endpoints for user notification preferences, delivery history, and daily digest."""
 from datetime import datetime, timezone
 from typing import Literal
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -64,6 +64,13 @@ def update_user_notification_preferences(
     """Update owner-scoped notification preferences."""
     pref = get_or_create_user_preferences(db, current.id)
     update_data = payload.model_dump(exclude_unset=True)
+
+    if update_data.get("email_enabled") or update_data.get("email_consent"):
+        if not current.email_verified:
+            raise HTTPException(
+                status_code=403,
+                detail="Verify your email address before enabling email notifications.",
+            )
 
     if "email_consent" in update_data:
         if update_data["email_consent"] and not pref.email_consent:

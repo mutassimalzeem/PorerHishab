@@ -5,12 +5,12 @@ services:
     container_name: zyra-db
 
     environment:
-      POSTGRES_DB: zyra
-      POSTGRES_USER: zyra
-      POSTGRES_PASSWORD: zyra_password
+      POSTGRES_DB: ${POSTGRES_DB:-porerhishab_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-porerhishab_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your local .env}
 
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
     volumes:
       - zyra_postgres_data:/var/lib/postgresql/data

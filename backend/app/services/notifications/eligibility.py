@@ -4,12 +4,19 @@ Evaluates notification delivery eligibility based on user preferences,
 alert severity, delivery channel, quiet hours, consent, and frequency policy.
 Never involves AI/LLMs or non-deterministic logic.
 """
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
 from enum import Enum
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from typing import TYPE_CHECKING, Any
+
 from app.models.notification_preference import NotificationPreference
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 SEVERITY_ORDER: dict[str, int] = {
     "info": 10,
@@ -29,6 +36,7 @@ class EligibilityReason(str, Enum):
     NO_CONSENT = "NO_CONSENT"
     ALREADY_DELIVERED = "ALREADY_DELIVERED"
     FREQUENCY_SUPPRESSED = "FREQUENCY_SUPPRESSED"
+    EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED"
 
 
 @dataclass(frozen=True)
@@ -107,6 +115,7 @@ def calculate_quiet_hours_window(
 
 def evaluate_eligibility(
     preference: NotificationPreference,
+    user: User | None = None,
     *,
     channel: str,
     alert_severity: str,
@@ -125,7 +134,7 @@ def evaluate_eligibility(
       When disabled, non-critical alerts are frequency-suppressed.
       CRITICAL alerts bypass and remain immediately eligible for financial safety.
     - Channel disabled suppresses delivery.
-    - Email requires explicit consent.
+    - Email requires mailbox verification and explicit consent.
     - Severity below threshold suppresses delivery.
     - Quiet hours defer non-critical notifications; CRITICAL notifications bypass quiet hours.
     """
@@ -180,6 +189,11 @@ def evaluate_eligibility(
             return EligibilityResult(
                 is_eligible=False,
                 reason=EligibilityReason.DISABLED,
+            )
+        if user is None or not user.email_verified:
+            return EligibilityResult(
+                is_eligible=False,
+                reason=EligibilityReason.EMAIL_NOT_VERIFIED,
             )
         min_sev = (preference.email_min_severity or "warning").lower()
     else:

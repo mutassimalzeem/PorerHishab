@@ -16,6 +16,7 @@ from app.schemas.financial_coach import (
 from app.services.finance.financial_coach_evidence import EvidencePackage
 from app.services.finance.financial_coach_validator import (
     FinancialCoachValidator,
+    contains_unverified_spelled_money,
     validate_coach_response,
 )
 
@@ -547,3 +548,125 @@ def test_validation_does_not_mutate_input_objects(evidence_package):
     # Validated copy has been classified
     assert validated.actions[0].action_type == "general_guidance"
     assert validated.actions[0] is not orig_action
+
+
+def test_spelled_out_taka_amount_is_rejected():
+    assert contains_unverified_spelled_money(
+        "You could save one thousand taka."
+    )
+
+
+def test_numeric_taka_amount_uses_existing_numeric_validator():
+    assert not contains_unverified_spelled_money(
+        "You could save 1000 taka."
+    )
+
+
+def test_spelled_out_money_in_answer_triggers_fallback(evidence_package):
+    response = CoachResponse(
+        intent=CoachIntent.SPENDING_ANALYSIS,
+        answer="You could save one thousand taka by cutting dining out.",
+        summary="Summary text.",
+        claims=[],
+        evidence=evidence_package.evidence,
+        actions=[],
+    )
+
+    validated, report = validate_coach_response(response, evidence_package)
+    assert not report.is_valid
+    assert report.repaired
+    assert (
+        "Answer contains a spelled-out monetary amount that cannot be independently verified."
+        in report.issues
+    )
+
+
+def test_spelled_out_money_in_summary_removes_summary(evidence_package):
+    response = CoachResponse(
+        intent=CoachIntent.SPENDING_ANALYSIS,
+        answer="You spent 12,000 BDT in total, with 5,000 BDT on Food.",
+        summary="You could save fifty taka tomorrow.",
+        claims=[
+            CoachClaim(
+                claim_id="cl_1",
+                text="Your total spending was 12,000 BDT.",
+                evidence_ids=["ev_spending_total_expenses"],
+            ),
+        ],
+        evidence=evidence_package.evidence,
+        actions=[],
+    )
+
+    validated, report = validate_coach_response(response, evidence_package)
+    assert validated.summary is None
+    assert report.repaired
+    assert any("Summary contains a spelled-out monetary amount" in issue for issue in report.issues)
+
+
+def test_spelled_out_money_in_claim_drops_claim(evidence_package):
+    response = CoachResponse(
+        intent=CoachIntent.SPENDING_ANALYSIS,
+        answer="You spent 12,000 BDT in total, with 5,000 BDT on Food.",
+        claims=[
+            CoachClaim(
+                claim_id="cl_valid",
+                text="Your total spending was 12,000 BDT.",
+                evidence_ids=["ev_spending_total_expenses"],
+            ),
+            CoachClaim(
+                claim_id="cl_spelled",
+                text="You could save one thousand taka.",
+                evidence_ids=["ev_spending_total_expenses"],
+            ),
+        ],
+        evidence=evidence_package.evidence,
+        actions=[],
+    )
+
+    validated, report = validate_coach_response(response, evidence_package)
+    assert report.dropped_claims_count == 1
+    assert len(validated.claims) == 1
+    assert validated.claims[0].claim_id == "cl_valid"
+
+
+def test_spelled_out_money_in_action_drops_action(evidence_package):
+    response = CoachResponse(
+        intent=CoachIntent.SPENDING_ANALYSIS,
+        answer="You spent 12,000 BDT in total, with 5,000 BDT on Food.",
+        claims=[
+            CoachClaim(
+                claim_id="cl_valid",
+                text="Your total spending was 12,000 BDT.",
+                evidence_ids=["ev_spending_total_expenses"],
+            ),
+        ],
+        evidence=evidence_package.evidence,
+        actions=[
+            CoachAction(
+                action_id="act_spelled",
+                title="Save money",
+                description="Try to save five hundred taka this week.",
+                priority=1,
+                evidence_ids=["ev_spending_top_category"],
+            ),
+        ],
+    )
+
+    validated, report = validate_coach_response(response, evidence_package)
+    assert report.dropped_actions_count == 1
+    assert len(validated.actions) == 0
+
+
+@pytest.mark.parametrize("answer", [
+    "Your available cash is BDT zero.",
+    "Your available cash is zero.",
+    "Your bank balance is nil.",
+    "Your available cash is approximately zero.",
+    "Your account balance is currently five thousand.",
+    "আপনার নগদ শূন্য টাকা।",
+])
+def test_word_amount_variants_fail_closed(evidence_package, answer):
+    response = CoachResponse(intent=CoachIntent.SPENDING_ANALYSIS, answer=answer, claims=[], actions=[], evidence=evidence_package.evidence)
+    validated, report = validate_coach_response(response, evidence_package)
+    assert not report.is_valid
+    assert validated.answer != answer

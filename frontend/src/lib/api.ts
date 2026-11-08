@@ -294,6 +294,17 @@ export const api = {
   register: (email: string, password: string, full_name: string) =>
     post<Tokens>("/register", { email, password, full_name }),
   me: () => request<User>("/me"),
+  requestEmailVerification: () =>
+    post<{ message: string }>("/auth/email-verification/request", {}),
+  confirmEmailVerification: (token: string) =>
+    post<{ message: string }>("/auth/email-verification/confirm", { token }),
+  requestPasswordReset: (email: string) =>
+    post<{ message: string }>("/auth/password-reset/request", { email }),
+  confirmPasswordReset: (token: string, password: string) =>
+    post<{ message: string }>("/auth/password-reset/confirm", {
+      token,
+      password,
+    }),
   intelligence: () => request<Intelligence>("/finance/intelligence"),
   editGoal: (id: number, body: GoalUpdate) =>
     request<Goal>(`/finance/goals/${id}`, {

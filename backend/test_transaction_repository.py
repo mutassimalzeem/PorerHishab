@@ -1,4 +1,5 @@
 from uuid import uuid4
+from datetime import date
 
 from app.core.database import SessionLocal
 from app.models import User
@@ -70,7 +71,7 @@ def test_create_and_list_transactions():
             transactions = [
                 Transaction(
                     user_id=user.id,
-                    date="2026-10-01",
+                    date=date.fromisoformat("2026-10-01"),
                     description="Foodpanda order",
                     merchant="Foodpanda",
                     amount=-850,
@@ -78,7 +79,7 @@ def test_create_and_list_transactions():
                 ),
                 Transaction(
                     user_id=user.id,
-                    date="2026-10-02",
+                    date=date.fromisoformat("2026-10-02"),
                     description="Salary",
                     merchant="Company",
                     amount=50000,
@@ -119,7 +120,7 @@ def test_search_is_scoped_to_user():
                 [
                     Transaction(
                         user_id=user1.id,
-                        date="2026-10-01",
+                        date=date.fromisoformat("2026-10-01"),
                         description="Foodpanda order",
                         merchant="Foodpanda",
                         amount=-850,
@@ -127,7 +128,7 @@ def test_search_is_scoped_to_user():
                     ),
                     Transaction(
                         user_id=user2.id,
-                        date="2026-10-01",
+                        date=date.fromisoformat("2026-10-01"),
                         description="Foodpanda order",
                         merchant="Foodpanda",
                         amount=-1200,

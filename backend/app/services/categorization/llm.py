@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 from app.schemas.categorization import LLMCategorization
+from app.services.categorization.budget import CategorizationBudget
 from app.services.categorization.categories import ALLOWED_CATEGORIES
 from app.services.rag.chat_model import get_chat_model
 from app.core.config import settings
@@ -108,6 +109,7 @@ def categorize_with_llm(
     normalized_merchant: str | None = None,
     description: str | None = None,
     amount: str | None = None,
+    budget: CategorizationBudget | None = None,
 ) -> LLMCategorization:
     """Categorize one transaction with the chat model.
 
@@ -124,6 +126,9 @@ def categorize_with_llm(
         messages = _build_messages(
             merchant, normalized_merchant, description, amount,
         )
+        if budget is not None:
+            if not budget.consume():
+                raise CategorizationLLMError("Categorization budget exhausted")
         response = chat.invoke(messages)
 
         content = response.content

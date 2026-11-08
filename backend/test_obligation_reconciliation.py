@@ -24,6 +24,8 @@ DUE = date(2026, 11, 1)
 
 @pytest.fixture(scope="module")
 def store():
+    if engine.dialect.name != "postgresql":
+        pytest.skip("Dedicated PostgreSQL integration database required")
     schema = "obligation_test_" + uuid4().hex
     assert schema.isidentifier() and schema.startswith("obligation_test_")
     with engine.begin() as c:

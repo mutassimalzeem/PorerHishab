@@ -16,6 +16,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.user import User
 from app.models.financial_alert import FinancialAlert
 from app.models.notification_delivery import NotificationDelivery
 from app.services.notifications.dispatcher import (
@@ -93,6 +94,7 @@ def orchestrate_alert_lifecycle_event(
     # If user has immediate alerts enabled OR if alert is CRITICAL:
     email_eligibility = evaluate_eligibility(
         pref,
+        user=db.get(User, alert.user_id),
         channel="email",
         alert_severity=alert.severity,
         notification_event=event_norm,
@@ -147,4 +149,3 @@ def orchestrate_alert_lifecycle_event(
         alert.severity,
     )
     return deliveries
-

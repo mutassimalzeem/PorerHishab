@@ -1,5 +1,6 @@
 """Exercise real Alembic upgrade/downgrade in an isolated PostgreSQL schema."""
 from uuid import uuid4
+import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
@@ -8,6 +9,8 @@ from app.core.database import engine
 
 
 def test_savings_goal_migration_roundtrip_preserves_existing_rows(monkeypatch):
+    if engine.dialect.name != "postgresql":
+        pytest.skip("Dedicated PostgreSQL required for migrations")
     schema = "coach_migration_" + uuid4().hex
     # The generated schema is the only object removed by this test.
     assert schema.isidentifier() and schema.startswith("coach_migration_")

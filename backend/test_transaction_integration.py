@@ -16,6 +16,9 @@ PostgreSQL must be running before executing these tests, e.g.
 from datetime import date
 from decimal import Decimal
 from uuid import uuid4
+import pytest
+from app.core.database import engine
+pytestmark = pytest.mark.skipif(engine.dialect.name != "postgresql", reason="PostgreSQL storage types required")
 
 from sqlalchemy import select, text
 

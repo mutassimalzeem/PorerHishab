@@ -1,54 +1,115 @@
-import os, datetime, bcrypt, time
-from passlib.context import CryptContext
-from jose import jwt, JWTError
-from dotenv import load_dotenv
+import datetime, bcrypt, time, hashlib, hmac
+import jwt
+from jwt import InvalidTokenError
 from datetime import timedelta
-from pathlib import Path
 from typing import Optional
 from fastapi import HTTPException
+from app.core.config import settings
+from collections import OrderedDict
+from threading import Lock
 
 
-# Resolve the repo-root .env explicitly so settings load identically no matter
-# which directory the process was started from.
-REPO_ROOT = Path(__file__).resolve().parents[3]
-load_dotenv(REPO_ROOT / ".env")
+SECRET_KEY = settings.SECRET_KEY
+REFRESH_SECRET_KEY = settings.REFRESH_SECRET_KEY
+ALGORITHM = "HS256"
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
-REFRESH_SECRET_KEY = os.getenv('REFRESH_SECRET_KEY', 'default_refresh_key')
-PEPPER = os.getenv('PEPPER', '')
-ALGORITHM = os.getenv('ALGORITHM', 'HS256')
-
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', '30'))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS', '14'))
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
-RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('RATE_LIMIT_WINDOW_SECONDS', '300'))
-RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv('RATE_LIMIT_MAX_ATTEMPTS', '5'))
-
+RATE_LIMIT_WINDOW_SECONDS = settings.RATE_LIMIT_WINDOW_SECONDS
+RATE_LIMIT_MAX_ATTEMPTS = settings.RATE_LIMIT_MAX_ATTEMPTS
+MAX_RATE_LIMIT_KEYS = 10_000
 
 MAX_BCRYPT_LENGTH = 72  # bcrypt ignores beyond 72B
 
 
-def _peppered_bytes(password: str) -> bytes:
-    return (PEPPER + password).encode('utf-8')[:MAX_BCRYPT_LENGTH]
+_failed_attempts: OrderedDict[str, list[float]] = OrderedDict()
+_attempts_lock = Lock()
 
+
+def _prune_old(attempts: list[float]) -> list[float]:
+    cutoff = time.time() - RATE_LIMIT_WINDOW_SECONDS
+    return [timestamp for timestamp in attempts if timestamp >= cutoff]
+
+
+def _get_attempts(key: str) -> list[float]:
+    attempts = _prune_old(_failed_attempts.get(key, []))
+
+    if key in _failed_attempts:
+        _failed_attempts.move_to_end(key)
+
+    if not attempts:
+        _failed_attempts.pop(key, None)
+
+    return attempts
+
+
+def _store_attempts(key: str, attempts: list[float]) -> None:
+    _failed_attempts[key] = attempts
+    _failed_attempts.move_to_end(key)
+
+    while len(_failed_attempts) > MAX_RATE_LIMIT_KEYS:
+        _failed_attempts.popitem(last=False)
+
+
+def rate_limit_guard(key: str):
+    with _attempts_lock:
+        attempts = _get_attempts(key)
+
+        if len(attempts) >= RATE_LIMIT_MAX_ATTEMPTS:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many login attempts. Try again later.",
+            )
+
+        _store_attempts(key, attempts)
+
+
+def record_failed_attempt(key: str):
+    with _attempts_lock:
+        attempts = _get_attempts(key)
+        attempts.append(time.time())
+        _store_attempts(key, attempts)
+
+
+def _new_password_bytes(password: str) -> bytes:
+    """Derive a fixed-length bcrypt input using HMAC-SHA256"""
+    return hmac.new(
+        settings.PEPPER.encode("utf-8"),
+        password.encode("utf-8"),
+        hashlib.sha256
+    ).digest()
 
 def get_password_hash(plain_password: str) -> str:
-    truncated = _peppered_bytes(plain_password)
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(truncated, salt)
-    return hashed.decode("utf-8")
+    password_bytes = _new_password_bytes(plain_password)
+
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password_and_upgrade(plain_password: str, hashed_password: str) -> tuple[bool, bool]:
+    """Only accept the full-password HMAC scheme.
+
+    Lossy legacy bcrypt inputs cannot prove knowledge of the complete password.
+    Their owners must use mailbox-verified password recovery.
+    """
+    if not isinstance(hashed_password, str) or not hashed_password:
+        return False, False
+    try:
+        return bcrypt.checkpw(
+            _new_password_bytes(plain_password), hashed_password.encode("utf-8")
+        ), False
+    except (ValueError, TypeError):
+        return False, False
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    truncated = _peppered_bytes(plain_password)
-    return bcrypt.checkpw(truncated, hashed_password.encode("utf-8"))
+    return verify_password_and_upgrade(plain_password, hashed_password)[0]
 
 
-
-    #   JWT Helpers
+# JWT helpers
 def _create_token(data: dict, expires_delta: timedelta, key: str) -> str:
-    to_encode = data.copy()
+    to_encode = {"ver": 0, **data}
     exp = datetime.datetime.now(datetime.timezone.utc) + expires_delta
     to_encode.update({"exp": exp})
     return jwt.encode(to_encode, key, algorithm=ALGORITHM)
@@ -61,46 +122,22 @@ def create_access_token(data: dict, expires_minutes: Optional[int] = None) -> st
 
 def create_refresh_token(data: dict, expires_days: Optional[int] = None) -> str:
     days = expires_days or REFRESH_TOKEN_EXPIRE_DAYS
-    payload = {"typ": "refresh", **data}
+    payload = {**data, "typ": "refresh"}
     return _create_token(payload, timedelta(days=days), REFRESH_SECRET_KEY)
 
 
 def decode_access_token(token: str) -> dict:
     try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["exp", "sub", "user_id", "ver"]})
+    except InvalidTokenError:
         raise ValueError("Invalid or expired token")
 
 
 def decode_refresh_token(token: str) -> dict:
     try:
-        data = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+        data = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["exp", "sub", "user_id", "ver"]})
         if data.get("typ") != "refresh":
             raise ValueError("Not a refresh token")
         return data
-    except JWTError:
+    except InvalidTokenError:
         raise ValueError("Invalid or expired refresh token")
-
-
-# ───────── Simple in-memory rate limiter ─────────
-_failed_attempts: dict[str, list[float]] = {}
-
-def _window_cutoff() -> float:
-    return time.time() - RATE_LIMIT_WINDOW_SECONDS
-
-def _prune_old(attempts: list[float]) -> list[float]:
-    cutoff = _window_cutoff()
-    return [t for t in attempts if t >= cutoff]
-
-def rate_limit_guard(key: str):
-    attempts = _failed_attempts.get(key, [])
-    attempts = _prune_old(attempts)
-    if len(attempts) >= RATE_LIMIT_MAX_ATTEMPTS:
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
-    _failed_attempts[key] = attempts
-
-def record_failed_attempt(key: str):
-    attempts = _failed_attempts.get(key, [])
-    attempts = _prune_old(attempts)
-    attempts.append(time.time())
-    _failed_attempts[key] = attempts
