@@ -23,7 +23,7 @@ class TokenRequest(BaseModel):
 
 
 class PasswordReset(TokenRequest):
-    password: str = Field(min_length=12, max_length=1024)
+    password: str = Field(min_length=8, max_length=1024)
 
 
 class ChallengeStatus(BaseModel):
@@ -38,7 +38,7 @@ def throttle(request: Request, suffix: str):
 
 
 def send_challenge(db: Session, user: User, purpose: str):
-    if settings.EMAIL_BACKEND == "smtp" and not settings.NOTIFICATION_DELIVERY_ENABLED:
+    if not settings.SECURITY_EMAIL_DELIVERY_ENABLED:
         return
     recipient, owner_id = user.email, user.id
     raw = create_verification_token(db, user, purpose)

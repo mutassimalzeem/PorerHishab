@@ -58,7 +58,7 @@ class Settings(BaseSettings):
             secrets = [self.SECRET_KEY, self.REFRESH_SECRET_KEY, self.PEPPER]
             if any(len(value) < 32 or "change-me" in value.lower() for value in secrets) or len(set(secrets)) != 3:
                 raise ValueError("Production requires three distinct secrets of at least 32 characters")
-            if self.NOTIFICATION_DELIVERY_ENABLED and (
+            if (self.NOTIFICATION_DELIVERY_ENABLED or self.SECURITY_EMAIL_DELIVERY_ENABLED) and (
                 self.EMAIL_BACKEND != "smtp" or self.SMTP_HOST in ("localhost", "127.0.0.1", "")
             ):
                 raise ValueError("Production delivery requires an explicitly configured SMTP provider")
@@ -87,6 +87,7 @@ class Settings(BaseSettings):
 
     # Notification delivery infrastructure (AI-15M)
     NOTIFICATION_DELIVERY_ENABLED: bool = True
+    SECURITY_EMAIL_DELIVERY_ENABLED: bool = True
     EMAIL_BACKEND: str = "test"  # "test" or "smtp"
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 587

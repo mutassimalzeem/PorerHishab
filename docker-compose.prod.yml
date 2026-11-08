@@ -15,6 +15,7 @@ x-application: &application
     REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:?Set a different refresh-token secret}
     PEPPER: ${PEPPER:?Set a different password pepper}
     NOTIFICATION_DELIVERY_ENABLED: ${NOTIFICATION_DELIVERY_ENABLED:-false}
+    SECURITY_EMAIL_DELIVERY_ENABLED: ${SECURITY_EMAIL_DELIVERY_ENABLED:-true}
     EMAIL_BACKEND: ${EMAIL_BACKEND:-test}
     AI_EXTERNAL_ENABLED: ${AI_EXTERNAL_ENABLED:-false}
   networks: [database, application]
@@ -51,7 +52,7 @@ services:
   api:
     <<: *application
     restart: unless-stopped
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "50", "--timeout-keep-alive", "15"]
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:

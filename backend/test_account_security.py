@@ -123,3 +123,61 @@ def test_preexisting_email_consent_cannot_bypass_proof(account):
         assert _prepare_message(db, delivery, datetime.now(timezone.utc))[1] == "SUPPRESSED"
         assert generate_daily_digest_for_user(db, user.id, force=True)[0] is None
     assert TestEmailSender.get_sent_messages() == []
+
+
+def test_password_length_policy_across_auth_and_recovery(account):
+    client, factory = account
+    long_pass = "L" * 1024
+    too_long = "L" * 1025
+    short_pass = "short"
+
+    # Registration bounds
+    assert client.post("/register", json={"email": "toolong@example.com", "password": too_long}).status_code == 422
+    assert client.post("/register", json={"email": "tooshort@example.com", "password": short_pass}).status_code == 422
+
+    # Register with max length (1024)
+    res = client.post("/register", json={"email": "long@example.com", "password": long_pass})
+    assert res.status_code == 200
+
+    # Login with max length (1024)
+    assert client.post("/login", json={"email": "long@example.com", "password": long_pass}).status_code == 200
+
+    # Request reset and test reset bounds
+    assert client.post("/auth/password-reset/request", json={"email": "long@example.com"}).status_code == 202
+    token = captured_token()
+
+    assert client.post("/auth/password-reset/confirm", json={"token": token, "password": too_long}).status_code == 422
+    assert client.post("/auth/password-reset/confirm", json={"token": token, "password": short_pass}).status_code == 422
+
+    # Reset with another 1024 char password
+    new_long = "N" * 1024
+    assert client.post("/auth/password-reset/confirm", json={"token": token, "password": new_long}).status_code == 200
+    assert client.post("/login", json={"email": "long@example.com", "password": new_long}).status_code == 200
+
+
+def test_recovery_is_independent_of_financial_notifications(account, monkeypatch):
+    client, factory = account
+    headers = register(client)
+
+    # Disable financial notifications completely
+    monkeypatch.setattr(auth.settings, "NOTIFICATION_DELIVERY_ENABLED", False)
+    monkeypatch.setattr(auth.settings, "SECURITY_EMAIL_DELIVERY_ENABLED", True)
+
+    # Security email should still be delivered
+    res = client.post("/auth/email-verification/request", headers=headers)
+    assert res.status_code == 202
+    token = captured_token()
+    assert token
+
+    # Password reset challenge should also be delivered when notifications are disabled
+    res = client.post("/auth/password-reset/request", json={"email": "owner@example.com"})
+    assert res.status_code == 202
+    reset_token = captured_token()
+    assert reset_token != token
+
+    # When security email is explicitly disabled, no message is sent
+    monkeypatch.setattr(auth.settings, "SECURITY_EMAIL_DELIVERY_ENABLED", False)
+    TestEmailSender.clear()
+    res = client.post("/auth/password-reset/request", json={"email": "owner@example.com"})
+    assert res.status_code == 202
+    assert TestEmailSender.get_sent_messages() == []
