@@ -21,7 +21,7 @@ RATE_LIMIT_WINDOW_SECONDS = settings.RATE_LIMIT_WINDOW_SECONDS
 RATE_LIMIT_MAX_ATTEMPTS = settings.RATE_LIMIT_MAX_ATTEMPTS
 MAX_RATE_LIMIT_KEYS = 10_000
 
-MAX_BCRYPT_LENGTH = 72  # bcrypt ignores beyond 72B
+MAX_PASSWORD_LENGTH = 1024  # Pre-hashed with HMAC-SHA256 before bcrypt; supports up to 1024 chars
 
 
 _failed_attempts: OrderedDict[str, list[float]] = OrderedDict()

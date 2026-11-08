@@ -78,12 +78,12 @@ export function AccountRecovery({
                 <input
                   name="password"
                   type="password"
-                  minLength={12}
+                  minLength={8}
                   maxLength={1024}
                   autoComplete="new-password"
                   required
                 />
-                <small>Use at least 12 characters.</small>
+                <small>Use at least 8 characters.</small>
               </label>
             ) : (
               <p>Confirm that this is your email address.</p>

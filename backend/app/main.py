@@ -20,7 +20,7 @@ from app.api.insights import router as insights_router
 from app.api.transactions import router as transactions_router
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Any
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -111,12 +111,12 @@ app.include_router(financial_review_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=1024)
     full_name: Optional[str] = None
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=1024)
 
 
 class RegisterTokenResponse(BaseModel):

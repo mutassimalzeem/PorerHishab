@@ -17,7 +17,7 @@ def config(**kwargs):
 def production(**kwargs):
     values = dict(APP_ENV="production", CORS_ORIGINS=["https://finance.example"],
         SECRET_KEY="a" * 40, REFRESH_SECRET_KEY="b" * 40, PEPPER="c" * 40,
-        NOTIFICATION_DELIVERY_ENABLED=False)
+        NOTIFICATION_DELIVERY_ENABLED=False, SECURITY_EMAIL_DELIVERY_ENABLED=False)
     values.update(kwargs)
     return config(**values)
 
@@ -49,10 +49,19 @@ def test_production_requires_explicit_origins_and_secrets(monkeypatch):
         {"CORS_ORIGINS": []}, {"SECRET_KEY": "change-me"},
         {"PEPPER": ""}, {"REFRESH_SECRET_KEY": "a" * 40},
         {"DATABASE_URL": "sqlite://"}, {"NOTIFICATION_DELIVERY_ENABLED": True},
+        {"SECURITY_EMAIL_DELIVERY_ENABLED": True},
     ]:
         with pytest.raises(ValidationError):
             production(**overrides)
     assert production().APP_ENV == "production"
+    valid_smtp_security = production(
+        SECURITY_EMAIL_DELIVERY_ENABLED=True,
+        NOTIFICATION_DELIVERY_ENABLED=False,
+        EMAIL_BACKEND="smtp",
+        SMTP_HOST="smtp.example.com",
+    )
+    assert valid_smtp_security.SECURITY_EMAIL_DELIVERY_ENABLED is True
+    assert valid_smtp_security.NOTIFICATION_DELIVERY_ENABLED is False
 
 
 def test_json_environment_parser_and_invalid_syntax(monkeypatch):

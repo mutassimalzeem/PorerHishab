@@ -28,4 +28,35 @@ Optional live AI smoke tests are disabled by default. Do not point the test data
 
 ## Dependency audit boundary
 
-The production requirements were upgraded and audited independently. The optional legacy RAG environment still contains Chroma 1.5.9, for which pip-audit reports five entries representing four unique advisories with no patched version listed (PYSEC-2026-311, PYSEC-2026-3814, PYSEC-2026-3815, PYSEC-2026-3813). Chroma is absent from requirements.txt and the default production image; it is installed only by requirements-rag.txt and has no active HTTP retrieval caller. Do not treat the optional RAG stack as production-approved. Its remaining advisories require upstream remediation or a separate backend migration.
+## Post-Merge Follow-up Remediations
+
+The following follow-up gaps from PR #71 were resolved:
+
+1. **Unified Password Length Policy (Issue A)**:
+   - Synchronized password policies across frontend forms and backend validation.
+   - `Auth.tsx` allows passwords up to 1,024 characters (removing the old 72-character client cap).
+   - `AccountRecovery.tsx` aligns with registration minimum length (8 characters) and accepts up to 1,024 characters.
+   - Backend `RegisterIn`, `LoginIn`, and `PasswordReset` schemas authoritatively enforce lengths (`min_length=8` for register/reset, `min_length=1` for login, `max_length=1024` for all).
+   - HMAC-SHA256 pre-hashing transparently accommodates full-length passwords up to 1,024 bytes before bcrypt processing.
+
+2. **Decoupling Security Email Delivery from Financial Notifications (Issue B)**:
+   - Account verification and password recovery challenges are independent of optional financial notifications.
+   - Added `SECURITY_EMAIL_DELIVERY_ENABLED` configuration in `Settings` and production Compose.
+   - Password reset and email verification emails are transmitted whenever `SECURITY_EMAIL_DELIVERY_ENABLED=true`, regardless of `NOTIFICATION_DELIVERY_ENABLED`.
+   - Production deployment validation guarantees that if either notification delivery or security email delivery is enabled, an explicit non-local SMTP provider is configured.
+
+3. **Complete Multipart Boundary and Field Limit Enforcement (Issue C)**:
+   - `RequestBodyLimitMiddleware` registers `on_part_data` in the multipart parser callback mapping.
+   - Accurately distinguishes file parts (`Content-Disposition: form-data; ... filename=...`) from text fields.
+   - Non-file text field parts are capped at `MAX_FORM_FIELD_BYTES` (64 KiB), while legitimate file uploads up to the 5 MiB overall limit are permitted.
+   - Maximum multipart part counts (`MAX_FORM_PARTS = 128`) and header limits (`MAX_HEADERS = 32`, `MAX_HEADER_BYTES = 8192`) are enforced and tested.
+
+4. **Operational Limits for Request Buffering and Concurrent Uploads (Issue D)**:
+   - Configured Uvicorn operational flags `--limit-concurrency 50` and `--timeout-keep-alive 15` in `docker-compose.prod.yml` and `backend/Dockerfile`.
+   - Provided canonical reverse proxy template (`deploy/nginx/proxy.conf`) specifying `client_max_body_size 5M`, request timeouts (`client_body_timeout 15s`, `proxy_read_timeout 30s`), and per-IP connection limits (`limit_conn addr_limit 20`).
+   - Added regression test `backend/test_concurrent_uploads.py` verifying that memory under concurrent uploads scales predictably within bounded limits and is completely reclaimed after completion.
+
+5. **Explicit Rejection of Optional RAG Dependencies in Production (Issue E)**:
+   - The optional Chroma 1.5.9 environment carries 4 known unresolved advisories: `PYSEC-2026-311`, `PYSEC-2026-3814`, `PYSEC-2026-3815`, and `PYSEC-2026-3813`.
+   - These dependencies are strictly excluded from `backend/requirements.txt` and the production Docker image.
+   - Production configuration maintains `AI_EXTERNAL_ENABLED=false` and forbids enabling the unapproved RAG stack in production environments until dependency chains are remediated or replaced.

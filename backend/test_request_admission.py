@@ -51,3 +51,45 @@ def test_rejected_upload_never_creates_framework_tempfile(monkeypatch):
         raise AssertionError("Rejected upload must not reach spooling")
     monkeypatch.setattr("starlette.formparsers.SpooledTemporaryFile", forbidden)
     assert invoke([b"x" * 600, b"x" * 600], b"multipart/form-data; boundary=audit") == (413, [])
+
+
+def test_multipart_oversized_text_field_rejected():
+    # Individual form field exceeds MAX_FORM_FIELD_BYTES (64 KiB), even though body < limit (200 KiB)
+    body = (
+        b"--audit\r\n"
+        b'Content-Disposition: form-data; name="comment"\r\n\r\n'
+        + b"a" * (65 * 1024)
+        + b"\r\n--audit--\r\n"
+    )
+    status, forwarded = invoke([body], b"multipart/form-data; boundary=audit", limit=200000)
+    assert status == 413 and forwarded == []
+
+
+def test_multipart_file_exceeding_field_limit_allowed_under_body_limit():
+    # File parts with filename are permitted beyond 64 KiB up to max_body_bytes
+    file_content = b"date,amount\n" + b"2026-11-01,10.0\n" * 5000  # ~95 KiB
+    body = (
+        b"--audit\r\n"
+        b'Content-Disposition: form-data; name="file"; filename="tx.csv"\r\n'
+        b"Content-Type: text/csv\r\n\r\n"
+        + file_content
+        + b"\r\n--audit--\r\n"
+    )
+    status, forwarded = invoke([body], b"multipart/form-data; boundary=audit", limit=200000)
+    assert status == 204 and forwarded == [body]
+
+
+def test_multipart_excessive_parts_rejected():
+    # More than MAX_FORM_PARTS (128)
+    parts = [b'--audit\r\nContent-Disposition: form-data; name="p' + str(i).encode() + b'"\r\n\r\n1\r\n' for i in range(129)]
+    body = b"".join(parts) + b"--audit--\r\n"
+    status, forwarded = invoke([body], b"multipart/form-data; boundary=audit", limit=200000)
+    assert status == 413 and forwarded == []
+
+
+def test_multipart_excessive_headers_rejected():
+    # More than MAX_HEADERS (32) in a single part
+    headers = [b"X-Test-Header-" + str(i).encode() + b": value\r\n" for i in range(33)]
+    body = b"--audit\r\n" + b"".join(headers) + b"\r\ncontent\r\n--audit--\r\n"
+    status, forwarded = invoke([body], b"multipart/form-data; boundary=audit", limit=200000)
+    assert status == 413 and forwarded == []
