@@ -33,6 +33,7 @@ from app.repositories.transaction_repository import (
 from app.schemas.categorization import (
     CategorizedTransaction, LLMCategorization, UserPreferenceCategorization,
 )
+from app.services.categorization.budget import CategorizationBudget
 from app.services.categorization.categories import UNCATEGORIZED
 from app.services.categorization.llm import CategorizationLLMError
 from app.services.categorization.llm import categorize_with_llm
@@ -122,6 +123,7 @@ def categorize_transaction(
     user_id: int | None = None,
     allow_llm: bool = True,
     legacy_rules: bool = False,
+    budget: CategorizationBudget | None = None,
 ) -> CategorizedTransaction | UserPreferenceCategorization:
     """Categorize a single transaction.
 
@@ -172,7 +174,7 @@ def categorize_transaction(
     if not (merchant or normalized_merchant or description):
         return _fallback_result("No merchant or description text available.")
 
-    if not allow_llm:
+    if not allow_llm or (budget is not None and not budget.can_call()):
         return _fallback_result("Optional classification limit reached; review the category manually.")
 
     # 3. LLM
@@ -182,6 +184,7 @@ def categorize_transaction(
             normalized_merchant=normalized_merchant,
             description=description,
             amount=amount,
+            budget=budget,
         )
         return _result_from_llm(result)
     except (CategorizationLLMError, ValidationError) as exc:

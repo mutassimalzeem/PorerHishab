@@ -13,6 +13,7 @@ from app.schemas.coach import (
     CoachPurchaseRequest, CoachPurchaseResponse, CategorizeBatchRequest, CategorizeBatchResponse,
 )
 from app.services.finance.coach import today_dhaka, recommendations, nudges, goal_plan, coach_cashflow, coach_purchase
+from app.services.categorization.budget import CategorizationBudget
 from app.services.categorization.service import categorize_transaction
 
 router = APIRouter(tags=["coach"])
@@ -123,14 +124,18 @@ def categorize_batch(payload: CategorizeBatchRequest, current: User = Depends(ge
     if len(rows) != len(payload.transaction_ids):
         raise HTTPException(404, "One or more transactions were not found")
     items = []
-    llm_budget = 5
+    budget = CategorizationBudget()
     for row in rows:
         # A non-placeholder existing category may have been supplied by a user/importer.
         preserved = bool(row.category and row.category not in {"Other", "Uncategorized"}) or row.category_method in {"user", "manual", "user_preference"}
         if not preserved:
-            result = categorize_transaction(row, db=db, user_id=current.id, allow_llm=llm_budget > 0)
-            if result.method in {"llm", "fallback"}:
-                llm_budget -= 1
+            result = categorize_transaction(
+                row,
+                db=db,
+                user_id=current.id,
+                allow_llm=budget.can_call(),
+                budget=budget,
+            )
             row.category = result.category
             row.category_confidence = result.confidence
             row.category_method = result.method

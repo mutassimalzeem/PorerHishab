@@ -139,6 +139,11 @@ def unsupported_financial_text(text: str, evidence: list[CoachEvidence], as_of: 
     membership is checked by the caller; the evidence contract cannot authenticate
     source names, tenant ownership or upstream calculations on its own.
     """
+    from app.services.finance.financial_coach_validator import contains_unverified_spelled_money
+
+    if contains_unverified_spelled_money(text):
+        return True
+
     facts = financial_facts(evidence)
     text = text.translate(DIGITS)
     clauses = re.split(r"(?<![0-9])[.;!?।]|[;!?।]|\n|\band\b|\bwhile\b|,(?![0-9])|(?<![0-9]),", text, flags=re.I)

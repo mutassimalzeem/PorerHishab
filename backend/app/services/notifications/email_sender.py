@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from email.message import EmailMessage as PyEmailMessage
 import smtplib
 import socket
+import ssl
 
 from app.core.config import settings
 
@@ -113,11 +114,18 @@ class SmtpEmailSender(EmailSender):
 
         try:
             with smtplib.SMTP(self.host, self.port, timeout=self.timeout) as server:
+
                 if self.use_tls:
-                    server.starttls()
+                    server.starttls(context = ssl.create_default_context())
+
+
                 if self.username and self.password:
                     server.login(self.username, self.password)
+
+
                 refused = server.send_message(msg)
+
+
                 if refused:
                     codes = [value[0] for value in refused.values()]
                     transient = all(400 <= code < 500 for code in codes)

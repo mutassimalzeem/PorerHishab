@@ -51,4 +51,6 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
+    if data.get("ver", 0) != user.token_version:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     return user

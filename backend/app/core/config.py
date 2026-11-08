@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
@@ -7,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> backend/app/core -> backend/app -> backend -> <repo root>
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ENV_FILE = REPO_ROOT / ".env"
+ENV_FILE = None if os.getenv("APP_ENV") == "test" else REPO_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -19,6 +20,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     REFRESH_SECRET_KEY: str = ""
     PEPPER: str = ""
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+
+    RATE_LIMIT_WINDOW_SECONDS: int = 300
+    RATE_LIMIT_MAX_ATTEMPTS: int = 5
 
     @model_validator(mode="after")
     def validate_deployment(self):
@@ -98,7 +105,7 @@ class Settings(BaseSettings):
     NOTIFICATION_MAX_RETRIES: int = 3
     NOTIFICATION_RETRY_BACKOFF_SECONDS: list[int] = [60, 300, 900]
 
-    model_config = SettingsConfigDict(env_file=str(ENV_FILE),
+    model_config = SettingsConfigDict(env_file=ENV_FILE,
                                       env_file_encoding="utf-8",
                                       extra="ignore", hide_input_in_errors=True)
 

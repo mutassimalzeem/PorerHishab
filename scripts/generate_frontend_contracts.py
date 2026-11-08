@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'backend'))
 # Schema inspection must never require a configured development database.
-os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
+os.environ['APP_ENV'] = 'test'
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 from app.main import app
 
 def literal(value):

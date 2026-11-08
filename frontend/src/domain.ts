@@ -5,6 +5,7 @@ export interface User {
   id: number;
   email: string;
   full_name: string | null;
+  email_verified?: boolean;
 }
 
 export type Tokens = ApiSchemas["RegisterTokenResponse"] & {

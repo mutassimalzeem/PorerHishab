@@ -56,7 +56,7 @@ The AI-13 engine is internal Python, not a public `/intelligence` HTTP endpoint.
 
 - No reconciled current balance or bank/MFS connection: balances must be supplied explicitly for scenarios. Dashboard net activity is never a balance.
 - No persisted user-editable contribution schedule endpoint: required goal contributions come from the backend. Users can update reported savings, target/name/date edits and contribution-plan persistence are future UI work; no pretend save control exists.
-- No profile editing, password reset, session revocation, UI locale or preference-write endpoint. Settings communicates current capabilities.
+- No profile editing or explicit session-revocation endpoint. Mailbox verification and password recovery are available; see security-remediation.md for the rollout and legacy-account recovery requirements.
 - No insight dismissal persistence endpoint: hide/restore is explicitly scoped to this visit.
 - No broad Bangla question parsing in grounded chat: typography/content are Bangla-ready; Ask clearly states English-question support.
 - Scheduled status changes do not create actual transactions. Users must record actual payments separately.

@@ -50,6 +50,50 @@ EXECUTED_ACTION_PATTERN = re.compile(
 # Bengali numeral mapping
 BENGALI_DIGITS = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
 
+NUMBER_WORDS = (
+    r"zero|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|"
+    r"seventeen|eighteen|nineteen|twenty|thirty|forty|"
+    r"fifty|sixty|seventy|eighty|ninety|hundred|thousand|"
+    r"lakh|lac|million|crore"
+)
+SPELLED_MONEY_PATTERN = re.compile(
+    rf"\b(?:{NUMBER_WORDS})(?:[\s-]+(?:{NUMBER_WORDS}))*"
+    rf"\s+(?:taka|bdt|tk|টাকা)\b",
+    re.IGNORECASE,
+)
+
+
+def contains_unverified_spelled_money(text: str) -> bool:
+    if not text:
+        return False
+    if SPELLED_MONEY_PATTERN.search(text):
+        return True
+    words = rf"(?:{NUMBER_WORDS}|nil|শূন্য|এক|দুই|তিন|চার|পাঁচ|ছয়|ছয়|সাত|আট|নয়|নয়|দশ|বিশ|হাজার|লাখ|কোটি)"
+    prefix = rf"(?:৳|\b(?:bdt|taka|tk)|টাকা)\s*[:=]?\s*{words}(?!\w)"
+    implicit = (
+        rf"(?:cash|balance|income|expenses?|spending|savings|reserve|fund|capacity)"
+        rf"\s+(?:is|are|equals?|of|at|:)\s+{words}(?!\w)"
+    )
+    bengali = rf"{words}[\u0980-\u09ff\s-]*\s+টাকা"
+    if re.search(prefix + "|" + implicit + "|" + bengali, text, re.I):
+        return True
+    # Adverbs and intervening prose must not turn an asserted word amount into
+    # an unvalidated claim. Ordinary counts remain nonmonetary.
+    assertion = (
+        r"\b(?:cash|balance|income|expenses?|spending|savings|reserve|fund|capacity)\b"
+        r"|নগদ|ব্যালান্স|সঞ্চয়|সঞ্চয়|আয়|আয়|ব্যয়|ব্যয়|খরচ|তহবিল"
+    )
+    count_unit = r"\s+(?:transactions?|accounts?|days?|weeks?|months?|years?|goals?|categories?|steps?|ways?)\b"
+    for clause in re.split(r"[.;!?।\n]", text):
+        if not re.search(assertion, clause, re.I):
+            continue
+        for number in re.finditer(rf"(?<!\w){words}(?!\w)", clause, re.I):
+            if not re.match(count_unit, clause[number.end():], re.I):
+                return True
+    return False
+
+
 # Regex to detect explicit BDT / currency amounts without mistaking ordinary numbers
 # (e.g. dates like 2026, counts like 12 transactions, percentages like 15%, durations like 3 months)
 CURRENCY_NUMBER_PATTERN = re.compile(
@@ -297,17 +341,45 @@ class FinancialCoachValidator:
 
         # Semantic checks use only the evidence referenced by each item.
         for claim in list(resp.claims):
+            if contains_unverified_spelled_money(claim.text):
+                resp.claims.remove(claim)
+                report.dropped_claims_count += 1
+                issues.append(
+                    f"Claim '{claim.claim_id}' contains a spelled-out monetary amount "
+                    f"that cannot be independently verified."
+                )
+                continue
             relevant = [ev for ev in self.package.evidence if ev.evidence_id in claim.evidence_ids]
             if unsupported_financial_text(claim.text, relevant, self.package.as_of_date):
                 resp.claims.remove(claim)
                 report.dropped_claims_count += 1
                 issues.append(f"Claim '{claim.claim_id}' has unsupported financial meaning.")
         for action in list(resp.actions):
+            action_text = f"{action.title} {action.description}"
+            if contains_unverified_spelled_money(action_text):
+                resp.actions.remove(action)
+                report.dropped_actions_count += 1
+                issues.append(
+                    f"Action '{action.action_id}' contains a spelled-out monetary amount "
+                    f"that cannot be independently verified."
+                )
+                continue
             relevant = [ev for ev in self.package.evidence if ev.evidence_id in action.evidence_ids]
-            if unsupported_financial_text(action.title + " " + action.description, relevant, self.package.as_of_date):
+            if unsupported_financial_text(action_text, relevant, self.package.as_of_date):
                 resp.actions.remove(action)
                 report.dropped_actions_count += 1
                 issues.append(f"Action '{action.action_id}' has unsupported financial meaning.")
+        if contains_unverified_spelled_money(resp.answer):
+            fallback = self._safe_fallback(response)
+            fallback.conversation_id = response.conversation_id
+            return fallback, ValidationReport(
+                is_valid=False,
+                repaired=True,
+                issues=[
+                    "Answer contains a spelled-out monetary amount "
+                    "that cannot be independently verified."
+                ],
+            )
         if unsupported_financial_text(resp.answer, self.package.evidence, self.package.as_of_date):
             return self._safe_fallback(resp), ValidationReport(
                 is_valid=False, repaired=True,
@@ -315,10 +387,18 @@ class FinancialCoachValidator:
                 dropped_claims_count=report.dropped_claims_count,
                 dropped_actions_count=report.dropped_actions_count,
             )
-        if resp.summary and unsupported_financial_text(resp.summary, self.package.evidence, self.package.as_of_date):
-            resp.summary = None
-            report.repaired = True
-            issues.append("Summary has unsupported financial meaning.")
+        if resp.summary:
+            if contains_unverified_spelled_money(resp.summary):
+                issues.append(
+                    "Summary contains a spelled-out monetary amount "
+                    "that cannot be independently verified."
+                )
+                resp.summary = None
+                report.repaired = True
+            elif unsupported_financial_text(resp.summary, self.package.evidence, self.package.as_of_date):
+                resp.summary = None
+                report.repaired = True
+                issues.append("Summary has unsupported financial meaning.")
         if response.claims and not resp.claims:
             return self._safe_fallback(resp), ValidationReport(
                 is_valid=False, repaired=True, issues=issues,
@@ -327,6 +407,17 @@ class FinancialCoachValidator:
             )
 
         # 4. Numerical grounding for explicit BDT amounts in answer
+        if contains_unverified_spelled_money(resp.answer):
+            fallback = self._safe_fallback(response)
+            fallback.conversation_id = response.conversation_id
+            return fallback, ValidationReport(
+                is_valid=False,
+                repaired=True,
+                issues=[
+                    "Answer contains a spelled-out monetary amount "
+                    "that cannot be independently verified."
+                ],
+            )
         answer_amounts = _extract_text_amounts(resp.answer)
         for amt in answer_amounts:
             matched = any(
@@ -402,7 +493,16 @@ class FinancialCoachValidator:
                 report.dropped_claims_count += 1
                 continue
 
-            # Check 6e: Numerical grounding against RELEVANT evidence referenced by this claim
+            # Check 6e: Spelled-out monetary amount that cannot be independently verified
+            if contains_unverified_spelled_money(claim_copy.text):
+                issues.append(
+                    f"Claim '{claim_copy.claim_id}' contains a spelled-out monetary amount "
+                    f"that cannot be independently verified."
+                )
+                report.dropped_claims_count += 1
+                continue
+
+            # Check 6f: Numerical grounding against RELEVANT evidence referenced by this claim
             claim_amounts = _extract_text_amounts(claim_copy.text)
             relevant_numbers: set[Decimal] = set()
             for eid in claim_copy.evidence_ids:
@@ -445,6 +545,14 @@ class FinancialCoachValidator:
 
             # Check 7b: Extract any explicit BDT amounts in title or description
             action_text = f"{action_copy.title} {action_copy.description}"
+            if contains_unverified_spelled_money(action_text):
+                issues.append(
+                    f"Action '{action_copy.action_id}' contains a spelled-out monetary amount "
+                    f"that cannot be independently verified."
+                )
+                report.dropped_actions_count += 1
+                continue
+
             action_amounts = _extract_text_amounts(action_text)
 
             # Case A: Action has evidence references

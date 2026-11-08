@@ -5,6 +5,7 @@ import io
 from app.core.database import get_db
 from app.core.config import settings
 from app.api.health import router as health_router
+from app.api.email_verification import router as email_verification_router
 from app.api.auth import (
     create_access_token,
     create_refresh_token,
@@ -23,6 +24,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Any
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 
 from app.api.coaching import router as coaching_router
@@ -53,6 +55,11 @@ from app.repositories.transaction_repository import (
     search_transactions,
 )
 
+
+from app.middleware.request_size_limit import RequestBodyLimitMiddleware
+
+
+
 app = FastAPI(
     title="PorerHishab API",
     description=(
@@ -62,7 +69,10 @@ app = FastAPI(
     ),
 )
 
+app.add_middleware(RequestBodyLimitMiddleware, max_body_bytes= 5 * 1024 * 1024)
+
 app.include_router(health_router)
+app.include_router(email_verification_router)
 app.include_router(insights_router)
 app.include_router(transactions_router)
 app.include_router(chat_router)
@@ -161,7 +171,7 @@ def register(payload: RegisterIn,
         db.refresh(user)
 
 
-        access_token = create_access_token({"sub": user.email, "user_id": user.id})
+        access_token = create_access_token({"sub": user.email, "user_id": user.id, "ver": user.token_version})
         return {'access_token': access_token, "token_type": 'bearer'}
 
     finally:
@@ -176,16 +186,13 @@ def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
         rate_limit_guard(key)
 
         user = db.query(User).filter(User.email == str(payload.email)).first()
-        if not user or not user.hashed_password:
+
+        if not user or not verify_password(payload.password, user.hashed_password):
             record_failed_attempt(key)
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        if not verify_password(payload.password, user.hashed_password):
-            record_failed_attempt(key)
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-
-        access = create_access_token({"sub": user.email, "user_id": user.id})
-        refresh = create_refresh_token({"sub": user.email, "user_id": user.id})
+        access = create_access_token({"sub": user.email, "user_id": user.id, "ver": user.token_version})
+        refresh = create_refresh_token({"sub": user.email, "user_id": user.id, "ver": user.token_version})
         return {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
     finally:
         db.close()
@@ -225,12 +232,15 @@ def search(
 
 
 @app.post("/refresh", response_model=RefreshTokenResponse)
-def refresh_token(refresh_token: str = Form(...)):
+def refresh_token(refresh_token: str = Form(...), db: Session = Depends(get_db)):
     try:
         data = decode_refresh_token(refresh_token)
         user_id = data.get("user_id")
         email = data.get("sub")
-        new_access = create_access_token({"sub": email, "user_id": user_id})
+        user = db.query(User).filter(User.id == user_id, User.email == email).first()
+        if user is None or data.get("ver", 0) != user.token_version:
+            raise HTTPException(401, "Invalid or expired refresh token")
+        new_access = create_access_token({"sub": email, "user_id": user_id, "ver": user.token_version})
         return {"access_token": new_access, "token_type": "bearer"}
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
@@ -268,21 +278,34 @@ def get_summary(current: User = Depends(get_current_user), db: Session = Depends
 
 
 
+MAX_CSV_BYTES = 5 * 1024 * 1024
+MAX_CSV_ROWS = 10_000
+
 @app.post("/upload-csv", response_model=CSVUploadResponse)
 async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are accepted")
 
     try:
-        raw = await file.read()
+        raw = await file.read(MAX_CSV_BYTES + 1)
+
+        if len(raw) > MAX_CSV_BYTES:
+            raise HTTPException(status_code= 413, detail = "CSV file exceeds the 5 MiB upload limit.")
 
         # 1) Read as "object" to avoid Pandas extension dtypes that carry <NA>
-        df = pd.read_csv(
+        df = await run_in_threadpool(
+            pd.read_csv,
             io.BytesIO(raw),
-            dtype=object,           # <- objects, not StringDtype
-            keep_default_na=True,   # OK to parse NA/NaN initially
-            na_filter=True
-        )
+            dtype=object,
+            keep_default_na=True,
+            na_filter=True,
+            nrows=MAX_CSV_ROWS + 1)
+
+        if len(df) > MAX_CSV_ROWS:
+            raise HTTPException(
+                status_code=413,
+                detail=f"CSV exceeds the {MAX_CSV_ROWS}-row limit.",
+            )
 
         # 2) Convert ALL NA-ish to None, and ensure python objects
         df = df.astype(object).where(pd.notnull(df), None)
@@ -298,7 +321,8 @@ async def upload_csv(file: UploadFile = File(...), current: User = Depends(get_c
 
         # Persistence returns its actual committed/refreshed records. Counts,
         # preview and Decimal totals are all derived from that same result.
-        result = save_transactions(df, user_id=current.id, detailed=True)
+        result = await run_in_threadpool(save_transactions, df, current.id, detailed = True)
+
         amounts = [row.amount for row in result.transactions]
         total_income = sum((value for value in amounts if value > 0), Decimal("0.00"))
         total_expenses = sum((value for value in amounts if value < 0), Decimal("0.00"))
@@ -374,7 +398,7 @@ def categories_summary(current: User = Depends(get_current_user), db: Session = 
 
 @app.get("/me")
 def read_me(current: User = Depends(get_current_user)):
-    return {"id": current.id, "email": current.email, "full_name": current.full_name}
+    return {"id": current.id, "email": current.email, "full_name": current.full_name, "email_verified": current.email_verified}
 
 
 @app.get("/transactions/me")

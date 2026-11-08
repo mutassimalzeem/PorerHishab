@@ -376,6 +376,7 @@ def test_batch_provider_budget_and_safe_failure_reasons(data, monkeypatch, caplo
     db.commit()
     calls = []
     def fail(**kwargs):
+        assert kwargs["budget"].consume()
         calls.append(kwargs)
         raise service.CategorizationLLMError("SECRET TOKEN AND PROMPT")
     monkeypatch.setattr(service, "categorize_with_llm", fail)

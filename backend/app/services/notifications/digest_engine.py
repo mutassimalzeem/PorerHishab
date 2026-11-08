@@ -174,7 +174,9 @@ def generate_daily_digest_for_user(
     # Serialize the existing-digest check and alert eligibility read. Otherwise
     # a concurrent commit can make alerts disappear between the two reads and
     # incorrectly return skipped_no_alerts instead of the persisted digest.
-    db.query(User).filter(User.id == user_id).with_for_update().one()
+    owner = db.query(User).filter(User.id == user_id).with_for_update().one()
+    if not owner.email_verified:
+        return None, "skipped_unverified_email"
     pref = get_or_create_user_preferences(db, user_id)
     now = now_utc or datetime.now(timezone.utc)
 
@@ -306,4 +308,3 @@ def generate_daily_digests(
                 generated.append(digest)
 
     return generated
-

@@ -21,6 +21,18 @@ class User(Base):
         index=True,
     )
 
+    email_verified: Mapped[bool] = mapped_column(
+        default = False,
+        nullable=False
+    )
+
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable= True
+    )
+
+    token_version: Mapped[int] = mapped_column(default=0, nullable=False)
+
     hashed_password: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -33,7 +45,7 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 

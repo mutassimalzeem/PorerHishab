@@ -8,10 +8,19 @@ import pandas as pd
 from app.core.database import SessionLocal
 from app.models.transactions import Transaction
 from app.repositories.transaction_repository import create_transactions
+from app.services.categorization.budget import (
+    CategorizationBudget,
+    DEFAULT_CATEGORIZATION_BUDGET,
+)
 from app.services.categorization.service import categorize_transaction
 
 
 REQUIRED_COLUMNS = {"date", "amount"}
+
+MAX_CSV_ROWS = 10_000
+MAX_CSV_COLUMNS = 30
+MAX_CSV_ERRORS = 100
+CSV_LLM_BUDGET = DEFAULT_CATEGORIZATION_BUDGET
 
 
 def normalize_transactions(
@@ -22,6 +31,12 @@ def normalize_transactions(
     """
     normalized = df.copy()
 
+    if len(normalized) > MAX_CSV_ROWS:
+        raise ValueError(f"CSV exceed the maximum of {MAX_CSV_ROWS} rows.")
+
+    if len(normalized.columns) > MAX_CSV_COLUMNS:
+        raise ValueError(f"CSV exceeds the maximum of {MAX_CSV_COLUMNS} columns.")
+
     missing = REQUIRED_COLUMNS - set(normalized.columns)
     if missing:
         raise ValueError(
@@ -31,13 +46,27 @@ def normalize_transactions(
     # CSV dates must be ISO calendar dates; never guess day/month ordering.
     normalized["date"] = normalized["date"].apply(_parse_date)
     normalized["amount"] = normalized["amount"].apply(_parse_amount)
+
     if errors is not None:
         for row_number, (_, row) in enumerate(normalized.iterrows(), start=2):
+            if len(errors) >= MAX_CSV_ERRORS:
+                break
+
             for field in ("date", "amount"):
                 if pd.isna(row[field]):
-                    errors.append({"row": row_number, "field": field,
-                                   "message": ("Invalid or missing date: use YYYY-MM-DD (1900 or later)" if field == "date" else
-                                               "Invalid or missing amount: use whole cents, at most 12 integer digits, and valid comma grouping.")})
+                    if len(errors) >= MAX_CSV_ERRORS:
+                        break
+
+                    errors.append({
+                        "row": row_number,
+                        "field": field,
+                        "message": (
+                            "Invalid or missing date: use YYYY-MM-DD (1900 or later)."
+                            if field == "date"
+                            else "Invalid or missing amount."
+                        ),
+                    })
+
     normalized = normalized.dropna(subset=["date", "amount"])
 
     for column in ["description", "merchant", "normalized_merchant", "category"]:
@@ -67,10 +96,17 @@ def normalize_transactions(
     return normalized
 
 
-def categorize_transactions(df: pd.DataFrame, *, user_id=None, db=None) -> pd.DataFrame:
+def categorize_transactions(
+    df: pd.DataFrame,
+    *,
+    user_id=None,
+    db=None,
+    budget: CategorizationBudget | None = None,
+    llm_budget: int | None = None,
+) -> pd.DataFrame:
     """
     Fill missing transaction categories using the existing
-    rule-based categorizer.
+    rule-based categorizer and LLM fallback up to the categorization budget.
 
     When ``user_id`` and ``db`` are provided, per-user merchant
     preferences are checked before rules.
@@ -82,6 +118,12 @@ def categorize_transactions(df: pd.DataFrame, *, user_id=None, db=None) -> pd.Da
     for column in ("category_confidence", "category_method", "category_reason"):
         if column not in result.columns:
             result[column] = None
+
+    if budget is None:
+        if llm_budget is not None:
+            budget = CategorizationBudget(max_calls=max(0, llm_budget))
+        else:
+            budget = CategorizationBudget()
 
     for index, row in result.iterrows():
         if row["category"]:
@@ -96,6 +138,8 @@ def categorize_transactions(df: pd.DataFrame, *, user_id=None, db=None) -> pd.Da
             },
             db=db,
             user_id=user_id,
+            allow_llm=budget.can_call(),
+            budget=budget,
         )
 
         result.at[index, "category"] = categorized.category
@@ -145,7 +189,13 @@ def save_transactions(
     db = SessionLocal()
 
     try:
-        normalized = categorize_transactions(normalized, user_id=user_id, db=db)
+        budget = CategorizationBudget()
+        normalized = categorize_transactions(
+            normalized,
+            user_id=user_id,
+            db=db,
+            budget=budget,
+        )
 
         transactions = [
             Transaction(

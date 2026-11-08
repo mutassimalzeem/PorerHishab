@@ -66,7 +66,7 @@ def get_notification_health_metrics(db: Session) -> dict[str, int | float | None
     )
     oldest_pending_age_seconds: float | None = None
     if oldest_pending and oldest_pending[0]:
-        oldest_pending_age_seconds = (now - oldest_pending[0]).total_seconds()
+        oldest_pending_age_seconds = (now - oldest_pending[0].replace(tzinfo=oldest_pending[0].tzinfo or timezone.utc)).total_seconds()
 
     return {
         "pending_deliveries": pending_deliveries,
@@ -78,4 +78,3 @@ def get_notification_health_metrics(db: Session) -> dict[str, int | float | None
         "failed_digests": failed_digests,
         "oldest_pending_delivery_age_seconds": oldest_pending_age_seconds,
     }
-

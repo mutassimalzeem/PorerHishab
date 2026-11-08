@@ -262,6 +262,9 @@ def _prepare_message(db: Session, delivery: NotificationDelivery, now: datetime)
     from app.services.notifications.email_content import build_privacy_safe_digest_email
 
     pref = get_or_create_user_preferences(db, delivery.user_id)
+    owner = db.get(User, delivery.user_id)
+    if delivery.channel == "email" and (owner is None or not owner.email_verified):
+        return None, "SUPPRESSED", "email_not_verified", None
     if delivery.digest_id is not None:
         digest = db.query(NotificationDigest).filter_by(
             id=delivery.digest_id, user_id=delivery.user_id).first()
@@ -299,7 +302,7 @@ def _prepare_message(db: Session, delivery: NotificationDelivery, now: datetime)
     if alert.status != "active":
         return None, "SUPPRESSED", "permanent", None
     eligibility = evaluate_eligibility(
-        pref, channel=delivery.channel, alert_severity=alert.severity,
+        pref, user=owner, channel=delivery.channel, alert_severity=alert.severity,
         notification_event=delivery.notification_event, now_utc=now)
     if not eligibility.is_eligible:
         if eligibility.reason == EligibilityReason.QUIET_HOURS:
@@ -353,7 +356,7 @@ def process_single_delivery(db: Session, delivery: NotificationDelivery) -> bool
         NotificationDelivery.lease_expires_at > now,
     ).with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
     now = datetime.now(timezone.utc)
-    if current is None or current.lease_expires_at <= now:
+    if current is None or current.lease_expires_at.replace(tzinfo=current.lease_expires_at.tzinfo or timezone.utc) <= now:
         db.rollback()
         return False
     if result is not None:

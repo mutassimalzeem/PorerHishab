@@ -26,7 +26,7 @@ from backend.test_obligation_reconciliation import store  # noqa: F401
 def delivery(store):
     factory, _ = store
     with factory() as db:
-        user = User(email=uuid4().hex + "@example.com", hashed_password="test")
+        user = User(email=uuid4().hex + "@example.com", hashed_password="test", email_verified=True)
         db.add(user); db.flush()
         alert = FinancialAlert(user_id=user.id, alert_key=uuid4().hex,
             alert_type="cash_shortfall", severity="critical", title="Private title",
@@ -172,7 +172,7 @@ def test_owner_scoped_status_and_private_claim(delivery):
     app.dependency_overrides[get_db] = get_test_db
     try:
         with TestClient(app) as client, factory() as db:
-            other = User(email=uuid4().hex + "@example.com", hashed_password="test")
+            other = User(email=uuid4().hex + "@example.com", hashed_password="test", email_verified=True)
             db.add(other); db.commit()
             def headers(user):
                 return {"Authorization": "Bearer " + create_access_token({"sub": user.email, "user_id": user.id})}

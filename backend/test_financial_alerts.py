@@ -775,6 +775,7 @@ def test_foreign_currency_account_excluded_from_bdt_alerts():
         db.close()
 
 
+@pytest.mark.skipif(SessionLocal.kw["bind"].dialect.name != "postgresql", reason="PostgreSQL concurrency semantics required")
 def test_concurrent_evaluation_safety():
     """Concurrent evaluations for the same user succeed cleanly without duplicate key violations."""
     from concurrent.futures import ThreadPoolExecutor

@@ -184,3 +184,67 @@ def test_custom_user_categories_do_not_weaken_system_validation():
     for invalid in (" ", "x" * 101):
         with pytest.raises(ValidationError):
             UserPreferenceCategorization(category=invalid)
+
+
+def test_categorization_budget_unit():
+    from app.services.categorization.budget import CategorizationBudget
+
+    budget = CategorizationBudget(max_calls=2)
+    assert budget.remaining == 2
+    assert budget.can_call() is True
+
+    assert budget.consume() is True
+    assert budget.remaining == 1
+    assert budget.calls_used == 1
+    assert budget.can_call() is True
+
+    assert budget.consume() is True
+    assert budget.remaining == 0
+    assert budget.calls_used == 2
+    assert budget.can_call() is False
+
+    assert budget.consume() is False
+    assert budget.remaining == 0
+    assert budget.calls_used == 2
+
+
+def test_categorize_with_llm_consumes_budget_at_provider_boundary(monkeypatch):
+    from unittest.mock import MagicMock
+    from app.core.config import settings
+    from app.services.categorization.budget import CategorizationBudget
+    import app.services.categorization.llm as llm_module
+
+    monkeypatch.setattr(settings, "AI_EXTERNAL_ENABLED", True)
+
+    provider_calls = 0
+
+    class MockChat:
+        def invoke(self, messages):
+            nonlocal provider_calls
+            provider_calls += 1
+            mock_res = MagicMock()
+            mock_res.content = '{"category": "Other", "confidence": 0.5, "reason": "Test"}'
+            return mock_res
+
+    monkeypatch.setattr(llm_module, "get_chat_model", lambda: MockChat())
+
+    budget = CategorizationBudget(max_calls=1)
+    res = llm_module.categorize_with_llm(
+        merchant="Unknown Store",
+        description="Random charge",
+        budget=budget,
+    )
+    assert res.category == "Other"
+    assert provider_calls == 1
+    assert budget.calls_used == 1
+    assert budget.remaining == 0
+
+    # Second call with exhausted budget should raise CategorizationLLMError without calling provider
+    import pytest
+    with pytest.raises(llm_module.CategorizationLLMError):
+        llm_module.categorize_with_llm(
+            merchant="Unknown Store 2",
+            description="Random charge 2",
+            budget=budget,
+        )
+    assert provider_calls == 1  # provider was not invoked again

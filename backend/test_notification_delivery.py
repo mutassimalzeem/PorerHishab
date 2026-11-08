@@ -4,6 +4,7 @@ from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
+from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
@@ -52,6 +53,7 @@ def make_user(db: SessionLocal, email: str | None = None) -> User:
     user = User(
         email=email or f"notif-user-{uuid4()}@example.com",
         hashed_password="test-password",
+        email_verified=True,
         full_name="Notification Test User",
     )
     db.add(user)
@@ -104,7 +106,7 @@ def test_eligibility_channel_disabled():
     pref = NotificationPreference(user_id=1, in_app_enabled=False, email_enabled=False)
 
     in_app_res = evaluate_eligibility(
-        pref, channel="in_app", alert_severity="critical", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="in_app", alert_severity="critical", notification_event="ALERT_CREATED"
     )
     assert in_app_res.is_eligible is False
     assert in_app_res.reason == EligibilityReason.DISABLED
@@ -112,7 +114,7 @@ def test_eligibility_channel_disabled():
     # If email consent is given but channel disabled -> DISABLED
     pref.email_consent = True
     email_res = evaluate_eligibility(
-        pref, channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
     )
     assert email_res.is_eligible is False
     assert email_res.reason == EligibilityReason.DISABLED
@@ -123,7 +125,7 @@ def test_eligibility_email_consent_required():
     pref = NotificationPreference(user_id=1, email_enabled=True, email_consent=False)
 
     res = evaluate_eligibility(
-        pref, channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
     )
     assert res.is_eligible is False
     assert res.reason == EligibilityReason.NO_CONSENT
@@ -142,33 +144,33 @@ def test_eligibility_severity_thresholds():
 
     # Info alert with warning minimum email threshold
     res_info = evaluate_eligibility(
-        pref, channel="email", alert_severity="info", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="info", notification_event="ALERT_CREATED"
     )
     assert res_info.is_eligible is False
     assert res_info.reason == EligibilityReason.BELOW_SEVERITY_THRESHOLD
 
     # Low alert with warning minimum email threshold
     res_low = evaluate_eligibility(
-        pref, channel="email", alert_severity="low", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="low", notification_event="ALERT_CREATED"
     )
     assert res_low.is_eligible is False
     assert res_low.reason == EligibilityReason.BELOW_SEVERITY_THRESHOLD
 
     # Medium/Warning alert with warning minimum email threshold
     res_med = evaluate_eligibility(
-        pref, channel="email", alert_severity="medium", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="medium", notification_event="ALERT_CREATED"
     )
     assert res_med.is_eligible is True
 
     # High alert with warning minimum email threshold
     res_high = evaluate_eligibility(
-        pref, channel="email", alert_severity="high", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="high", notification_event="ALERT_CREATED"
     )
     assert res_high.is_eligible is True
 
     # In-app with critical threshold: warning is below critical
     res_in_app = evaluate_eligibility(
-        pref, channel="in_app", alert_severity="warning", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="in_app", alert_severity="warning", notification_event="ALERT_CREATED"
     )
     assert res_in_app.is_eligible is False
     assert res_in_app.reason == EligibilityReason.BELOW_SEVERITY_THRESHOLD
@@ -184,14 +186,14 @@ def test_eligibility_frequency_modes():
         frequency_mode="off",
     )
     res_off = evaluate_eligibility(
-        pref, channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
     )
     assert res_off.is_eligible is False
     assert res_off.reason == EligibilityReason.FREQUENCY_SUPPRESSED
 
     pref.frequency_mode = "daily_digest"
     res_digest = evaluate_eligibility(
-        pref, channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="critical", notification_event="ALERT_CREATED"
     )
     assert res_digest.is_eligible is False
     assert res_digest.reason == EligibilityReason.FREQUENCY_SUPPRESSED
@@ -214,7 +216,7 @@ def test_eligibility_quiet_hours_overnight_window():
     # 1. At 23:30 Dhaka time (17:30 UTC): within quiet hours
     dt_2330 = datetime(2026, 11, 1, 17, 30, tzinfo=timezone.utc)
     res_warning = evaluate_eligibility(
-        pref, channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_2330
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_2330
     )
     assert res_warning.is_eligible is False
     assert res_warning.reason == EligibilityReason.QUIET_HOURS
@@ -225,7 +227,7 @@ def test_eligibility_quiet_hours_overnight_window():
 
     # 2. CRITICAL alert at 23:30 Dhaka time must bypass quiet hours
     res_critical = evaluate_eligibility(
-        pref, channel="email", alert_severity="critical", notification_event="ALERT_CREATED", now_utc=dt_2330
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="critical", notification_event="ALERT_CREATED", now_utc=dt_2330
     )
     assert res_critical.is_eligible is True
     assert res_critical.reason == EligibilityReason.ELIGIBLE
@@ -233,7 +235,7 @@ def test_eligibility_quiet_hours_overnight_window():
     # 3. At 03:00 Dhaka time (21:00 UTC prev day): within overnight quiet hours
     dt_0300 = datetime(2026, 11, 1, 21, 0, tzinfo=timezone.utc)
     res_0300 = evaluate_eligibility(
-        pref, channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_0300
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_0300
     )
     assert res_0300.is_eligible is False
     assert res_0300.reason == EligibilityReason.QUIET_HOURS
@@ -243,14 +245,14 @@ def test_eligibility_quiet_hours_overnight_window():
     # 4. At 07:00 Dhaka time (01:00 UTC): window has ended
     dt_0700 = datetime(2026, 11, 2, 1, 0, tzinfo=timezone.utc)
     res_0700 = evaluate_eligibility(
-        pref, channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_0700
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_0700
     )
     assert res_0700.is_eligible is True
 
     # 5. At 15:00 Dhaka time (09:00 UTC): daytime, outside window
     dt_1500 = datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc)
     res_1500 = evaluate_eligibility(
-        pref, channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_1500
+        pref, user=SimpleNamespace(email_verified=True), channel="email", alert_severity="warning", notification_event="ALERT_CREATED", now_utc=dt_1500
     )
     assert res_1500.is_eligible is True
 
@@ -268,7 +270,7 @@ def test_eligibility_quiet_hours_daytime_window():
     )
     # At 13:30 UTC -> inside
     res_in = evaluate_eligibility(
-        pref, channel="in_app", alert_severity="info", notification_event="ALERT_CREATED",
+        pref, user=SimpleNamespace(email_verified=True), channel="in_app", alert_severity="info", notification_event="ALERT_CREATED",
         now_utc=datetime(2026, 11, 1, 13, 30, tzinfo=timezone.utc)
     )
     assert res_in.is_eligible is False
@@ -277,7 +279,7 @@ def test_eligibility_quiet_hours_daytime_window():
 
     # At 14:00 UTC -> outside
     res_out = evaluate_eligibility(
-        pref, channel="in_app", alert_severity="info", notification_event="ALERT_CREATED",
+        pref, user=SimpleNamespace(email_verified=True), channel="in_app", alert_severity="info", notification_event="ALERT_CREATED",
         now_utc=datetime(2026, 11, 1, 14, 0, tzinfo=timezone.utc)
     )
     assert res_out.is_eligible is True
@@ -756,6 +758,7 @@ def test_different_users_independent_deliveries():
         db.close()
 
 
+@pytest.mark.skipif(SessionLocal.kw["bind"].dialect.name != "postgresql", reason="PostgreSQL concurrency semantics required")
 def test_concurrent_worker_claiming_skip_locked():
     """Concurrent workers claiming pending deliveries must not double-claim or double-increment attempts."""
     db = SessionLocal()

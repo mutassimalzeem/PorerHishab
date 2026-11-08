@@ -84,6 +84,11 @@ export function Auth({
         <div>
           <LanguageSwitcher />
           <span className="context">{t("Welcome to PorerHishab")}</span>
+          {!register && (
+            <p>
+              <a href="/forgot-password">Forgot your password?</a>
+            </p>
+          )}
           <h2>
             {register
               ? t("Start with a clearer picture.")

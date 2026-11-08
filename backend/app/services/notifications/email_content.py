@@ -147,8 +147,12 @@ def build_privacy_safe_digest_email(
             continue
         label = severity_labels.get(sev, sev.capitalize())
         text_sections.append(f"{label}:")
+
+
         for si in sev_items:
-            text_sections.append(f"• {si.title}")
+            text_sections.append(f"• You have a financial alert to review.")
+
+
         text_sections.append("")
 
     text_sections.append(privacy_note)
@@ -172,8 +176,14 @@ def build_privacy_safe_digest_email(
             f'<div style="font-weight: 600; font-size: 14px; text-transform: uppercase; color: {color}; margin-bottom: 6px;">{label}</div>'
             f'<ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 15px;">'
         )
+
+
         for si in sev_items:
-            html_items_markup.append(f'<li style="margin-bottom: 4px;">{si.title}</li>')
+            html_items_markup.append('<li style="margin-bottom: 4px;">'
+                                    'You have a financial alert to review.'
+                                    '</li>')
+
+
         html_items_markup.append('</ul></div>')
 
     grouped_html = "\n".join(html_items_markup)
