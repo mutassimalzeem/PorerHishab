@@ -80,7 +80,10 @@ def contains_unverified_spelled_money(text: str) -> bool:
         return True
     # Adverbs and intervening prose must not turn an asserted word amount into
     # an unvalidated claim. Ordinary counts remain nonmonetary.
-    assertion = r"(?:cash|balance|income|expenses?|spending|savings|reserve|fund|capacity)\s+(?:is|are|equals?|of|at|:)"
+    assertion = (
+        r"\b(?:cash|balance|income|expenses?|spending|savings|reserve|fund|capacity)\b"
+        r"|নগদ|ব্যালান্স|সঞ্চয়|সঞ্চয়|আয়|আয়|ব্যয়|ব্যয়|খরচ|তহবিল"
+    )
     count_unit = r"\s+(?:transactions?|accounts?|days?|weeks?|months?|years?|goals?|categories?|steps?|ways?)\b"
     for clause in re.split(r"[.;!?।\n]", text):
         if not re.search(assertion, clause, re.I):

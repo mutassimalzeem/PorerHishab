@@ -663,6 +663,9 @@ def test_spelled_out_money_in_action_drops_action(evidence_package):
     "Your bank balance is nil.",
     "Your available cash is approximately zero.",
     "Your account balance is currently five thousand.",
+    "Your available cash was zero.",
+    "Available cash: zero.",
+    "আপনার নগদ শূন্য।",
     "আপনার নগদ শূন্য টাকা।",
 ])
 def test_word_amount_variants_fail_closed(evidence_package, answer):
