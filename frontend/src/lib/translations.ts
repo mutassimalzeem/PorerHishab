@@ -906,6 +906,8 @@ export const bn = {
   Interface: "ইন্টারফেস",
   "English, with Bangla-ready content and Latin numerals":
     "ইংরেজি ও বাংলা; ভাষা অনুযায়ী অঙ্ক প্রদর্শন",
+  "Profile editing is not available. You can reset your password from the sign-in screen.":
+    "প্রোফাইল সম্পাদনা উপলব্ধ নেই। সাইন-ইন পর্দা থেকে পাসওয়ার্ড পুনরায় নির্ধারণ করতে পারেন।",
   "Profile editing and password reset are not available through the current API.":
     "বর্তমান API দিয়ে প্রোফাইল সম্পাদনা ও পাসওয়ার্ড রিসেট করা যায় না।",
   "Data & assumptions": "তথ্য ও অনুমান",

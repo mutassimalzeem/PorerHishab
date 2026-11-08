@@ -33,6 +33,9 @@ def main():
     token = api("/login", {"email": "review@example.com", "password": "Review-E2E-only-123!"})["access_token"]
     with SessionLocal() as db:
         user = db.query(User).filter_by(email="review@example.com").one()
+        # This validated disposable fixture represents a mailbox-confirmed user.
+        user.email_verified = True
+        user.email_verified_at = datetime.now(timezone.utc)
         pref = d.get_or_create_user_preferences(db, user.id)
         pref.email_enabled = pref.email_consent = True
         ids = []

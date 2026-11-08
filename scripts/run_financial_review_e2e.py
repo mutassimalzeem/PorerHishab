@@ -24,8 +24,8 @@ def main():
     env = {**os.environ, "DATABASE_URL": "postgresql+psycopg2://review_e2e:review_e2e@127.0.0.1:55439/porerhishab_review_e2e",
            "REVIEW_E2E_DISPOSABLE": "1", "APP_ENV": "test",
            "CORS_ORIGINS": '["http://localhost:5173","http://127.0.0.1:5173","http://127.0.0.1:5179"]', "AI_EXTERNAL_ENABLED": "false", "OPENAI_KEY": "",
-           "SECRET_KEY": "disposable-review-access", "REFRESH_SECRET_KEY": "disposable-review-refresh",
-           "PEPPER": "disposable-review-pepper", "NOTIFICATION_DELIVERY_ENABLED": "false"}
+           "SECRET_KEY": "disposable-review-access-key-32-bytes", "REFRESH_SECRET_KEY": "disposable-review-refresh-key-32-bytes",
+           "PEPPER": "disposable-review-pepper-32-bytes", "NOTIFICATION_DELIVERY_ENABLED": "false"}
     name = "porerhishab-review-e2e-" + uuid.uuid4().hex[:12]
     backend = None
 
@@ -47,7 +47,8 @@ def main():
         run([sys.executable, "-m", "alembic", "upgrade", "head"])
         if args.backend_tests is not None:
             run([sys.executable, "-m", "pytest", *(args.backend_tests or ["backend"]), "-q", "--tb=short"],
-                extra_env={"NOTIFICATION_DELIVERY_ENABLED": "true", "EMAIL_BACKEND": "test"})
+                extra_env={"NOTIFICATION_DELIVERY_ENABLED": "true", "EMAIL_BACKEND": "test",
+                           "PORERHISHAB_TEST_DATABASE_URL": env["DATABASE_URL"]})
         run([sys.executable, "scripts/seed_financial_review_e2e.py"])
         run([sys.executable, "scripts/seed_financial_review_e2e.py"])
         backend = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend",
