@@ -2,6 +2,7 @@ from decimal import Decimal
 from fastapi import FastAPI, HTTPException, File, UploadFile, Request, Depends, Form, Query
 import pandas as pd
 import io
+import logging
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.password_policy import NewPassword, LoginPassword
@@ -59,6 +60,9 @@ from app.repositories.transaction_repository import (
 
 from app.middleware.request_size_limit import RequestBodyLimitMiddleware
 
+
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -278,8 +282,12 @@ def get_summary(current: User = Depends(get_current_user), db: Session = Depends
             "total_expenses": total_expenses,
             "balance": balance
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        # Fixed event only: exception strings/tracebacks may contain private data.
+        logger.error("summary_request_failed")
+        raise HTTPException(status_code=500, detail="Summary unavailable") from None
 
 
 
@@ -397,8 +405,11 @@ def categories_summary(current: User = Depends(get_current_user), db: Session = 
                 "net": grand_net
             }
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Summary failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("category_summary_request_failed")
+        raise HTTPException(status_code=500, detail="Category summary unavailable") from None
 
 
 @app.get("/me")
