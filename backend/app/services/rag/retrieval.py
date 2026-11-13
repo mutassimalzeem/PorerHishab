@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.documents import Document
+if TYPE_CHECKING:
+    from langchain_core.documents import Document
 
-from app.services.rag.vector_store import search_transactions
+
+def search_transactions(query: str, user_id: int, k: int = 5):
+    """Load the optional vector adapter only when retrieval is requested."""
+    try:
+        from app.services.rag.vector_store import search_transactions as search
+    except ModuleNotFoundError as exc:
+        # Missing optional roots are an availability error, never unscoped results.
+        # Broken internal imports and incompatible installed modules must propagate.
+        if exc.name not in {"langchain_core", "langchain_chroma", "langchain_openai"}:
+            raise
+        raise RuntimeError("Optional RAG dependencies are unavailable") from None
+    return search(query=query, user_id=user_id, k=k)
 
 
 @dataclass

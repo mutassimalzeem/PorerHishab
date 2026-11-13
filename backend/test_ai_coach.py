@@ -402,12 +402,13 @@ def test_coach_scenario_input_validation(data, path, payload):
 
 
 def test_provider_configuration_bounds_and_missing_key(monkeypatch):
-    import langchain_openai
+    import sys
+    factory = Mock()
+    # This unit checks constructor arguments, not the optional SDK integration.
+    monkeypatch.setitem(sys.modules, "langchain_openai", SimpleNamespace(ChatOpenAI=factory))
     monkeypatch.setattr(settings, "OPENAI_KEY", "fake-key")
     monkeypatch.setattr(settings, "AI_TIMEOUT_SECONDS", 1000)
     monkeypatch.setattr(settings, "AI_MAX_OUTPUT_TOKENS", 100000)
-    factory = Mock()
-    monkeypatch.setattr(langchain_openai, "ChatOpenAI", factory)
     provider.build_chat_model()
     assert factory.call_args.kwargs["timeout"] == 30
     assert factory.call_args.kwargs["max_tokens"] == 2000
