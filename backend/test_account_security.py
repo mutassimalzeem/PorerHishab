@@ -181,3 +181,77 @@ def test_recovery_is_independent_of_financial_notifications(account, monkeypatch
     res = client.post("/auth/password-reset/request", json={"email": "owner@example.com"})
     assert res.status_code == 202
     assert TestEmailSender.get_sent_messages() == []
+
+
+@pytest.mark.parametrize("length", [0, 1, 7, 8, 72, 73, 1023, 1024, 1025])
+def test_shared_password_schema_boundaries(length):
+    from pydantic import ValidationError
+    from app.main import RegisterIn, LoginIn
+    from app.api.email_verification import PasswordReset
+    for model, minimum, extra in [
+        (RegisterIn, 8, {"email": "synthetic@example.com"}),
+        (LoginIn, 1, {"email": "synthetic@example.com"}),
+        (PasswordReset, 8, {"token": "T" * 43}),
+    ]:
+        if minimum <= length <= 1024:
+            assert model(password="x" * length, **extra).password == "x" * length
+        else:
+            with pytest.raises(ValidationError):
+                model(password="x" * length, **extra)
+
+
+@pytest.mark.parametrize("password", ["eight888", " " + "\U0001f511" * 1022 + " "])
+def test_password_round_trip_preserves_every_character(account, password):
+    client, _ = account
+    credentials = {"email": "unicode@example.com", "password": password}
+    assert client.post("/register", json=credentials).status_code == 200
+    assert client.post("/login", json=credentials).status_code == 200
+    assert client.post("/login", json={**credentials, "password": password[:-1] + "Z"}).status_code == 401
+    assert client.post("/auth/password-reset/request", json={"email": credentials["email"]}).status_code == 202
+    token = captured_token()
+    replacement = "Z" + password[1:]
+    assert client.post("/auth/password-reset/confirm", json={"token": token, "password": replacement}).status_code == 200
+    assert client.post("/login", json={**credentials, "password": replacement}).status_code == 200
+    assert client.post("/login", json=credentials).status_code == 401
+
+
+@pytest.mark.parametrize("identity", [False, True])
+@pytest.mark.parametrize("financial", [False, True])
+def test_identity_delivery_enablement_matrix(account, monkeypatch, identity, financial):
+    client, _ = account
+    headers = register(client)
+    monkeypatch.setattr(auth.settings, "SECURITY_EMAIL_DELIVERY_ENABLED", identity)
+    monkeypatch.setattr(auth.settings, "NOTIFICATION_DELIVERY_ENABLED", financial)
+    assert client.post("/auth/email-verification/request", headers=headers).status_code == 202
+    assert client.post("/auth/password-reset/request", json={"email": "owner@example.com"}).status_code == 202
+    messages = TestEmailSender.get_sent_messages()
+    assert len(messages) == (2 if identity else 0)
+    for message in messages:
+        assert message.recipient == "owner@example.com"
+        assert "#token=" in message.body_text
+        assert "owner@example.com" not in message.body_text
+
+
+def test_unavailable_production_smtp_preserves_privacy_and_throttle(account, monkeypatch):
+    from unittest.mock import patch
+    client, factory = account
+    headers = register(client)
+    monkeypatch.setattr(auth.settings, "APP_ENV", "production")
+    monkeypatch.setattr(auth.settings, "SECURITY_EMAIL_BACKEND", "smtp")
+    monkeypatch.setattr(auth.settings, "NOTIFICATION_DELIVERY_ENABLED", False)
+    with patch("app.services.notifications.email_sender.smtplib.SMTP", side_effect=OSError("synthetic private diagnostic")) as smtp:
+        known = client.post("/auth/password-reset/request", json={"email": "owner@example.com"})
+        unknown = client.post("/auth/password-reset/request", json={"email": "missing@example.com"})
+        repeated = client.post("/auth/password-reset/request", json={"email": "owner@example.com"})
+        assert known.status_code == unknown.status_code == repeated.status_code == 202
+        assert known.json() == unknown.json() == repeated.json()
+        assert smtp.call_count == 1  # Delivery failure does not bypass resend throttling.
+        result = client.post("/auth/email-verification/request", headers=headers)
+        assert result.status_code == 202
+        assert smtp.call_count == 2
+    with factory() as db:
+        challenges = db.query(EmailVerificationToken).all()
+        assert len(challenges) == 2
+        assert all(item.used_at is not None for item in challenges)
+    assert TestEmailSender.get_sent_messages() == []
+    assert "private" not in known.text and "diagnostic" not in result.text

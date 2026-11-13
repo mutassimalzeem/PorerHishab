@@ -17,7 +17,9 @@ def config(**kwargs):
 def production(**kwargs):
     values = dict(APP_ENV="production", CORS_ORIGINS=["https://finance.example"],
         SECRET_KEY="a" * 40, REFRESH_SECRET_KEY="b" * 40, PEPPER="c" * 40,
-        NOTIFICATION_DELIVERY_ENABLED=False, SECURITY_EMAIL_DELIVERY_ENABLED=False)
+        NOTIFICATION_DELIVERY_ENABLED=False, SECURITY_EMAIL_DELIVERY_ENABLED=True,
+        SECURITY_EMAIL_BACKEND="smtp", EMAIL_BACKEND="test", SMTP_HOST="smtp.example.com",
+        FRONTEND_BASE_URL="https://finance.example")
     values.update(kwargs)
     return config(**values)
 
@@ -49,7 +51,9 @@ def test_production_requires_explicit_origins_and_secrets(monkeypatch):
         {"CORS_ORIGINS": []}, {"SECRET_KEY": "change-me"},
         {"PEPPER": ""}, {"REFRESH_SECRET_KEY": "a" * 40},
         {"DATABASE_URL": "sqlite://"}, {"NOTIFICATION_DELIVERY_ENABLED": True},
-        {"SECURITY_EMAIL_DELIVERY_ENABLED": True},
+        {"SECURITY_EMAIL_DELIVERY_ENABLED": False}, {"SECURITY_EMAIL_BACKEND": "test"},
+        {"SMTP_HOST": "localhost"}, {"SMTP_USE_TLS": False},
+        {"FRONTEND_BASE_URL": "http://finance.example"},
     ]:
         with pytest.raises(ValidationError):
             production(**overrides)

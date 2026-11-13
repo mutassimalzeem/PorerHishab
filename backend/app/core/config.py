@@ -1,8 +1,9 @@
 import os
+import ipaddress
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
-from pydantic import AnyHttpUrl, model_validator
+from pydantic import AnyHttpUrl, Field, model_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,11 +25,28 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 14
 
+    # Per process; reject excess requests without waiting or buffering their bodies.
+    REQUEST_MAX_CONCURRENCY: int = Field(default=16, ge=1, le=256)
+    REQUEST_BODY_TIMEOUT_SECONDS: float = Field(default=15, gt=0, le=300, allow_inf_nan=False)
+    SERVER_LIMIT_CONCURRENCY: int = Field(default=50, ge=2, le=1024)
+    SERVER_KEEPALIVE_SECONDS: int = Field(default=15, ge=1, le=120)
+    # Empty means proxy headers are ignored. Configure only the observed proxy peer.
+    SERVER_FORWARDED_ALLOW_IPS: str = ""
+
     RATE_LIMIT_WINDOW_SECONDS: int = 300
     RATE_LIMIT_MAX_ATTEMPTS: int = 5
 
     @model_validator(mode="after")
     def validate_deployment(self):
+        for peer in self.SERVER_FORWARDED_ALLOW_IPS.split(","):
+            if not peer.strip():
+                continue
+            try:
+                network = ipaddress.ip_network(peer.strip(), strict=False)
+                if network.prefixlen == 0:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("Trusted proxy peers must be explicit IP addresses or restricted CIDRs")
         for origin in self.CORS_ORIGINS:
             if origin == "*":
                 if self.CORS_ALLOW_CREDENTIALS or self.APP_ENV == "production":
@@ -58,10 +76,18 @@ class Settings(BaseSettings):
             secrets = [self.SECRET_KEY, self.REFRESH_SECRET_KEY, self.PEPPER]
             if any(len(value) < 32 or "change-me" in value.lower() for value in secrets) or len(set(secrets)) != 3:
                 raise ValueError("Production requires three distinct secrets of at least 32 characters")
-            if (self.NOTIFICATION_DELIVERY_ENABLED or self.SECURITY_EMAIL_DELIVERY_ENABLED) and (
-                self.EMAIL_BACKEND != "smtp" or self.SMTP_HOST in ("localhost", "127.0.0.1", "")
-            ):
-                raise ValueError("Production delivery requires an explicitly configured SMTP provider")
+            if not self.SECURITY_EMAIL_DELIVERY_ENABLED or self.SECURITY_EMAIL_BACKEND != "smtp":
+                raise ValueError("Production requires SMTP identity email delivery")
+            if self.NOTIFICATION_DELIVERY_ENABLED and self.EMAIL_BACKEND != "smtp":
+                raise ValueError("Production notifications require SMTP")
+            if self.SMTP_HOST.strip().lower() in ("localhost", "127.0.0.1", "::1", ""):
+                raise ValueError("Production requires an explicitly configured SMTP provider")
+            if not self.SMTP_USE_TLS or not self.EMAIL_SENDER_ADDRESS or "@" not in self.EMAIL_SENDER_ADDRESS:
+                raise ValueError("Production SMTP requires TLS and a sender address")
+            frontend = urlsplit(self.FRONTEND_BASE_URL)
+            if (frontend.scheme != "https" or not frontend.hostname or frontend.username
+                    or frontend.password or frontend.query or frontend.fragment):
+                raise ValueError("Production requires a public HTTPS frontend URL")
         return self
 
     OPENAI_KEY: str | None = None
@@ -88,9 +114,10 @@ class Settings(BaseSettings):
     # Notification delivery infrastructure (AI-15M)
     NOTIFICATION_DELIVERY_ENABLED: bool = True
     SECURITY_EMAIL_DELIVERY_ENABLED: bool = True
-    EMAIL_BACKEND: str = "test"  # "test" or "smtp"
+    SECURITY_EMAIL_BACKEND: Literal["test", "smtp"] = "test"
+    EMAIL_BACKEND: Literal["test", "smtp"] = "test"
     SMTP_HOST: str = "localhost"
-    SMTP_PORT: int = 587
+    SMTP_PORT: int = Field(default=587, ge=1, le=65535)
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
@@ -102,7 +129,7 @@ class Settings(BaseSettings):
     NOTIFICATION_POLL_SECONDS: float = 5
     NOTIFICATION_RETRY_MAX_DELAY_SECONDS: int = 3600
     NOTIFICATION_RETRY_JITTER_SECONDS: float = 10
-    SMTP_TIMEOUT_SECONDS: float = 10
+    SMTP_TIMEOUT_SECONDS: float = Field(default=10, gt=0, le=60, allow_inf_nan=False)
     NOTIFICATION_MAX_RETRIES: int = 3
     NOTIFICATION_RETRY_BACKOFF_SECONDS: list[int] = [60, 300, 900]
 

@@ -60,3 +60,24 @@ The following follow-up gaps from PR #71 were resolved:
    - The optional Chroma 1.5.9 environment carries 4 known unresolved advisories: `PYSEC-2026-311`, `PYSEC-2026-3814`, `PYSEC-2026-3815`, and `PYSEC-2026-3813`.
    - These dependencies are strictly excluded from `backend/requirements.txt` and the production Docker image.
    - Production configuration maintains `AI_EXTERNAL_ENABLED=false` and forbids enabling the unapproved RAG stack in production environments until dependency chains are remediated or replaced.
+
+
+## AI-18C.2 verification status
+
+The application now enforces an absolute body-read deadline independently of
+Uvicorn's idle keep-alive setting. Peak-allocation, real-loopback Uvicorn, separate
+process RSS and isolated PostgreSQL token-lock fixtures are available; their
+synthetic results do not certify full production application memory usage.
+
+Production identity email uses SECURITY_EMAIL_BACKEND=smtp independently of
+EMAIL_BACKEND=test when financial notifications are disabled. The protected
+production environment must configure identity SMTP/TLS, sender identity and an
+HTTPS frontend URL. Missing required settings fail startup. No real SMTP service
+was tested.
+
+The Nginx file remains a host-level template, not an active Compose service or
+proof of deployed TLS/ingress limits. Certificate/domain/upstream placeholders
+must be adapted, validated and enabled by the operator. Forwarded-header trust is
+explicit through SERVER_FORWARDED_ALLOW_IPS and disabled by default; never trust
+all peers. Do not assert deployed proxy enforcement or an absolute end-to-end
+body deadline from template inspection alone.

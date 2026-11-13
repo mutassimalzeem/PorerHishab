@@ -4,6 +4,7 @@ import pandas as pd
 import io
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.password_policy import NewPassword, LoginPassword
 from app.api.health import router as health_router
 from app.api.email_verification import router as email_verification_router
 from app.api.auth import (
@@ -69,7 +70,11 @@ app = FastAPI(
     ),
 )
 
-app.add_middleware(RequestBodyLimitMiddleware, max_body_bytes= 5 * 1024 * 1024)
+app.add_middleware(
+    RequestBodyLimitMiddleware, max_body_bytes=5 * 1024 * 1024,
+    max_concurrent_requests=settings.REQUEST_MAX_CONCURRENCY,
+    body_timeout_seconds=settings.REQUEST_BODY_TIMEOUT_SECONDS,
+)
 
 app.include_router(health_router)
 app.include_router(email_verification_router)
@@ -111,12 +116,12 @@ app.include_router(financial_review_router)
 
 class RegisterIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=1024)
+    password: NewPassword
     full_name: Optional[str] = None
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=1, max_length=1024)
+    password: LoginPassword
 
 
 class RegisterTokenResponse(BaseModel):

@@ -45,6 +45,9 @@ class TestEmailSender(EmailSender):
     _sent_messages: list[EmailMessage] = []
 
     def send(self, message: EmailMessage) -> EmailSendResult:
+        if settings.APP_ENV == "production":
+            return EmailSendResult(False, "test", "Test adapter forbidden in production",
+                                   False, "configuration")
         # Validate recipient format
         if not message.recipient or "@" not in message.recipient:
             return EmailSendResult(
@@ -150,8 +153,18 @@ class SmtpEmailSender(EmailSender):
 
 
 def get_email_sender() -> EmailSender:
-    """Factory creating configured email sender."""
-    backend = (settings.EMAIL_BACKEND or "test").lower()
+    """Financial notifications select their own adapter."""
+    return _get_sender(settings.EMAIL_BACKEND)
+
+
+def get_identity_email_sender() -> EmailSender:
+    """Identity delivery never depends on the financial-notification backend."""
+    return _get_sender(settings.SECURITY_EMAIL_BACKEND)
+
+
+def _get_sender(backend: str) -> EmailSender:
+    if settings.APP_ENV == "production" and backend != "smtp":
+        raise ValueError("Production email requires SMTP")
     if backend == "smtp":
         return SmtpEmailSender(
             host=settings.SMTP_HOST,

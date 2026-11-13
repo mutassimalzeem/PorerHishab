@@ -33,6 +33,9 @@ def main():
             "PEPPER": secrets.token_hex(32), "CORS_ORIGINS": "'[\"https://frontend.example\"]'",
             "FRONTEND_BASE_URL": "https://frontend.example", "API_PORT": str(port),
             "NOTIFICATION_DELIVERY_ENABLED": "false", "EMAIL_BACKEND": "test",
+            # Synthetic, unreachable transport; this smoke test never requests email.
+            "SECURITY_EMAIL_DELIVERY_ENABLED": "true", "SECURITY_EMAIL_BACKEND": "smtp",
+            "SMTP_HOST": "smtp.example.invalid", "SMTP_USE_TLS": "true",
             "AI_EXTERNAL_ENABLED": "false",
         }
         env_path.write_text("".join(f"{key}={value}\n" for key, value in values.items()), encoding="utf-8")

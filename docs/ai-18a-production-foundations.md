@@ -32,12 +32,14 @@ semantics, rate limits and retention are intentionally left for AI-18B.
 Do not replace an established password pepper as part of a routine release:
 existing password hashes depend on it. Secret rotation requires its own procedure.
 
-Production notification delivery is off by default in Compose. Enabling it requires
-both an explicit flag and a configured non-local SMTP provider. Keep delivery off
-and EMAIL_BACKEND=test throughout AI-18A. AI_EXTERNAL_ENABLED also defaults off.
-FRONTEND_BASE_URL must be set to the intended public frontend URL before email
-enablement in a later stage. No paid provider or new external infrastructure is
-required.
+Financial notification delivery is off by default in Compose and may keep
+EMAIL_BACKEND=test. Following AI-18C.1, identity email is independently required
+in production: SECURITY_EMAIL_DELIVERY_ENABLED=true and SECURITY_EMAIL_BACKEND=smtp,
+with a configured non-local SMTP host, TLS, sender address and actual HTTPS
+FRONTEND_BASE_URL. The development example's SECURITY_EMAIL_BACKEND=test must be
+overridden in the protected production file. Missing identity SMTP settings fail
+startup; disabling financial notifications does not disable account recovery.
+AI_EXTERNAL_ENABLED remains off. No real provider was contacted during verification.
 
 ## Secrets and image boundaries
 
@@ -62,6 +64,15 @@ The file must contain the following values (placeholders are illustrative only):
     API_PORT=8000
     NOTIFICATION_DELIVERY_ENABLED=false
     EMAIL_BACKEND=test
+    SECURITY_EMAIL_DELIVERY_ENABLED=true
+    SECURITY_EMAIL_BACKEND=smtp
+    SMTP_HOST=<configured-identity-smtp-host>
+    SMTP_PORT=587
+    SMTP_USE_TLS=true
+    SMTP_USERNAME=<provider-required-synthetic-placeholder>
+    SMTP_PASSWORD=<provider-required-secret-placeholder>
+    EMAIL_SENDER_ADDRESS=<operator-verified-sender-address>
+    SERVER_FORWARDED_ALLOW_IPS=<observed-trusted-proxy-peer-IP>
     AI_EXTERNAL_ENABLED=false
 
 Generate independent random values, for example with Python's secrets.token_hex(32).
@@ -132,8 +143,8 @@ For the initial deployment:
     prod ps
     prod logs --tail 50 api worker
 
-The migration service executes python -m alembic upgrade head once. The API remains
-uvicorn app.main:app --host 0.0.0.0 --port 8000 and the worker remains
+The migration service executes python -m alembic upgrade head once. The API uses
+python -m app.server (validated Uvicorn limits) and the worker remains
 python -m app.services.notifications.worker. Migrations never run inside either
 startup command. Do not use a bare prod up for an initial database: it does not
 run the profile-gated migration service. Do not run concurrent migrations.

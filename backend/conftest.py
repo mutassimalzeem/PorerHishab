@@ -26,6 +26,8 @@ os.environ["REFRESH_SECRET_KEY"] = "test-refresh-key-never-for-deployment"
 os.environ["PEPPER"] = "test-password-pepper-never-for-deployment"
 os.environ["AI_EXTERNAL_ENABLED"] = "false"
 os.environ["EMAIL_BACKEND"] = "test"
+os.environ["SECURITY_EMAIL_BACKEND"] = "test"
+os.environ["SECURITY_EMAIL_DELIVERY_ENABLED"] = "true"
 os.environ["NOTIFICATION_DELIVERY_ENABLED"] = "true"
 for _name in ("OPENAI_KEY", "OPENAI_API_KEY", "SMTP_USERNAME", "SMTP_PASSWORD", "RUN_LIVE_AI_TESTS"):
     os.environ.pop(_name, None)

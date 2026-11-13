@@ -16,7 +16,13 @@ x-application: &application
     PEPPER: ${PEPPER:?Set a different password pepper}
     NOTIFICATION_DELIVERY_ENABLED: ${NOTIFICATION_DELIVERY_ENABLED:-false}
     SECURITY_EMAIL_DELIVERY_ENABLED: ${SECURITY_EMAIL_DELIVERY_ENABLED:-true}
+    SECURITY_EMAIL_BACKEND: ${SECURITY_EMAIL_BACKEND:-smtp}
     EMAIL_BACKEND: ${EMAIL_BACKEND:-test}
+    REQUEST_MAX_CONCURRENCY: ${REQUEST_MAX_CONCURRENCY:-16}
+    REQUEST_BODY_TIMEOUT_SECONDS: ${REQUEST_BODY_TIMEOUT_SECONDS:-15}
+    SERVER_LIMIT_CONCURRENCY: ${SERVER_LIMIT_CONCURRENCY:-50}
+    SERVER_KEEPALIVE_SECONDS: ${SERVER_KEEPALIVE_SECONDS:-15}
+    SERVER_FORWARDED_ALLOW_IPS: ${SERVER_FORWARDED_ALLOW_IPS:-}
     AI_EXTERNAL_ENABLED: ${AI_EXTERNAL_ENABLED:-false}
   networks: [database, application]
 
@@ -52,7 +58,7 @@ services:
   api:
     <<: *application
     restart: unless-stopped
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "50", "--timeout-keep-alive", "15"]
+    command: ["python", "-m", "app.server"]
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:

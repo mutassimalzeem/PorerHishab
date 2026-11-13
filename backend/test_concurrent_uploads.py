@@ -1,6 +1,7 @@
 """Operational concurrency limits and memory behavior under concurrent uploads (Issue D)."""
 import asyncio
 import gc
+import json
 import re
 import tracemalloc
 from pathlib import Path
@@ -32,91 +33,150 @@ async def _run_upload(middleware, payload: bytes, content_type: bytes = b"applic
     return status
 
 
-def test_concurrent_uploads_memory_bounded_and_reclaimed():
-    """Verify that multiple concurrent uploads scale predictably and reclaim memory."""
-    forwarded = []
-
-    async def _async_test():
-        async def dummy_app(scope, receive, send):
-            msg = await receive()
-            forwarded.append(len(msg.get("body", b"")))
+@pytest.mark.parametrize("multipart", [False, True])
+def test_concurrent_maximum_upload_peak_traced_allocations(multipart):
+    """Measure held/peak Python allocations, not RSS or post-GC retention."""
+    async def check():
+        size, count = 5 * 1024 * 1024, 3
+        all_entered, release = asyncio.Event(), asyncio.Event()
+        entered = 0
+        async def inner(scope, receive, send):
+            nonlocal entered
+            assert len((await receive())["body"]) == size
+            entered += 1
+            if entered == count:
+                all_entered.set()
+            await release.wait()
             await send({"type": "http.response.start", "status": 204, "headers": []})
             await send({"type": "http.response.body", "body": b""})
-
-        # 5 MiB middleware cap
-        middleware = RequestBodyLimitMiddleware(dummy_app, max_body_bytes=5 * 1024 * 1024)
-
-        concurrency = 8
-        payload_size = 512 * 1024  # 512 KiB per request (~4 MiB total payload)
-
+        middleware = RequestBodyLimitMiddleware(inner, max_concurrent_requests=count)
+        gc.collect()
         tracemalloc.start()
-        gc.collect()
-        start_cur, _ = tracemalloc.get_traced_memory()
+        tasks = []
+        try:
+            baseline, _ = tracemalloc.get_traced_memory()
+            payloads = []
+            for i in range(count):
+                if multipart:
+                    prefix = (b'--audit\r\nContent-Disposition: form-data; name="file"; '
+                              b'filename="synthetic.csv"\r\nContent-Type: text/csv\r\n\r\n')
+                    suffix = b"\r\n--audit--\r\n"
+                    payload = prefix + bytes([65 + i]) * (size - len(prefix) - len(suffix)) + suffix
+                else:
+                    payload = bytes([65 + i]) * size
+                payloads.append(payload)
+            assert len({id(value) for value in payloads}) == count
+            assert all(len(value) == size for value in payloads)
+            content_type = b"multipart/form-data; boundary=audit" if multipart else b"application/octet-stream"
+            tasks = [asyncio.create_task(_run_upload(middleware, value, content_type)) for value in payloads]
+            await asyncio.wait_for(all_entered.wait(), 3)
+            held, peak = tracemalloc.get_traced_memory()
+            # All independent client payloads and replay bodies coexist here.
+            assert held - baseline >= count * size
+            assert peak - baseline >= 2 * count * size
+            assert peak - baseline < 4 * count * size + 8 * 1024 * 1024
+            assert middleware._active_requests == count
+            print("TRACED_FIXTURE " + json.dumps({"multipart": multipart,
+                  "independent_uploads": count, "bytes_each": size,
+                  "held_bytes_above_baseline": held - baseline,
+                  "peak_bytes_above_baseline": peak - baseline}, sort_keys=True))
+            # Admission is saturated while the maximum-sized bodies are retained.
+            assert await _run_upload(middleware, b"rejected") == 503
+            release.set()
+            assert await asyncio.gather(*tasks) == [204] * count
+            assert middleware._active_requests == 0
+        finally:
+            release.set()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            tracemalloc.stop()
+    asyncio.run(check())
 
-        tasks = [
-            _run_upload(middleware, b"m" * payload_size)
-            for _ in range(concurrency)
-        ]
-        results = await asyncio.gather(*tasks)
-        mid_cur, mid_peak = tracemalloc.get_traced_memory()
 
-        # Verify all concurrent requests succeeded
-        assert len(results) == concurrency
-        assert all(status == 204 for status in results)
-        assert len(forwarded) == concurrency
+@pytest.mark.parametrize("multipart", [False, True])
+def test_completed_uploads_reclaim_traced_allocations(multipart):
+    """Check post-cleanup traced allocations for ordinary and multipart uploads.
 
-        # Peak memory must not wildly exceed expected buffered bounds
-        # (payloads + Python object/asyncio overhead < 20 MiB for 4 MiB payload)
-        assert mid_peak - start_cur < 20 * 1024 * 1024
+    The candidate 300-KiB tolerance requires runtime validation in the pinned,
+    approved isolated environment. This does not establish RSS recovery or
+    leak freedom.
+    """
+    async def check():
+        count = 3
+        expected_size = entered = 0
+        all_entered, release = asyncio.Event(), asyncio.Event()
 
-        # Allow buffers to be freed
-        forwarded.clear()
-        gc.collect()
-        end_cur, _ = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
+        async def inner(scope, receive, send):
+            nonlocal entered
+            message = await receive()
+            assert len(message["body"]) == expected_size
+            entered += 1
+            if entered == count:
+                all_entered.set()
+            await release.wait()
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            # Exercise response-buffer references as well as the admitted body.
+            await send({"type": "http.response.body", "body": message["body"]})
 
-        # Verify no persistent buffering leak (reclaimed within 300 KiB)
-        assert end_cur - start_cur < 300 * 1024
+        middleware = RequestBodyLimitMiddleware(inner, max_concurrent_requests=count)
 
-    asyncio.run(_async_test())
+        async def run_batch(size):
+            nonlocal expected_size, entered, all_entered, release
+            expected_size, entered = size, 0
+            all_entered, release = asyncio.Event(), asyncio.Event()
+            prefix = (b'--reclaim\r\nContent-Disposition: form-data; name="file"; '
+                      b'filename="synthetic.csv"\r\nContent-Type: text/csv\r\n\r\n') if multipart else b""
+            suffix = b"\r\n--reclaim--\r\n" if multipart else b""
+            payloads = [
+                prefix + bytes([65 + i]) * (size - len(prefix) - len(suffix)) + suffix
+                for i in range(count)
+            ]
+            content_type = b"multipart/form-data; boundary=reclaim" if multipart else b"application/octet-stream"
+            tasks = []
+            try:
+                tasks = [
+                    asyncio.create_task(_run_upload(middleware, payload, content_type))
+                    for payload in payloads
+                ]
+                await asyncio.wait_for(all_entered.wait(), 3)
+                assert middleware._active_requests == count
+                release.set()
+                assert await asyncio.gather(*tasks) == [200] * count
+                assert all(task.done() for task in tasks)
+                assert middleware._active_requests == 0
+            finally:
+                release.set()
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                tasks.clear()
+                payloads.clear()
+            # Returning releases helper frames and _run_upload's response lists.
 
-
-def test_concurrent_multipart_uploads_memory_bounded():
-    """Verify concurrent multipart form-data requests with files remain bounded."""
-    async def _async_test():
-        async def dummy_app(scope, receive, send):
-            await receive()
-            await send({"type": "http.response.start", "status": 204, "headers": []})
-            await send({"type": "http.response.body", "body": b""})
-
-        middleware = RequestBodyLimitMiddleware(dummy_app, max_body_bytes=5 * 1024 * 1024)
-
-        file_bytes = b"date,amount,desc\n" + b"2026-11-01,25.50,Groceries\n" * 5000  # ~140 KiB
-        multipart_body = (
-            b"--boundary123\r\n"
-            b'Content-Disposition: form-data; name="file"; filename="tx.csv"\r\n'
-            b"Content-Type: text/csv\r\n\r\n"
-            + file_bytes
-            + b"\r\n--boundary123--\r\n"
-        )
-
-        tracemalloc.start()
-        gc.collect()
-        start_cur, _ = tracemalloc.get_traced_memory()
-
-        tasks = [
-            _run_upload(middleware, multipart_body, b"multipart/form-data; boundary=boundary123")
-            for _ in range(6)
-        ]
-        results = await asyncio.gather(*tasks)
-        gc.collect()
-        end_cur, _ = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
-
-        assert all(status == 204 for status in results)
-        assert end_cur - start_cur < 300 * 1024
-
-    asyncio.run(_async_test())
+        started_tracing = not tracemalloc.is_tracing()
+        if started_tracing:
+            tracemalloc.start()
+        try:
+            # Warm the same middleware/parser/task path before taking the baseline.
+            await run_batch(1024)
+            await asyncio.sleep(0)
+            gc.collect()
+            baseline = tracemalloc.get_traced_memory()[0]
+            for _ in range(3):
+                await run_batch(1024 * 1024)
+                await asyncio.sleep(0)
+                gc.collect()
+                retained = tracemalloc.get_traced_memory()[0] - baseline
+                # Allow small task/parser caches, but less than one 1-MiB body.
+                assert retained < 300 * 1024, (
+                    f"Post-cleanup traced allocation delta {retained} bytes exceeds the candidate "
+                    "300-KiB tolerance; runtime stability requires pinned isolated validation."
+                )
+        finally:
+            if started_tracing:
+                tracemalloc.stop()
+    asyncio.run(check())
 
 
 def test_concurrent_mixed_valid_and_oversized_uploads():
@@ -162,18 +222,13 @@ def test_reverse_proxy_configuration_contract():
     assert re.search(r"limit_conn\s+\w+\s+\d+;", content)
 
 
-def test_server_operational_limits():
-    """Verify that docker-compose.prod.yml and backend/Dockerfile enforce uvicorn concurrency limits."""
-    compose_prod = REPO_ROOT / "docker-compose.prod.yml"
-    dockerfile = REPO_ROOT / "backend" / "Dockerfile"
-
-    assert compose_prod.is_file()
-    assert dockerfile.is_file()
-
-    compose_text = compose_prod.read_text(encoding="utf-8")
-    assert "--limit-concurrency" in compose_text
-    assert "--timeout-keep-alive" in compose_text
-
-    dockerfile_text = dockerfile.read_text(encoding="utf-8")
-    assert "--limit-concurrency" in dockerfile_text
-    assert "--timeout-keep-alive" in dockerfile_text
+def test_server_entrypoint_configuration_contract():
+    """Source wiring only; actual server rejection is tested over loopback."""
+    compose = (REPO_ROOT / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    dockerfile = (REPO_ROOT / "backend/Dockerfile").read_text(encoding="utf-8")
+    server = (REPO_ROOT / "backend/app/server.py").read_text(encoding="utf-8")
+    assert '"python", "-m", "app.server"' in compose
+    assert '"python", "-m", "app.server"' in dockerfile
+    assert "limit_concurrency=settings.SERVER_LIMIT_CONCURRENCY" in server
+    assert "timeout_keep_alive=settings.SERVER_KEEPALIVE_SECONDS" in server
+    assert "SERVER_FORWARDED_ALLOW_IPS" in compose
