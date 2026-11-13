@@ -1,15 +1,18 @@
 """Mailbox ownership and recovery endpoints; challenge values never enter API responses."""
 from html import escape
+import hashlib
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from app.api.auth import rate_limit_guard, record_failed_attempt
 from app.core.config import settings
+from app.core.password_policy import NewPassword
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.email_verification import create_verification_token, consume_verification_token
-from app.services.notifications.email_sender import EmailMessage, get_email_sender
+from app.services.notifications.email_sender import EmailMessage, get_identity_email_sender
 
 router = APIRouter(prefix="/auth", tags=["account recovery"])
 
@@ -23,7 +26,7 @@ class TokenRequest(BaseModel):
 
 
 class PasswordReset(TokenRequest):
-    password: str = Field(min_length=8, max_length=1024)
+    password: NewPassword
 
 
 class ChallengeStatus(BaseModel):
@@ -49,14 +52,23 @@ def send_challenge(db: Session, user: User, purpose: str):
     subject = "Reset your PorerHishab password" if purpose == "reset_password" else "Verify your PorerHishab email"
     body = subject + ". This link expires in 30 minutes.\n\n" + link
     # This is a requested identity challenge, never a financial notification.
-    result = get_email_sender().send(EmailMessage(
-        recipient, subject, body,
-        "<p>" + escape(subject) + '.</p><p><a href="' + escape(link, quote=True) + '">Continue</a></p><p>This link expires in 30 minutes.</p>',
-    ))
-    if not result.success:
-        # Permit retry after a failed delivery; never expose provider diagnostics.
+    try:
+        result = get_identity_email_sender().send(EmailMessage(
+            recipient, subject, body,
+            "<p>" + escape(subject) + '.</p><p><a href="' + escape(link, quote=True) + '">Continue</a></p><p>This link expires in 30 minutes.</p>',
+        ))
+        delivered = result.success
+    except (ValueError, OSError):
+        # Configuration/transport failures keep the same privacy-safe API response.
+        delivered = False
+    if not delivered:
+        # Invalidate exactly this challenge while retaining its resend timestamp.
+        # A failed old attempt must not delete a newer concurrent challenge.
         from app.models.email_verification import EmailVerificationToken
-        db.query(EmailVerificationToken).filter_by(user_id=owner_id, purpose=purpose).delete()
+        db.query(EmailVerificationToken).filter_by(
+            user_id=owner_id, purpose=purpose,
+            token_hash=hashlib.sha256(raw.encode()).hexdigest(),
+        ).update({EmailVerificationToken.used_at: datetime.now(timezone.utc)}, synchronize_session=False)
         db.commit()
 
 

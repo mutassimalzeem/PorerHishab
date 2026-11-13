@@ -129,7 +129,6 @@ export function Auth({
               autoComplete={register ? "new-password" : "current-password"}
               required
               minLength={register ? 8 : 1}
-              maxLength={1024}
             />
             {error && <ErrorNotice message={error} />}
             <button className="button primary" disabled={busy}>

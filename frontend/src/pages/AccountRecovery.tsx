@@ -79,7 +79,6 @@ export function AccountRecovery({
                   name="password"
                   type="password"
                   minLength={8}
-                  maxLength={1024}
                   autoComplete="new-password"
                   required
                 />
